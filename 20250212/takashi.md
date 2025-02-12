@@ -1,4 +1,4 @@
-# 2024/09/24
+# 2025/02/12
 
 ## `CustomPainter`と`AnimationController`を使用したアニメーションの作成
 
