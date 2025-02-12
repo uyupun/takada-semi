@@ -1,0 +1,354 @@
+# 2025/02/12
+
+## `CustomPainter`と`AnimationController`を使用したアニメーションの作成
+
+### `CustomPainter`とは
+
+- [CustomPainter](https://api.flutter.dev/flutter/rendering/CustomPainter-class.html)はパスを描画するためのクラス
+- `Canvas`/`Path`/`Paint`を使用して、`CustomPaint`ウィジェット上に描画する
+- 主要なメソッド
+  - `paint`
+    - 描画処理を記述
+  - `shouldRepaint`
+    - 描画が必要かどうかを判断
+
+### `AnimationController`とは
+
+- [AnimationController](https://api.flutter.dev/flutter/animation/AnimationController-class.html)はアニメーションを制御するクラス
+- 時間の経過に基づいて、`value`プロパティが`lowerBound`プロパティから`upperBound`プロパティまでの値を取り、アニメーションの進行度を示す
+  - `lowerBound`プロパティと`upperBound`プロパティのデフォルト値は`0`と`1`
+  - `AnimatedBuilder`ウィジェットを使用し、アニメーションの描画を行う
+- 主要なプロパティ・メソッド
+  - `value`
+    - アニメーションの進行度を示す
+  - `lowerBound`
+    - アニメーションの最小値を示す
+  - `upperBound`
+    - アニメーションの最大値を示す
+  - `vsync`
+    - アニメーションのタイミングを制御するためのTickerを定義する
+    - Ticker
+      - 毎フレームごとにコールバックを発生させるメカニズムで、アニメーションの更新を提供する
+      - `SingleTickerProviderStateMixin`/`TickerProviderStateMixin`を使用する
+  - `forward`
+    - アニメーションを正方向に再生する
+  - `reverse`
+    - アニメーションを逆方向に再生する
+  - `repeat`
+    - アニメーションを繰り返し再生する
+
+### アニメーションの作成
+
+#### 星の実装
+
+```dart
+// 星形のパスを作成する関数
+Path createStarPath(
+  int points,
+  double outerRadius,
+  double innerRadius,
+  Offset center,
+) {
+  final angle = pi / points;
+  final path = Path();
+  for (var i = 0; i < points * 2 + 1; i++) {
+    final r = (i % 2 == 0) ? outerRadius : innerRadius;
+    final a = angle * i - pi / 2;
+    final x = center.dx + r * cos(a);
+    final y = center.dy + r * sin(a);
+    if (i == 0) {
+      path.moveTo(x, y);
+    } else {
+      path.lineTo(x, y);
+    }
+  }
+  return path;
+}
+```
+
+- 2つの五角形を求め、各頂点を`lintTo`メソッドで繋ぎ合わせることで星形のパスを作成する
+
+#### `AnimationController`の実装
+
+```dart
+class StarPathAnimation extends StatefulWidget {...}
+
+class _StarPathAnimationState extends State<StarPathAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // アニメーションコントローラを初期化し繰り返し再生する
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 5),
+    )..repeat();
+  }
+
+  ...
+}
+```
+
+- `SingleTickerProviderStateMixin`を使用し、`vsync`を設定する
+- `duration`を5秒に設定する
+- `repeat`メソッドを使用し、アニメーションを繰り返し再生する
+
+#### `CustomPainter`の実装
+
+```dart
+class StarPainter extends CustomPainter {
+  final Path path;
+  final double progress;
+
+  StarPainter(this.path, this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // パスのメトリクスを取得
+    final pathMetrics = path.computeMetrics();
+    final pathMetric = pathMetrics.first;
+
+    // 進行度に応じたパスの長さ
+    final drawLength = pathMetric.length * progress;
+
+    // 進行度に応じたパスの長さまでを抽出したパスを追加
+    final drawPath = Path();
+    drawPath.addPath(
+      pathMetric.extractPath(0, drawLength),
+      Offset.zero,
+    );
+
+    // パスのペイント（スタイル）
+    final pathPaint = Paint()
+      ..color = Colors.yellow
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+
+    canvas.drawPath(drawPath, pathPaint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
+}
+```
+
+- `path.computeMetrics`メソッドを使用し、パスの詳細な情報を含むデータ（メトリクス）を取得する
+- `moveTo`の数に応じてメトリクスを配列で受け取る
+  - 今回は1つのパスのみで星を描画するため、`pathMetrics.first`でメトリクスを取得する
+- アニメーションの進捗度に応じたパスの長さを求め、その長さ分のパスを抽出する
+- `Paint`クラスを使用し、パスのスタイルを定義する
+- `canvas.drawPath`メソッドを使用し、パスを描画する
+
+#### `CustomPaint`の実装
+
+```dart
+class StarPathAnimation extends StatefulWidget {...}
+
+class _StarPathAnimationState extends State<StarPathAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Path _starPath;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // アニメーションコントローラを初期化し繰り返し再生する
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 5),
+    )..repeat();
+
+    _starPath = _createStarPath(5, 150, 65, const Offset(150, 150));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) {
+        return CustomPaint(
+          painter: StarPainter(_starPath, _controller.value),
+          size: const Size(300, 300),
+        );
+      },
+    );
+  }
+
+  // 星形のパスを作成する関数
+  Path _createStarPath(
+    int points,
+    double outerRadius,
+    double innerRadius,
+    Offset center,
+  ) {
+    ...
+  }
+}
+```
+
+- `_createStarPath`メソッドを使用して、星のパスを取得する
+- `AnimatedBuilder`に`AnimationController`を設定する
+- `CustomPaint`に`StarPainter`と`Size`を設定する
+
+## 位置情報の取得
+
+### `Geolocator`とは
+
+- [Geolocator](https://pub.dev/packages/geolocator)を使用して、位置情報を取得する
+- 主要なメソッド
+  - `Geolocator.getCurrentPosition`
+    - 現在の位置情報を取得
+  - `Geolocator.getPositionStream`
+    - 位置情報のストリームを取得
+
+### `PermissionHandler`とは
+
+- [PermissionHandler](https://pub.dev/packages/permission_handler)を使用して、位置情報の取得を許可（ユーザーに許可を促す）する
+- 主要なメソッド
+  - `Permission.location`
+    - 位置情報の取得を許可
+  - `Permission.locationAlways`
+    - 位置情報の取得を常時許可
+  - `Permission.locationWhenInUse`
+    - 位置情報の取得を使用時のみ許可
+  - `Permission.locationXX.request`
+    - 位置情報の取得を許可（ユーザーに許可を促す）するためにダイアログを表示する
+
+### 権限に関する設定
+
+#### Android
+
+##### 前提知識
+
+- [Gradle](https://gradle.org/)
+  - 主にJavaやAndroidのプロジェクトで広く使用されるビルドツール
+- `gradle.properties`
+  - Gradleビルドシステムの設定を管理するために使われる設定ファイル
+- `build.gradle`
+  - ビルドプロセスを定義するための主要な設定ファイルで、プロジェクトの依存関係、プラグイン、ビルドタスク、およびプロジェクトの設定を記述する
+- `AndroidManifest.xml`
+  - Androidアプリのマニフェストファイルで、Androidアプリの動作や構成に関する重要な情報を定義する
+    - アプリの基本情報
+    - アクティビティ、サービス、ブロードキャストレシーバーの宣言
+      - アクティビティ
+        - AndroidアプリのUIを管理するための基本的なコンポーネント
+        - 各アクティビティは、画面を構成し、ユーザーとのやり取りを行う
+        - 通常、アプリが起動されたときに最初に表示される画面がアクティビティで、ユーザーがアプリを操作するための窓口となる
+      - サービス
+        - アプリのバックグラウンドで動作するコンポーネント
+        - UIを提供しないため、アクティビティとは異なり、UIなしで長時間の処理（音楽の再生、データの同期、位置情報の取得など）を行う際に使われます
+      - ブロードキャストレシーバー
+        - システムまたは他のアプリからのブロードキャスト（広域に送信されるインテントメッセージ）を受信して処理するためのコンポーネント
+          - インテント（インテントメッセージ）
+            - アプリ間やコンポーネント間で通信や処理の要求を伝えるために使われるメッセージオブジェクト
+            - アプリが特定のイベントを通知するために使用される
+        - デバイスのバッテリーが低下したり、Wi-Fiが接続された際などにシステムから送信される通知を受け取って、特定の処理を行うことができる
+    - アプリが必要とする権限の宣言
+    - アプリの最小およびターゲットSDKのバージョン
+    - インテントフィルター
+      - アプリの特定のコンポーネント（アクティビティ、サービス、ブロードキャストレシーバー）がどのようなインテントを受け取るかを定義するための構成要素
+
+##### `gradle.properties`に設定を追加
+
+- [AndroidX](https://developer.android.com/jetpack/androidx)
+  - Androidのサポートライブラリの新しいバージョン
+  - 従来のサポートライブラリはAndroidXに移行することが推奨されている
+    - サポートライブラリとは、古いAndroidOSバージョンでも最新のAPIや機能を利用できるようにするための互換性ライブラリ
+- [Jetifier](https://developer.android.com/tools/jetifier)
+  - AndroidXを使うプロジェクトで、依存するライブラリがまだサポートライブラリに依存している場合でも、そのライブラリを自動的にAndroidX対応に変換する
+
+```properties
+android.useAndroidX=true
+android.enableJetifier=true
+```
+
+##### `build.gradle`に設定を追加
+
+```gradle
+android {
+  compileSdkVersion 34
+}
+```
+
+##### `AndroidManifest.xml`に権限を追加
+
+```xml
+<!-- 位置情報の取得権限 -->
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<!-- 位置情報の取得権限（粗い位置情報） -->
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+<!-- 位置情報の取得権限（常時） -->
+<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+```
+
+#### iOS
+
+##### 前提知識
+
+- `Info.plist`
+  - iOS（macOSも）アプリで使用される設定ファイルで、アプリに関する重要なメタデータを格納する
+  - plistはProperty Listの略で、アプリがiOSシステムとどのようにやり取りするかを決定するために必要な情報を提供する
+    - アプリの基本情報
+    - 権限の宣言
+    - アプリの動作モード
+      - アプリがバックグラウンドで動作できるかどうかや、URLスキームを使って外部アプリと連携するかなどの設定を記述する
+    - URLスキームの定義
+      - iOSアプリが他のアプリやウェブページから特定のアクションで呼び出される方法を提供する
+    - ローカライゼーションのサポート
+- `Podfile`
+  - CocoaPodsを使用してiOS（macOSも）アプリの依存関係を管理するための設定ファイル
+  - CocoaPods
+    - iOS（macOSも）アプリの依存関係を管理するためのパッケージ管理ツール
+
+##### `Info.plist`に設定を追加
+
+```xml
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>位置情報の取得を許可してください</string>
+<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+<string>位置情報の取得を常時許可してください</string>
+```
+
+##### `Podfile`に設定を追加
+
+- 処理の流れ
+  - `post_install do |installer|`ですべてのPodのインストールが完了した後に実行される処理を定義する
+  - `installer.pods_project.targets.each do |target|`でPodでインストールされたすべてのターゲット（プロジェクトの各モジュール）に対して処理を行う
+  - `flutter_additional_ios_build_settings(target)`で各ターゲットに対して追加のiOSビルド設定を適用することで、FlutterとiOSの間で必要な設定が自動的に行われる
+  - `target.build_configurations.each do |config|`でビルド構成（デバッグやリリースなど）を繰り返し処理することで、特定のビルド設定を各構成に適用する
+  - `config.build_settings['GCC_PREPROCESSOR_DEFINITIONS']`で現在のビルド構成におけるプリプロセッサマクロの定義を取得する
+    - プリプロセッサマクロとは、コンパイルの前処理段階でソースコード内の特定のキーワードを別のコードや値に置き換える仕組みで、定数の定義や関数の簡略化、条件付きコンパイルなどが可能になる
+  - `||=`で、`GCC_PREPROCESSOR_DEFINITIONS`が既に設定されている場合はそのままにし、設定されていない場合は新しい値を設定する
+  - `'$(inherited)'`は親設定からの継承を意味し、既存の設定を維持しつつ、新しいマクロを追加する
+
+```ruby
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
+        '$(inherited)',
+
+        ## バックグラウンドでの位置情報の取得を許可する設定
+        'PERMISSION_LOCATION=1',
+        'PERMISSION_LOCATION_WHENINUSE=0',
+      ]
+    end
+  end
+end
+```
+
+##### 注意事項
+
+- （Androidではまだ観測できていないだけかもしれないが）iOSでは位置情報のリクエストダイアログを表示した後に、スマホを閉じ、再度アプリを開くと位置情報のリクエストダイアログが閉じられる
+- これはアプリを再起動するまで、再表示されないため、アプリの再起動をユーザーに促すか、位置情報を使用する機能を使えないようにしないといけない
