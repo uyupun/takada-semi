@@ -119,13 +119,18 @@
 
 ## Hyperwords
 
-- Mozilla Firefox等のWebブラウザ向けのアドオン
-- NLSやAugmentの思想を受け継いでいる
+- 2006年にリリースされたMozilla Firefox等のWebブラウザ向けのアドオン
+- NLSやAugmentの思想を受け継いでおり、Liquid Informationというプロジェクトの一環で開発された
+    - Liquid Informationはフローデ・ヘグランド氏が主導する情報の操作性とユーザーインターフェースの革新を目指した取り組み
 - ユーザがウェブページ上のテキストを選択すると、検索、参照、翻訳、メール送信等の様々な操作が可能
 - ロンドン大学での研究プロジェクトとして開始
-- その後、The Hyperwords Company(2012年にThe Liquid Information Companyに改名)で開発・維持
-- 2014年に解散し、プロジェクトは終了した
+- その後、The Hyperwords Companyで開発・維持
+    - 2012年にThe Liquid Information Companyに改名
+    - その後、The Augmented Text Companyに改名
+- 2012年に開発終了した
+- Liquid InformationではLiquid、Liquid Browserとった他のソフトウェアも開発されていた
 - ダグラス・エンゲルバート、テッド・ネルソン、ヴィントン・サーフ等の名だたる人物がアドバイザーとして参加していた
+- フローデ・ヘグランドの取り組みについて掘り下げてみても面白いかも
 
 ## ダグラス・エンゲルバートとLogitech
 
@@ -149,6 +154,8 @@
 
 - 「自然なものなど存在せず、自然なものというのは単に慣れ親しんでいるものにすぎない」
     - ペンで字を書けたり、自転車で移動できるのもたくさん練習したから
+    - とはいえ人間が先天的、あるいは幼少期に獲得する能力かどうか？という視点は大事なように思う
+    - それに対し、人種や障害、年齢による影響がどれくらいあるのか？という視点も大事なように思う
 - 何に慣れ親しむか、というのも社会の環境や見方、観衆によって定義され、それは時代とともに進化していく
     - 実際にマウスも微妙に進化しているし、トラックパッドやトラックボールのような類似の入力装置も出現している
 - そのため、その時点におけるモノの特性や性能の把握、将来性への注目が重要
@@ -202,6 +209,7 @@
 - [すべてのデモの母](https://ja.wikipedia.org/wiki/%E3%81%99%E3%81%B9%E3%81%A6%E3%81%AE%E3%83%87%E3%83%A2%E3%81%AE%E6%AF%8D)
 - [マウスやGUI、ハイパーリンクの生みの親D・エンゲルバート氏、88歳で死去](https://japan.cnet.com/article/35034255/)
 - [NLS](https://ja.wikipedia.org/wiki/NLS)
+- [Hyperwords](https://en.wikipedia.org/wiki/Hyperwords)
 
 # 今後サーベイしたいこと
 
@@ -228,5 +236,8 @@
 - [Smalltalk](https://ja.wikipedia.org/wiki/Smalltalk)
 - [ENQUIRE](https://ja.wikipedia.org/wiki/ENQUIRE)
 - [アラン・ケイ](https://ja.wikipedia.org/wiki/%E3%82%A2%E3%83%A9%E3%83%B3%E3%83%BB%E3%82%B1%E3%82%A4)
-- [Hyperwords](https://en.wikipedia.org/wiki/Hyperwords)
 - [人類の進化を加速させた「手で触る情報操作」 子どもの創造的学習意欲を刺激するパソコンは、ここから始まった](https://wisdom.nec.com/ja/innovation/2019062401/index.html)
+- [デイビッド・J・ファーバー](https://ja.wikipedia.org/wiki/%E3%83%87%E3%82%A4%E3%83%93%E3%83%83%E3%83%89%E3%83%BBJ%E3%83%BB%E3%83%95%E3%82%A1%E3%83%BC%E3%83%90%E3%83%BC)
+- [Bruce Horn](https://en.wikipedia.org/wiki/Bruce_Horn)
+- [Douglas Rushkoff](https://en.wikipedia.org/wiki/Douglas_Rushkoff)
+- [The Future of Text](https://thefutureoftext.org/)
