@@ -72,9 +72,9 @@
 ## Augment
 
 - 1977年、SRIはTymshare社にNLSを売却
-    - Tymeshare社はTSSの提供事業を行っていた
+    - Tymshare社はTSSの提供事業を行っていた
 - その後、NLSはAugmentと改名され、継続して開発された
-- 1984年、Tymeshare社がマクドネル・ダグラス社に買収
+- 1984年、Tymshare社がマクドネル・ダグラス社に買収
     - マクドネル・ダグラス社は航空宇宙企業で、後にボーイング社に買収されている
 
 ## HyPerform
