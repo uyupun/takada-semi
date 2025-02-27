@@ -1,0 +1,29 @@
+# React Create App との別れ
+
+## React Create Appとは
+
+- React Create Appとは、Reactの環境を生成するためのCLIツール
+  - [https://github.com/facebook/create-react-app](https://github.com/facebook/create-react-app)
+  - 2017 ~ 2021年にかけてReactプロジェクトを構築・稼働させるための重要なツールだった
+  - 2022年以降は非推奨となっている
+
+## 直近の話
+
+- 公式から正式に非推奨となった記事が出た
+  - [Sunsetting Create React App](https://react.dev/blog/2025/02/14/sunsetting-create-react-app)
+  - 非推奨になった旨と、フレームワークやViteなどの使用を推奨しているみたいな内容が書かれている
+  - 2025年2月14日以降は、Create React Appでプロジェクトを作成すると、非推奨の警告が出るらしい
+
+## 今後
+
+- ViteやPrecel、Rsbuildなどのビルドツールを使用する
+  - [Build a React app from Scratch](https://react.dev/learn/build-a-react-app-from-scratch)
+  - たしか、React Create AppはWebpack
+- フレームワークを使用する
+  - [Creating a React App](https://react.dev/learn/creating-a-react-app)
+  - Next.js
+    - ビルドツール: Webpack / Turbopack
+  - React Router
+    - ビルドツール: Vite
+  - Expo
+    - ビルドツール: Metro
