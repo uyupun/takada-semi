@@ -1,0 +1,193 @@
+# Next.js v14入門
+
+## 背景
+
+- 最新はv15.2.1だが、v14系についてもあまりインプットできていないので、調べていく
+
+## 概要
+
+- 2023年10月27日（JST）にv14.0.0がリリースされた
+  - [Next.js 14 Blog](https://nextjs.org/blog/next-14)
+    - Turbopack
+    - Server Actions (Stable)
+    - Partial Prerendering (Preview)
+    - Metadata Improvements
+    - Next.js Learn (New)
+
+### Turbopack
+
+- [Turbopack](https://nextjs.org/docs/app/api-reference/turbopack)はRustベースのバンドラー
+- Next.js v13以降Pages RouterとApp Routerの両方でローカル開発でのパフォーマンス向上のための開発を行ってきた
+  - `next dev`など部分的に書き換えてきたが、全機能をサポートするようにした
+- vercelが行ったテストでは以下の改善が見られた
+  - ローカルサーバーの起動が最大53.3%高速化
+  - Fast Refreshを使用したコードの更新が最大94.7%高速化
+    - Fast Refresh
+      - ホットリロードと類似の機能
+      - 変更された部分だけを差し替えることで、ページのリロードを最小限に抑えることができる仕組み
+  - テストはAre We Turbo yet?のサイトで閲覧できる
+    - [https://areweturboyet.com/](https://areweturboyet.com/)
+    - 最近は、ビルド速度がコア数を増やすほど劇的に速くなるらしい
+    　- [X](https://x.com/rauchg/status/1896643362004083075)
+- `next dev --turbo`（`next dev --turbopack`）を使用すればTurbopackを使用してローカルサーバーが起動される
+
+### Server Actions (Stable)
+
+- Next.js v9で[API Routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes)が登場した
+- Server Actions（App Router）ではAPI Routesを作成せず、サーバー上で安全に実行される関数を定義し、Reactコンポーネントから直接呼び出すことができる
+  - 現在の[Server Functions](https://react.dev/reference/rsc/server-functions)
+  - React Canaryが導入されている
+    - 現在のReact v19系の機能が含まれている
+- App Routerを用いることで[Progressive Enhancement](https://developer.mozilla.org/ja/docs/Glossary/Progressive_Enhancement)に役立つ
+  - Progressive Enhancementとは、可能な限り多くのユーザーに必要不可欠なコンテンツと機能のベースラインを提供するための設計哲学
+- API Routesもだが、Server Actionsも外部からリクエスト可能な形として外部に公開される（`"use server"`をつけたメソッドを`export`した時）
+  - そのため、重要な処理などは認証処理を含めたり、Refererヘッダーで判断したりする必要がある
+  - それか、新たなメソッドを`use server`を使用して作成し、重要な処理などはその新たに作成したメソッド内で呼び出す必要がある
+  - ["use server";を勘違いして使うと危ない](https://zenn.dev/moozaru/articles/c7335f66dfb8df)
+
+#### 例
+
+##### Pages Router
+
+```typescript:pages/api/submit.ts
+import type { NextApiRequest, NextApiResponse } from 'next';
+ 
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  const data = req.body;
+  const id = await createItem(data);
+  res.status(200).json({ id });
+}
+```
+
+```typescript:pages/index.tsx
+import { FormEvent } from 'react';
+ 
+export default function Page() {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+ 
+    const formData = new FormData(event.currentTarget);
+    const response = await fetch('/api/submit', {
+      method: 'POST',
+      body: formData,
+    });
+ 
+    // Handle response if necessary
+    const data = await response.json();
+    // ...
+  }
+ 
+  return (
+    <form onSubmit={onSubmit}>
+      <input type="text" name="name" />
+      <button type="submit">Submit</button>
+    </form>
+  );
+}
+```
+
+##### App Router
+
+```typescript:app/page.tsx
+export default function Page() {
+  async function create(formData: FormData) {
+    'use server';
+    const id = await createItem(formData);
+  }
+ 
+  return (
+    <form action={create}>
+      <input type="text" name="name" />
+      <button type="submit">Submit</button>
+    </form>
+  );
+}
+```
+
+#### その他
+
+- 以下のようなことも可能
+  - revalidatePath()
+    - 指定したパスのキャッシュをリセットするためのメソッド
+  - revalidateTag()
+    - 指定したタグのキャッシュをリセットするためのメソッド
+  - redirect()
+    - サーバーサイドでリダイレクトを実装するためのメソッド
+  - cookies()
+    - クッキーを読み書きするためのメソッド
+  - useOptimistic()
+    - フォーム送信時に、サーバーのレスポンスを待たずに一時的なUIを更新できるフック
+  - useFormState()
+    - Server Actionsで発生したエラーをキャッチし、クライアント側で表示できるフック
+  - useFormStatus()
+    - フォーム送信中のローディング状態を取得できるフック
+
+### Partial Prerendering (Preview)
+
+- SSGとSSRを同じページ内で共存させる仕組み
+  - ページの一部をプリレンダリング（事前生成）し、動的データのみクライアントサイドで後から埋め込む
+    - ページの表示速度の向上
+    - SSRのサーバー負荷を削減
+    - SEOに強い
+
+#### 例
+
+```typescript:app/page.tsx
+export default function Page() {
+  return (
+    <main>
+      <header>
+        <h1>My Store</h1>
+        <Suspense fallback={<CartSkeleton />}>
+          <ShoppingCart />
+        </Suspense>
+      </header>
+      <Banner />
+      <Suspense fallback={<ProductListSkeleton />}>
+        <Recommendations />
+      </Suspense>
+      <NewProducts />
+    </main>
+  );
+}
+```
+
+- Suspenseのfallbackはプリレンダリングされる
+
+### Metadata Improvements
+
+- メタデータ（viewport、colorScheme、themeColor）の改善がされた
+  - [generateViewport](https://nextjs.org/docs/app/api-reference/functions/generate-viewport)
+  - 静的にメタデータを設定したい場合はviewportを、動的にメタデータを設定したい場合はgenerateViewportを使用する
+- ブロッキングメタデータとノンブロッキングメタデータを分離した
+  - ブロッキングメタデータ
+    - HTMLが送信される前に、必ずブラウザへ送る必要があるメタデータ
+    - ページの初期レンダリングに影響する
+    - 例: viewport、colorScheme、themeColor
+  - ノンブロッキングメタデータ
+    - HTMLを送信した後に追加されても問題ないメタデータ
+    - SEOやSNSシェア（OGPとか）には重要だが、ページのレンダリングには影響しない
+    - 例: title、description、og系
+
+### Next.js Learn (New)
+
+- [Next.js Learn](https://nextjs.org/learn)に新たなコースを追加
+  - The Next.js App Router
+  - Styling and Tailwind CSS
+  - Optimizing Fonts and Images
+  - Creating Layouts and Pages
+  - Navigating Between Pages
+  - Setting Up Your Postgres Database
+  - Fetching Data with Server Components
+  - Static and Dynamic Rendering
+  - Streaming
+  - Partial Prerendering (Optional)
+  - Adding Search and Pagination
+  - Mutating Data
+  - Handling Errors
+  - Improving Accessibility
+  - Adding Authentication
+  - Adding Metadata
