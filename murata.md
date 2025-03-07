@@ -1,0 +1,102 @@
+# Testcontainersの紹介
+
+## Testcontainersとは
+
+- MySQL等のミドルウェアを利用するアプリケーションのテストコードを書く時に、テストコード内でミドルウェアを起動させることができるライブラリ
+- なるべく本番環境に合わせてテストをすることが良いが、テスト前にコンテナを起動しておく必要がある
+- テストコード内でミドルウェアを起動させることで、テストコードの実行環境とミドルウェアの実行環境を分離することができる
+- Java,Go,.NET,Python,Rust,Haskell,Ruby,Clojure,Elixir,PHPで利用できる
+- 今回はGo言語で利用する方法を紹介する
+
+## サンプルコード
+
+- 個人的に好きなのでdevcontainerでサンプルを書いた。
+
+```shell
+$ go version
+go version go1.24.1 linux/arm64
+```
+
+- 実行に必要なものは入れる
+
+```shell
+go get github.com/go-sql-driver/mysql@latest
+go get github.com/testcontainers/testcontainers-go@latest
+go get github.com/testcontainers/testcontainers-go/wait@latest
+```
+
+- Testcontainers for Goのインストール(公式ではgo getだが、それだとバージョンが云々と言われたのでこっちを使った)
+
+```shell
+go install github.com/testcontainers/testcontainers-go@latest
+```
+
+- サンプルコード（なんかコピペしたらインデントがクソキモくなったけどゆるして）
+
+```go
+package main
+
+import (
+ "context"
+ "database/sql"
+ "fmt"
+ "log"
+ "testing"
+
+ _ "github.com/go-sql-driver/mysql"
+ "github.com/testcontainers/testcontainers-go"
+ "github.com/testcontainers/testcontainers-go/wait"
+)
+
+var tdb *sql.DB
+
+func TestMain(m *testing.M) {
+import (
+ "fmt"
+ "log"
+ "context"
+ "testing"
+
+ "github.com/stretchr/testify/require"
+
+ "github.com/testcontainers/testcontainers-go"
+ "github.com/testcontainers/testcontainers-go/wait"
+)
+
+func TestWithRedis(t *testing.T) {
+ ctx := context.Background()
+ req := testcontainers.ContainerRequest{
+  Image:        "redis:latest", // Docker image
+  ExposedPorts: []string{"6379/tcp"}, // コンテナから公開するポート（リスト）
+  WaitingFor:   wait.ForLog("Ready to accept connections"), // コンテナの準備が整ったときを通知する
+ }
+
+ // コンテナの作成
+ redisC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+  ContainerRequest: req,
+  Started:          true,
+ })
+
+ if err != nil {
+  log.Fatalf(err)
+ }
+
+ testcontainers.CleanupContainer(t, redisC)
+ require.NoError(t, err)
+}
+```
+
+- テストコードを実行する
+
+```shell
+go test ./...
+```
+
+- サンプルコードのためにMySQLのコンテナの準備するの面倒で動かしてないので、サンプルコードで雰囲気を感じてください。
+- このままだと普通にpanicします。
+
+## 参考文献
+
+[Testcontainersを用いてコンテナを利用するGoアプリケーションのテストを改善する](https://zenn.dev/minguu42/articles/20240114-testcontainers-go)  
+[Testcontainers Toppage](https://testcontainers.com)  
+[Testcontainers Quickstart](https://golang.testcontainers.org/quickstart/)
