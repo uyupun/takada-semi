@@ -31,58 +31,34 @@ go get github.com/testcontainers/testcontainers-go/wait@latest
 go install github.com/testcontainers/testcontainers-go@latest
 ```
 
-- サンプルコード（なんかコピペしたらインデントがクソキモくなったけどゆるして）
+- [サンプルコード](https://golang.testcontainers.org/quickstart/)
 
 ```go
 package main
 
 import (
- "context"
- "database/sql"
- "fmt"
- "log"
- "testing"
+    "context"
+    "testing"
 
- _ "github.com/go-sql-driver/mysql"
- "github.com/testcontainers/testcontainers-go"
- "github.com/testcontainers/testcontainers-go/wait"
-)
+    "github.com/stretchr/testify/require"
 
-var tdb *sql.DB
-
-func TestMain(m *testing.M) {
-import (
- "fmt"
- "log"
- "context"
- "testing"
-
- "github.com/stretchr/testify/require"
-
- "github.com/testcontainers/testcontainers-go"
- "github.com/testcontainers/testcontainers-go/wait"
+    "github.com/testcontainers/testcontainers-go"
+    "github.com/testcontainers/testcontainers-go/wait"
 )
 
 func TestWithRedis(t *testing.T) {
- ctx := context.Background()
- req := testcontainers.ContainerRequest{
-  Image:        "redis:latest", // Docker image
-  ExposedPorts: []string{"6379/tcp"}, // コンテナから公開するポート（リスト）
-  WaitingFor:   wait.ForLog("Ready to accept connections"), // コンテナの準備が整ったときを通知する
- }
-
- // コンテナの作成
- redisC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-  ContainerRequest: req,
-  Started:          true,
- })
-
- if err != nil {
-  log.Fatalf(err)
- }
-
- testcontainers.CleanupContainer(t, redisC)
- require.NoError(t, err)
+    ctx := context.Background()
+    req := testcontainers.ContainerRequest{
+        Image:        "redis:latest",
+        ExposedPorts: []string{"6379/tcp"},
+        WaitingFor:   wait.ForLog("Ready to accept connections"),
+    }
+    redisC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+        ContainerRequest: req,
+        Started:          true,
+    })
+    testcontainers.CleanupContainer(t, redisC)
+    require.NoError(t, err)
 }
 ```
 
