@@ -1,0 +1,104 @@
+# DevContainer とは？
+
+**DevContainer**（Development Container）は、開発環境をコードとして定義し、コンテナベースで統一された開発環境を提供する仕組み。  
+
+## DevContainer のメリット
+
+- **環境の統一**: 開発チーム全員が同じ環境を使用可能
+- **セットアップの自動化**: 必要なツールやライブラリが自動でインストールされる
+- **ホスト環境への影響なし**: 開発環境をコンテナ内で管理
+- **再現性の確保**: どこでも同じ環境を再現できる
+
+## DevContainer のデメリット
+
+DevContainer は便利なツールですが、以下のようなデメリットもあります。
+
+### 1. **コンテナのオーバーヘッド**
+
+- コンテナを起動するためのリソース（CPU、メモリ）を消費する。
+- 特にスペックが低い PC では動作が重くなる可能性がある。
+
+### 2. **Docker の知識が必要**
+
+- DevContainer は Docker コンテナの技術を基盤としているため、Docker の基本的な知識が求められる。
+- ネットワーク設定やボリューム管理など、トラブルシューティングには Docker の理解が必要。
+
+### 3. **ホスト OS に依存する部分がある**
+
+- Windows や Mac では Docker Desktop などのインストールが必要。
+- 特に Windows Home では WSL2（Windows Subsystem for Linux）を有効化しなければならない。
+
+### 4. **パフォーマンスの問題**
+
+- ファイルの同期やコンテナ内のパフォーマンスがホスト OS と比較すると低下する場合がある。
+- 特に Windows 環境では、ファイル I/O の遅延が問題になることがある。
+
+### 5. **GUI アプリの実行が難しい**
+
+- 基本的に CLI や Web ベースの開発には適しているが、GUI アプリを開発・実行するのは難しい。
+- X11 や VNC などを使えば可能だが、セットアップが煩雑になる。
+
+### 6. **DevContainer に対応していない IDE やエディタがある**
+
+- VS Code では公式にサポートされているが、他の IDE（例: JetBrains 製品）では標準でのサポートがない。
+- 一部の IDE では手動で Docker を設定する必要がある。
+
+### 7. **ネットワーク環境に依存する**
+
+- 初回の `devcontainer.json` 設定時に Docker イメージをダウンロードするため、ネットワーク環境が悪いと時間がかかる。
+- 企業や組織によってはセキュリティポリシー上、コンテナの利用が制限されることがある。
+
+## DevContainer の基本構成
+
+`devcontainer.json` という設定ファイルを使用し、コンテナの環境を定義。
+Dockerfileも使用可能。
+
+実際に自分が使っている例： [サンプル](https://github.com/TakumiOkayasu/TimeTracker/tree/main/frontend/.devcontainer)
+
+### フォルダ構成の例
+
+```plaintext
+my-project/
+├── .devcontainer/
+│   ├── devcontainer.json
+│   └── Dockerfile
+├── src/
+│   ├── main.py
+│   └── requirements.txt
+└── README.md
+```
+
+- devcontainer.json の基本例
+
+```json
+
+{
+  "name": "Python DevContainer",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "settings": {
+    "python.defaultInterpreterPath": "/usr/bin/python3"
+  },
+  "extensions": [
+    "ms-python.python"
+  ],
+  "forwardPorts": [8080],
+  "postCreateCommand": "pip install -r src/requirements.txt"
+}
+```
+
+```Dockerfile
+FROM python:3.12
+WORKDIR /workspace
+COPY . .
+```
+
+## DevContainer の使い方
+
+ 1. .devcontainer フォルダを作成
+ 1. devcontainer.json と Dockerfile を作成
+ 1. VS Code で開く
+ 1 Remote - Containers 拡張機能をインストール
+ 1. 左下の「><」かCmd+Shift+Pから「Reopen in Container」（翻訳済みなら「コンテナーで再度開く」）を選択
+ 1. コンテナ環境内で開発を開始
