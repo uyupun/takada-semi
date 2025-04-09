@@ -1,0 +1,74 @@
+---
+const { name, image = null, link = null } = Astro.props;
+const firstChar = name.charAt(0).toUpperCase();
+---
+
+{link ? (
+  <a href={link} target="_blank" rel="noopener noreferrer" class="profile-icon">
+    <div class="icon-container">
+      {image ? (
+        <img src={image} alt={name} class="icon-image" />
+      ) : (
+        <div class="name-display">{firstChar}</div>
+      )}
+    </div>
+    <div class="icon-name">{name}</div>
+  </a>
+) : (
+  <div class="profile-icon">
+    <div class="icon-container">
+      {image ? (
+        <img src={image} alt={name} class="icon-image" />
+      ) : (
+        <div class="name-display">{firstChar}</div>
+      )}
+    </div>
+    <div class="icon-name">{name}</div>
+  </div>
+)}
+
+<style>
+  .profile-icon {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    margin: 1rem;
+  }
+
+  .icon-container {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: white;
+    padding: 4px;
+  }
+
+  .icon-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .name-display {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    color: #333;
+  }
+
+  .icon-name {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    text-align: center;
+    color: white;
+  }
+</style>

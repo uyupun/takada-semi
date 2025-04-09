@@ -1,8 +1,12 @@
-# 2025/02/12
+---
+title: CustomPainterとAnimationControllerを使用したアニメーションの作成
+author: Takashi
+---
+import Author from '../../../../components/Author.astro';
 
-## `CustomPainter`と`AnimationController`を使用したアニメーションの作成
+<Author frontmatter={frontmatter} link="https://takashimelon.vercel.app/" />
 
-### `CustomPainter`とは
+## `CustomPainter`とは
 
 - [CustomPainter](https://api.flutter.dev/flutter/rendering/CustomPainter-class.html)はパスを描画するためのクラス
 - `Canvas`/`Path`/`Paint`を使用して、`CustomPaint`ウィジェット上に描画する
@@ -12,7 +16,7 @@
   - `shouldRepaint`
     - 描画が必要かどうかを判断
 
-### `AnimationController`とは
+## `AnimationController`とは
 
 - [AnimationController](https://api.flutter.dev/flutter/animation/AnimationController-class.html)はアニメーションを制御するクラス
 - 時間の経過に基づいて、`value`プロパティが`lowerBound`プロパティから`upperBound`プロパティまでの値を取り、アニメーションの進行度を示す
@@ -37,9 +41,9 @@
   - `repeat`
     - アニメーションを繰り返し再生する
 
-### アニメーションの作成
+## アニメーションの作成
 
-#### 星の実装
+### 星の実装
 
 ```dart
 // 星形のパスを作成する関数
@@ -68,7 +72,7 @@ Path createStarPath(
 
 - 2つの五角形を求め、各頂点を`lintTo`メソッドで繋ぎ合わせることで星形のパスを作成する
 
-#### `AnimationController`の実装
+### `AnimationController`の実装
 
 ```dart
 class StarPathAnimation extends StatefulWidget {...}
@@ -96,7 +100,7 @@ class _StarPathAnimationState extends State<StarPathAnimation>
 - `duration`を5秒に設定する
 - `repeat`メソッドを使用し、アニメーションを繰り返し再生する
 
-#### `CustomPainter`の実装
+### `CustomPainter`の実装
 
 ```dart
 class StarPainter extends CustomPainter {
@@ -142,7 +146,7 @@ class StarPainter extends CustomPainter {
 - `Paint`クラスを使用し、パスのスタイルを定義する
 - `canvas.drawPath`メソッドを使用し、パスを描画する
 
-#### `CustomPaint`の実装
+### `CustomPaint`の実装
 
 ```dart
 class StarPathAnimation extends StatefulWidget {...}
@@ -348,7 +352,7 @@ post_install do |installer|
 end
 ```
 
-##### 注意事項
+#### 注意事項
 
 - （Androidではまだ観測できていないだけかもしれないが）iOSでは位置情報のリクエストダイアログを表示した後に、スマホを閉じ、再度アプリを開くと位置情報のリクエストダイアログが閉じられる
 - これはアプリを再起動するまで、再表示されないため、アプリの再起動をユーザーに促すか、位置情報を使用する機能を使えないようにしないといけない

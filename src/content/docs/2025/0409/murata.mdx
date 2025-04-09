@@ -1,4 +1,10 @@
-# 最近話題のMCPサーバーについてのまとめ
+---
+title: 最近話題のMCPサーバーについてのまとめ
+author: Murata
+---
+import Author from '../../../../components/Author.astro';
+
+<Author frontmatter={frontmatter} />
 
 ## 概要
 
@@ -27,8 +33,8 @@
 - **AIエージェントで複雑なワークフローを構築するための新インフラ**
 
 > 例えば、「社内のJiraチケットを集計して進捗レポートを作成するAI」を考えてみましょう。
-このAIに必要な能力は何でしょう？ JiraのAPIからチケット情報を取得すること、社内WikiやSlackから関連情報を引っ張ってくること、場合によっては結果をSlackに投稿すること…など、結構いろんな社内システム連携が必要ですよね。  
->普通なら、それぞれのAPIを叩くコードを書いてAIに教え込む（プロンプトを工夫する）必要があります。でもMCP対応のAIなら話は別。「Jiraにアクセスするツール」「Slackにアクセスするツール」を後付けできるのです。  
+このAIに必要な能力は何でしょう？ JiraのAPIからチケット情報を取得すること、社内WikiやSlackから関連情報を引っ張ってくること、場合によっては結果をSlackに投稿すること…など、結構いろんな社内システム連携が必要ですよね。
+>普通なら、それぞれのAPIを叩くコードを書いてAIに教え込む（プロンプトを工夫する）必要があります。でもMCP対応のAIなら話は別。「Jiraにアクセスするツール」「Slackにアクセスするツール」を後付けできるのです。
 > つまり、自然言語で「○○なツール作って」と頼むとAIが裏でMCPサーバー実装を書き、エージェントに組み込んでしまうのです
 
 - すげえ
@@ -41,5 +47,5 @@
 
 ## 参考
 
-- <https://zenn.dev/tomo0108/articles/6b472b4c9cacfa>
-- <https://qiita.com/takuya77088/items/58fd06fb46cecdd957d8>
+- https://zenn.dev/tomo0108/articles/6b472b4c9cacfa
+- https://qiita.com/takuya77088/items/58fd06fb46cecdd957d8

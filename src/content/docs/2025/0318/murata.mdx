@@ -1,6 +1,12 @@
-# DevContainer とは？
+---
+title: DevContainer とは？
+author: Murata
+---
+import Author from '../../../../components/Author.astro';
 
-**DevContainer**（Development Container）は、開発環境をコードとして定義し、コンテナベースで統一された開発環境を提供する仕組み。  
+<Author frontmatter={frontmatter} />
+
+**DevContainer**（Development Container）は、開発環境をコードとして定義し、コンテナベースで統一された開発環境を提供する仕組み。
 
 ## DevContainer のメリット
 
@@ -100,5 +106,5 @@ COPY . .
  1. devcontainer.json と Dockerfile を作成
  1. VS Code で開く
  1 Remote - Containers 拡張機能をインストール
- 1. 左下の「><」かCmd+Shift+Pから「Reopen in Container」（翻訳済みなら「コンテナーで再度開く」）を選択
+ 1. 左下の「>\<」かCmd+Shift+Pから「Reopen in Container」（翻訳済みなら「コンテナーで再度開く」）を選択
  1. コンテナ環境内で開発を開始
