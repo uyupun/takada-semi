@@ -1,4 +1,6 @@
-# WCAG(Web Content Accessibility Guidelines)
+---
+title: WCAG(Web Content Accessibility Guidelines)
+---
 
 ## 概要
 

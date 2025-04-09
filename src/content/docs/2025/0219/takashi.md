@@ -1,4 +1,6 @@
-# Whisk
+---
+title: Whisk
+---
 
 ## 概要
 

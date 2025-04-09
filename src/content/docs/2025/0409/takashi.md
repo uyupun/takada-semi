@@ -1,4 +1,6 @@
-# Starlight
+---
+title: Starlight
+---
 
 ## 概要
 

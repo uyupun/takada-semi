@@ -1,4 +1,6 @@
-# React Create App との別れ
+---
+title: React Create App との別れ
+---
 
 ## React Create Appとは
 

@@ -1,4 +1,6 @@
-# Next.js v14入門
+---
+title: Next.js v14入門
+---
 
 ## 背景
 

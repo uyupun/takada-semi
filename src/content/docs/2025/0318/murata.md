@@ -1,4 +1,6 @@
-# DevContainer とは？
+---
+title: DevContainer とは？
+---
 
 **DevContainer**（Development Container）は、開発環境をコードとして定義し、コンテナベースで統一された開発環境を提供する仕組み。  
 
