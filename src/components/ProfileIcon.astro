@@ -1,13 +1,13 @@
 ---
-const { name, imageUrl = null, link = null } = Astro.props;
+const { name, image = null, link = null } = Astro.props;
 const firstChar = name.charAt(0).toUpperCase();
 ---
 
 {link ? (
   <a href={link} target="_blank" rel="noopener noreferrer" class="profile-icon">
     <div class="icon-container">
-      {imageUrl ? (
-        <img src={imageUrl} alt={name} class="icon-image" />
+      {image ? (
+        <img src={image} alt={name} class="icon-image" />
       ) : (
         <div class="name-display">{firstChar}</div>
       )}
@@ -17,8 +17,8 @@ const firstChar = name.charAt(0).toUpperCase();
 ) : (
   <div class="profile-icon">
     <div class="icon-container">
-      {imageUrl ? (
-        <img src={imageUrl} alt={name} class="icon-image" />
+      {image ? (
+        <img src={image} alt={name} class="icon-image" />
       ) : (
         <div class="name-display">{firstChar}</div>
       )}
