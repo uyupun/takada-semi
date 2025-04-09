@@ -1,0 +1,50 @@
+---
+const { frontmatter, link } = Astro.props;
+const author = frontmatter?.author;
+
+if (!author) return null;
+
+const authorLink = link || null;
+---
+
+{author && (
+  <div class="author-info">
+    <span class="author-label">Author:</span>
+    {authorLink ? (
+      <a href={authorLink} target="_blank" rel="noopener noreferrer" class="author-name">
+        {author}
+      </a>
+    ) : (
+      <span class="author-name">{author}</span>
+    )}
+  </div>
+)}
+
+<style>
+  .author-info {
+    margin: 1rem 0 2rem 0;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .author-label {
+    font-size: 0.9rem;
+    opacity: 0.7;
+  }
+
+  .author-name {
+    font-weight: 500;
+  }
+
+  a.author-name {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  a.author-name:hover {
+    text-decoration: underline;
+  }
+</style>
