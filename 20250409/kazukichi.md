@@ -182,6 +182,9 @@
 
 ### 参考
 
+- [AIに書かせたコードは理解する必要がある](https://zenn.dev/dyoshikawa/articles/developers-still-need-to-understand-ais-code)
+- [AI時代はプログラミングスキルがさらに重要になる](https://zenn.dev/dyoshikawa/articles/programming-skills-will-be-more-valueable)
+- [エンジニアに許された特別な時間の終わり](https://speakerdeck.com/watany/the-end-of-the-special-time-granted-to-engineers)
 - [AIエージェント入門](https://speakerdeck.com/minorun365/aiezientoru-men)
 - [AIエージェント元年](https://speakerdeck.com/shukob/aiezientoyuan-nian-at-ri-ben-sheng-cheng-aiyuzahui)
 - [AI時代のプログラミング教育](https://speakerdeck.com/kishida/programming-education-in-ai-era)
@@ -196,6 +199,3 @@
 - [「つくりたいもの」の専門家をめざす。山中俊治が語るこれからのクリエイター像](https://lightswill.com/bs4f/mass-customization-yamanaka/2503-3/)
 - [論理的思考の放棄](https://softether.hatenadiary.org/entry/20070324/p1)
 - [ついに1000万トークンを把握!人間の一生分の情報を理解してくれるオープンウェイトLLM Llama4登場](https://note.com/shi3zblog/n/n8a0f81f8aa6c)
-- [エンジニアに許された特別な時間の終わり](https://speakerdeck.com/watany/the-end-of-the-special-time-granted-to-engineers)
-- [AIに書かせたコードは理解する必要がある](https://zenn.dev/dyoshikawa/articles/developers-still-need-to-understand-ais-code)
-- [AI時代はプログラミングスキルがさらに重要になる](https://zenn.dev/dyoshikawa/articles/programming-skills-will-be-more-valueable)
