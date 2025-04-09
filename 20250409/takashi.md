@@ -1,0 +1,105 @@
+# Starlight
+
+## 概要
+
+- Starlightは、Astroをベースにした高性能なドキュメントサイト構築フレームワーク
+  - Markdown、MDX、マークアップでのコンテンツ作成をサポートし、高速なパフォーマンス、優れたSEO、アクセシビリティ機能を備えている
+
+## 環境構築
+
+```bash
+# Starlightインテグレーションの追加
+$ npx astro add starlight
+
+# テンプレートの使用
+$ npm create astro@latest -- --template starlight
+```
+
+### `astro.config.mjs`の設定例
+
+```mjs
+import { defineConfig } from 'astro/config';
+import starlight from '@astrojs/starlight';
+
+export default defineConfig({
+  integrations: [
+    starlight({
+      title: 'ドキュメントサイト名',
+      social: {
+        github: 'https://github.com/username/repo',
+      },
+      sidebar: [
+        {
+          label: 'ガイド',
+          items: [
+            { label: '始め方', link: '/guides/getting-started/' },
+          ],
+        },
+      ],
+    }),
+  ],
+});
+```
+
+## 使用方法
+
+### コンテンツの作成
+
+- `src/content/docs/`ディレクトリにMarkdownファイル(md, mdx)を作成する
+  - フロントマターを用いて、ページのタイトルなどを挿入できる
+  - 見出しに関しては、h2から始めることが推奨されている
+- 以下は公式のテンプレートの`src/content/docs/index.mdx`を記載
+
+```mdx
+---
+title: Welcome to Starlight
+description: Get started building your docs site with Starlight.
+template: splash
+hero:
+  tagline: Congrats on setting up a new Starlight project!
+  image:
+    file: ../../assets/houston.webp
+  actions:
+    - text: Example Guide
+      link: /guides/example/
+      icon: right-arrow
+    - text: Read the Starlight docs
+      link: https://starlight.astro.build
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Next steps
+
+<CardGrid stagger>
+  <Card title="Update content" icon="pencil">
+    Edit `src/content/docs/index.mdx` to see this page change.
+  </Card>
+  <Card title="Add new content" icon="add-document">
+    Add Markdown or MDX files to `src/content/docs` to create new pages.
+  </Card>
+  <Card title="Configure your site" icon="setting">
+    Edit your `sidebar` and other config in `astro.config.mjs`.
+  </Card>
+  <Card title="Read the docs" icon="open-book">
+    Learn more in [the Starlight Docs](https://starlight.astro.build/).
+  </Card>
+</CardGrid>
+```
+
+### 機能の活用
+
+- サイト内検索: 高度な全文検索機能が組み込まれている
+  - [サイト内検索](https://starlight.astro.build/ja/guides/site-search/)
+- 国際化対応: 複数言語サイトを簡単に構築可能である
+  - [国際化（i18n）](https://starlight.astro.build/ja/guides/i18n/)
+- ダークモード/ライトモード: デフォルトでテーマ切り替えや画像の切り替えに対応している
+  - [Starlightのカスタマイズ - ライトモードとダークモード](https://starlight.astro.build/ja/guides/customization/#%E3%83%A9%E3%82%A4%E3%83%88%E3%83%A2%E3%83%BC%E3%83%89%E3%81%A8%E3%83%80%E3%83%BC%E3%82%AF%E3%83%A2%E3%83%BC%E3%83%89)
+- カスタムページ: 通常のAstroプロジェクトの`src/pages/`とStarlightの`src/content/docs/`を併用できる
+  - [ページ - カスタムページ](https://starlight.astro.build/ja/guides/pages/#%E3%82%AB%E3%82%B9%E3%82%BF%E3%83%A0%E3%83%9A%E3%83%BC%E3%82%B8)
+- テーマ: CSSカスタムプロパティでカラーテーマを変更できる
+  - [CSSとスタイリング](https://starlight.astro.build/ja/guides/css-and-tailwind/)
+- コンポーネント: Astroコンポーネントを使用してUIを拡張できる
+  - [コンポーネントのオーバーライド](https://starlight.astro.build/ja/guides/overriding-components/)
