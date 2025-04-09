@@ -180,7 +180,15 @@
     - 技術的負債となった非合理性の塊のコードベースや超マイナーなフレームワーク、洗練されたUI/UXの構築
     - このあたりはAIが苦手な領域だと思われる
 
-### 参考
+## 今後やりたいこと
+
+- バイブコーディング体験
+- MCPサーバを立ててみる
+- Devin、Perplexity、NotebookLM、SuperWhisper辺りの技術/ツールを検証する
+- 前にやっていたHCIの歴史の深堀りの続き
+- AI時代のHCIがどうなっていくかの調査と考察
+
+## 参考
 
 - [AIに書かせたコードは理解する必要がある](https://zenn.dev/dyoshikawa/articles/developers-still-need-to-understand-ais-code)
 - [AI時代はプログラミングスキルがさらに重要になる](https://zenn.dev/dyoshikawa/articles/programming-skills-will-be-more-valueable)
