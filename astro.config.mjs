@@ -1,11 +1,15 @@
 // @ts-check
-import { defineConfig } from 'astro/config';
+import { defineConfig, passthroughImageService } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://uyupun.github.io',
 	base: '/takada-semi',
+	image: {
+		// pnpm run build時における `Could not find Sharp.` エラーの暫定的な対応策
+		service: passthroughImageService(),
+	},
 	integrations: [
 		starlight({
 			title: '高田ゼミ',
