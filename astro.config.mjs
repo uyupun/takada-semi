@@ -4,6 +4,8 @@ import starlight from '@astrojs/starlight';
 
 // https://astro.build/config
 export default defineConfig({
+	site: 'https://uyupun.github.io',
+	base: '/takada-semi',
 	integrations: [
 		starlight({
 			title: '高田ゼミ',
