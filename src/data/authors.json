@@ -1,0 +1,22 @@
+{
+  "takashi": {
+    "displayName": "Takashi",
+    "link": "https://takashimelon.vercel.app/",
+    "image": "https://takashimelon.vercel.app/_next/image?url=%2Ficon.png&w=256&q=75"
+  },
+  "kazukichi": {
+    "displayName": "Kazukichi",
+    "link": "https://tyokinuhata.github.io/",
+    "image": "https://tyokinuhata.github.io/static/media/icon.5b86433e72fea00ab419.png"
+  },
+  "murata": {
+    "displayName": "Murata",
+    "link": null,
+    "image": null
+  },
+  "kai": {
+    "displayName": "Kai",
+    "link": null,
+    "image": null
+  }
+}

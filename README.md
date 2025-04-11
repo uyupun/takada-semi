@@ -28,9 +28,7 @@ $ open http://localhost:4321/takada-semi
 ```mdx
 ---
 title: hogehoge
-author:
-  name: Kazukichi
-  link: https://tyokinuhata.github.io/
+author: kazukichi
 ---
 import Author from '../../../../components/Author.astro';
 

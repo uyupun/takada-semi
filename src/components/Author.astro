@@ -1,21 +1,24 @@
 ---
+import authors from '../data/authors.json';
+
 const { frontmatter } = Astro.props;
-const author = frontmatter?.author;
+const name = frontmatter?.author;
+if (!name) return null;
 
-if (!author) return null;
+const authorData = authors[name as keyof typeof authors];
+if (!authorData) return null;
 
-const authorName = author.name;
-const authorLink = author.link || null;
+const { displayName, link = null } = authorData;
 ---
 
 <div class="author-info">
   <span class="author-label">Author:</span>
-  {authorLink ? (
-    <a href={authorLink} target="_blank" rel="noopener noreferrer" class="author-name">
-      {authorName}
+  {link ? (
+    <a href={link} target="_blank" rel="noopener noreferrer" class="author-name">
+      {displayName}
     </a>
   ) : (
-    <span class="author-name">{authorName}</span>
+    <span class="author-name">{displayName}</span>
   )}
 </div>
 
