@@ -12,7 +12,7 @@
 - 新規参加者は [src/data/members.json](https://github.com/uyupun/takada-semi/blob/main/src/data/members.json) に名前や各種リンクを設定する
 - このソースはトップページにおけるゼミ生一覧や、発表記事のAuthorとして参照される
 
-## 環境構築
+### 環境構築
 
 - 本リポジトリの機能改修をしたい場合や発表をしたい場合は環境構築を行う必要がある
 - Node.js v22.14.0、PNPMが必要(インストール方法は各自、自分の環境に合わせて行う)
