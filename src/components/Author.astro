@@ -1,14 +1,14 @@
 ---
-import authors from '../data/authors.json';
+import members from '../data/members.json';
 
 const { frontmatter } = Astro.props;
 const name = frontmatter?.author;
 if (!name) return null;
 
-const authorData = authors[name as keyof typeof authors];
-if (!authorData) return null;
+const author = members[name as keyof typeof members];
+if (!author) return null;
 
-const { displayName, link = null } = authorData;
+const { displayName, link = null } = author;
 ---
 
 <div class="author-info">

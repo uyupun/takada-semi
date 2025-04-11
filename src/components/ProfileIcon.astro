@@ -1,13 +1,13 @@
 ---
-import authors from '../data/authors.json';
+import members from '../data/members.json';
 
 const { name } = Astro.props;
 if (!name) return null;
 
-const authorData = authors[name as keyof typeof authors];
-if (!authorData) return null;
+const member = members[name as keyof typeof members];
+if (!member) return null;
 
-const { displayName, link = null, image = null } = authorData;
+const { displayName, link = null, image = null } = member;
 const firstChar = displayName.charAt(0).toUpperCase();
 ---
 
