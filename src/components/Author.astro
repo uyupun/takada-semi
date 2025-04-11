@@ -1,24 +1,23 @@
 ---
-const { frontmatter, link } = Astro.props;
+const { frontmatter } = Astro.props;
 const author = frontmatter?.author;
 
 if (!author) return null;
 
-const authorLink = link || null;
+const authorName = author.name;
+const authorLink = author.link || null;
 ---
 
-{author && (
-  <div class="author-info">
-    <span class="author-label">Author:</span>
-    {authorLink ? (
-      <a href={authorLink} target="_blank" rel="noopener noreferrer" class="author-name">
-        {author}
-      </a>
-    ) : (
-      <span class="author-name">{author}</span>
-    )}
-  </div>
-)}
+<div class="author-info">
+  <span class="author-label">Author:</span>
+  {authorLink ? (
+    <a href={authorLink} target="_blank" rel="noopener noreferrer" class="author-name">
+      {authorName}
+    </a>
+  ) : (
+    <span class="author-name">{authorName}</span>
+  )}
+</div>
 
 <style>
   .author-info {
