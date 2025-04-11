@@ -1,29 +1,37 @@
 ---
-const { name, image = null, link = null } = Astro.props;
-const firstChar = name.charAt(0).toUpperCase();
+import members from '../data/members.json';
+
+const { name } = Astro.props;
+if (!name) return null;
+
+const member = members[name as keyof typeof members];
+if (!member) return null;
+
+const { displayName, link = null, image = null } = member;
+const firstChar = displayName.charAt(0).toUpperCase();
 ---
 
 {link ? (
   <a href={link} target="_blank" rel="noopener noreferrer" class="profile-icon">
     <div class="icon-container">
       {image ? (
-        <img src={image} alt={name} class="icon-image" />
+        <img src={image} alt={displayName} class="icon-image" />
       ) : (
         <div class="name-display">{firstChar}</div>
       )}
     </div>
-    <div class="icon-name">{name}</div>
+    <div class="icon-name">{displayName}</div>
   </a>
 ) : (
   <div class="profile-icon">
     <div class="icon-container">
       {image ? (
-        <img src={image} alt={name} class="icon-image" />
+        <img src={image} alt={displayName} class="icon-image" />
       ) : (
         <div class="name-display">{firstChar}</div>
       )}
     </div>
-    <div class="icon-name">{name}</div>
+    <div class="icon-name">{displayName}</div>
   </div>
 )}
 

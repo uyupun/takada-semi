@@ -1,21 +1,24 @@
 ---
-const { frontmatter } = Astro.props;
-const author = frontmatter?.author;
+import members from '../data/members.json';
 
+const { frontmatter } = Astro.props;
+const name = frontmatter?.author;
+if (!name) return null;
+
+const author = members[name as keyof typeof members];
 if (!author) return null;
 
-const authorName = author.name;
-const authorLink = author.link || null;
+const { displayName, link = null } = author;
 ---
 
 <div class="author-info">
   <span class="author-label">Author:</span>
-  {authorLink ? (
-    <a href={authorLink} target="_blank" rel="noopener noreferrer" class="author-name">
-      {authorName}
+  {link ? (
+    <a href={link} target="_blank" rel="noopener noreferrer" class="author-name">
+      {displayName}
     </a>
   ) : (
-    <span class="author-name">{authorName}</span>
+    <span class="author-name">{displayName}</span>
   )}
 </div>
 
