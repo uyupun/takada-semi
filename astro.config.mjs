@@ -17,16 +17,20 @@ export default defineConfig({
 			sidebar: [
 				{
 					label: 'コンセプト',
+					collapsed: false,
 					slug: 'concept',
 				},
 				{
 					label: '発表資料',
+					collapsed: false,
 					items: [
 						{
 							label: '2025',
+							collapsed: false,
 							items: [
 								{
 									label: '2/12',
+									collapsed: true,
 									items: [
 										{
 											label: 'ヒューマンインタフェースとダグラス・エンゲルバート',
@@ -40,6 +44,7 @@ export default defineConfig({
 								},
 								{
 									label: '2/19',
+									collapsed: true,
 									items: [
 										{
 											label: 'ヴァネヴァー・ブッシュと『As We May Think』',
@@ -53,6 +58,7 @@ export default defineConfig({
 								},
 								{
 									label: '2/27',
+									collapsed: true,
 									items: [
 										{
 											label: '続・ダグラス・エンゲルバートのサーベイ',
@@ -66,6 +72,7 @@ export default defineConfig({
 								},
 								{
 									label: '3/6',
+									collapsed: true,
 									items: [
 										{
 											label: 'Next.js v14入門',
@@ -75,6 +82,7 @@ export default defineConfig({
 								},
 								{
 									label: '3/12',
+									collapsed: true,
 									items: [
 										{
 											label: 'Testcontainersの紹介',
@@ -88,6 +96,7 @@ export default defineConfig({
 								},
 								{
 									label: '3/18',
+									collapsed: true,
 									items: [
 										{
 											label: 'DevContainer とは？',
@@ -97,6 +106,7 @@ export default defineConfig({
 								},
 								{
 									label: '4/2',
+									collapsed: true,
 									items: [
 										{
 											label: 'AIエージェントに入門した',
@@ -106,6 +116,7 @@ export default defineConfig({
 								},
 								{
 									label: '4/9',
+									collapsed: false,
 									items: [
 										{
 											label: 'これからのAIの在り方を想像する',
