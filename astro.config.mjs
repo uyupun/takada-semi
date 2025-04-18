@@ -116,7 +116,7 @@ export default defineConfig({
 								},
 								{
 									label: '4/9',
-									collapsed: false,
+									collapsed: true,
 									items: [
 										{
 											label: 'これからのAIの在り方を想像する',
@@ -132,6 +132,16 @@ export default defineConfig({
 										}
 									]
 								},
+								{
+									label: '4/18',
+									collapsed: false,
+									items: [
+										{
+											label: '最近の趣味プロとVibe Coding',
+											slug: '2025/0418/kazukichi',
+										},
+									]
+								}
 							],
 						},
 					],
