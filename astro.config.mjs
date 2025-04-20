@@ -1,7 +1,7 @@
 // @ts-check
 import { defineConfig, passthroughImageService } from 'astro/config';
 import starlight from '@astrojs/starlight';
-import { generatePresentationItems } from '@scripts/generatePresentationItems.mjs';
+import { generatePresentationItems } from './scripts/generatePresentationItems.mjs';
 
 // https://astro.build/config
 export default defineConfig({
