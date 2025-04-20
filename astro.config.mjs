@@ -1,7 +1,7 @@
 // @ts-check
 import { defineConfig, passthroughImageService } from 'astro/config';
 import starlight from '@astrojs/starlight';
-import { generatePresentationItems } from './scripts/generatePresentationItems.js';
+import { generatePresentationItems } from '@scripts/generatePresentationItems.mjs';
 
 // https://astro.build/config
 export default defineConfig({
@@ -24,10 +24,6 @@ export default defineConfig({
 					label: '発表資料',
 					collapsed: false,
 					items: generatePresentationItems(),
-					// autogenerate: {
-					// 	directory: 'presentations',
-					// 	collapsed: true,
-					// },
 				}
 			],
 		}),
