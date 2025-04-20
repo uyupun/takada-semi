@@ -55,28 +55,3 @@ import Author from '../../../../components/Author.astro';
 ### 発表後
 
 - 各々で `main` ブランチにマージする
-- また、代表者一名が資料が公開されるよう、 `astro.config.mjs` に該当記事のパスを追記する
-- このとき、最新の開催のみを `collapsed: true` (つまりサイドバーで展開される)とし、それ以前の開催は `collapsed: false` (つまりサイドバーで折りたたまれる)とする
-
-```js
-...
-{
-  label: '4/9',
-  collapsed: true,
-  items: [
-    {
-      label: 'これからのAIの在り方を想像する',
-      slug: '2025/0409/kazukichi',
-    },
-    {
-      label: '最近話題のMCPサーバーについてのまとめ',
-      slug: '2025/0409/murata',
-    },
-    {
-      label: 'Starlight',
-      slug: '2025/0409/takashi',
-    }
-  ]
-},
-...
-```
