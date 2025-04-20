@@ -38,7 +38,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --dev
+        run: pnpm install --frozen-lockfile
       - name: Build Astro
         run: pnpm run build
       - name: Upload artifacts
