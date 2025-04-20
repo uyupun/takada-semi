@@ -28,7 +28,7 @@ $ open http://localhost:4321/takada-semi
 - 発表者は事前に発表資料を用意する
 - 本リポジトリの `main` ブランチから新たにブランチを作成し、そこに発表資料を追加し、PRを作成しておく
 - 資料の形式はMDX形式(拡張されたマークダウン)で作成する
-- `src/content/docs/yyyy` 以下に `mmdd` 形式のディレクトリを作成し、その配下に誰の資料か分かる名称でファイル又はディレクトリを作成する(例: `kazukichi.mdx`)
+- `src/content/docs/yyyy` 以下に `mm-dd` 形式のディレクトリを作成し、その配下に誰の資料か分かる名称でファイル又はディレクトリを作成する(例: `kazukichi.mdx`)
 - その際、フロントマターとAuthorコンポーネントの設定を忘れずに行う
 
 ```mdx
@@ -36,7 +36,7 @@ $ open http://localhost:4321/takada-semi
 title: hogehoge
 author: kazukichi
 ---
-import Author from '../../../../components/Author.astro';
+import Author from '@components/Author.astro';
 
 <Author frontmatter={frontmatter} />
 
