@@ -13,6 +13,9 @@
     "@astrojs/starlight": "^0.34.0",
     "astro": "^5.6.2"
   },
+  "devDependencies": {
+    "gray-matter": "^4.0.3"
+  },
   "engines": {
     "node": ">=22.14.0 <22.15.0"
   }
