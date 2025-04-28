@@ -1,22 +1,22 @@
 {
-  "takashi": {
-    "displayName": "Takashi",
-    "link": "https://takashimelon.vercel.app/",
-    "image": "https://uyupun.github.io/takada-semi/members/takashi.webp"
-  },
-  "kazukichi": {
-    "displayName": "Kazukichi",
-    "link": "https://tyokinuhata.github.io/",
-    "image": "https://uyupun.github.io/takada-semi/members/kazukichi.png"
-  },
-  "murata": {
-    "displayName": "Murata",
-    "link": null,
-    "image": null
-  },
-  "kai": {
-    "displayName": "Kai",
-    "link": null,
-    "image": null
-  }
+	"takashi": {
+		"displayName": "Takashi",
+		"link": "https://takashimelon.vercel.app/",
+		"image": "https://uyupun.github.io/takada-semi/members/takashi.webp"
+	},
+	"kazukichi": {
+		"displayName": "Kazukichi",
+		"link": "https://tyokinuhata.github.io/",
+		"image": "https://uyupun.github.io/takada-semi/members/kazukichi.png"
+	},
+	"murata": {
+		"displayName": "Murata",
+		"link": "https://github.com/TakumiOkayasu",
+		"image": "https://uyupun.github.io/takada-semi/members/murata.png"
+	},
+	"kai": {
+		"displayName": "Kai",
+		"link": null,
+		"image": null
+	}
 }
