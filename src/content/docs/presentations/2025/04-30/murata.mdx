@@ -1,0 +1,50 @@
+---
+title: Daggerって知ってる？
+author: Murata
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## daggerとは？
+
+- [https://dagger.io](https://dagger.io/)
+- CI/CDパイプラインやDevOpsワークフローをコードで定義できるフレームワーク
+- Dockerをベースに **全ての実行をコンテナ上で行う**
+- Python, Go, TypeScriptに対応
+
+## 例
+
+コード
+
+```python
+@function
+def run(self, dir: dagger.Directory, db: dagger.Service) -> dagger.Service:
+    return (
+        dag.container()
+        .from_("alpine:latest")
+        .with_service_binding("db", db)
+        .with_mounted_directory("/app", dir)
+        .with_workdir("/app")
+        .as_service(args=["go", "run", "main.go"])
+    )
+```
+
+## メリット
+
+| メリット | 内容 |
+| --- | --- |
+| コードでパイプライン管理 | ymlではなく、プログラミング言語で柔軟にパイプラインを組める。if文やループも自由。 |
+| ローカル実行可能 | 手元のPCでもCIと同じ処理を試せる。クラウドの待ち時間なし |
+| コンテナベース | すべてDockerコンテナ上で完結するため、環境差異が起きにくい |
+| マルチプラットフォーム | Windows/Mac/Linux対応 |
+| GitHub Actionsとの連携も簡単 | Daggerプログラムを呼び出すだけでGitHub Actionsのworkflowにも組み込める |
+| スケーラビリティ | どんどん規模が大きくなってもコードで管理できるから破綻しにくい |
+
+## まとめ
+
+- Daggerは「CI/CDをコードで書き、手元で動かし、クラウドにも流せる」ツール
+- 既存のGitHub Actionsが肥大化している
+- 複数リポジトリで同じビルド処理を共通化したい
+- テスト実行やデプロイをもっと楽にコード管理したい
