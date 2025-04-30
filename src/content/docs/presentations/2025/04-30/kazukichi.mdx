@@ -1,0 +1,180 @@
+---
+title: Middle Dive MCP
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- MCPについては以前、むらたさんから紹介があった
+    - [最近話題のMCPサーバーについてのまとめ](https://uyupun.github.io/takada-semi/presentations/2025/04-09/murata/)
+- 今回はそこからもう少し踏み込んだ内容まで触れてみる
+- MCPサーバの活用や構築に関しては間に合わなかったので次回以降触れていきたい
+
+## MCPの概要
+
+- AIエージェントから様々なツールを操作するために利活用されているプロトコル
+- Model Context Protocolの略
+- Claudeの開発元であるAnthoropicが2024年11月に発表
+- 以後はコミュニティ主導で仕様策定や実装が進められている
+- ちなみにOpenAIも参入を表明したことで業界標準となりつつある
+
+## MCPの背景
+
+- 元々はツールの操作というよりも、LLMに対してドメイン知識を渡すような標準的な枠組みの用意のために策定された
+- CursorやClineといったAIエージェントの普及したこともあり、2025年に入ってからは特にAIエージェントから様々なツールを操作するためにも利活用されている
+    - 基本的なところだと、ファイル作成、コマンド実行、ブラウジング等
+    - これに関しては [AIエージェントに入門した](https://uyupun.github.io/takada-semi/presentations/2025/04-02/kazukichi/) でも触れた
+    - 元々、AIエージェントは従来のチャットベースの生成AIと異なり、様々なツールを利用できるという強みがあった
+    - MCPができる以前も各ベンダが「Function Calling」という名前で同機能を提供していたが、ベンダ毎に規格が異なっていた
+    - そのため、インタフェースが統一されておらず、サードパーティのツールを作成し、様々なAIエージェントから共通利用することが難しかった
+    - ここに別の用途で利用されていたMCPが適用された、という流れ
+- つまり、LLMへの情報の補完と外界への副作用という２つの目的に利用されている、ということになる
+- また、AIエージェントがというまとめ役がある程度、成熟してきたからこそ、このようなエコシステムが発展の兆しを見せてきたということでもある
+
+## MCPのアナロジー
+
+- USB Type-Cポートという視点
+    - 周辺機器(MCPサーバ)をプラグアンドプレイ的に接続できる
+- リバースプロキシという視点
+    - Function Callingではベンダ毎/ツール毎に開発者が呼び出しの実装を調整する必要があった
+    - なのでFunction Callingの前段でそれを吸収する、という意味でリバプロ的であるといえる
+- Dependency Injectionという視点
+    - Function Callingでは呼び出しが具体的な関数の実装に依存していた
+    - MCPでは標準化されたプロトコルのインタフェースにのみ依存している
+
+## MCPの通信の流れ
+
+- ユーザがAIエージェント(e.g. Cursor, Cline)を起動
+- AIエージェントが各MCPサーバに対し、どんな機能が使用できるか問い合わせ
+- ユーザがAIエージェントを通してLLMにリクエストし、このときに各MCPサーバの情報も含める
+- LLMがリクエストから必要なツールを判断し「このツールを使ってください」とレスポンス
+- AIエージェントがMCPサーバに対してリクエスト
+- MCPサーバによってツールが実行される
+
+## MCPの動作モデル
+
+- MCPホスト(≒AIエージェント)
+    - 複数のMCPクライアントを生成・管理する
+    - つまりオーケストレータ、もしくはDIコンテナのような立ち位置
+- MCPクライアント
+    - セッションやスレッドのようなものだと理解して良い
+    - 特定のMCPサーバとの通信を行う
+
+```
+                             +------------------------+
+                             |   MCP Host (AI Agent)  |
+                             +-----------+------------+
+                                         |
+              +--------------------------+--------------------------+
+              |                          |                          |
+     +--------v--------+        +--------v--------+        +--------v--------+
+     | MCP Client #1   |        | MCP Client #2   |        | MCP Client #3   |
+     +--------+--------+        +--------+--------+        +--------+--------+
+              |                          |                          |
+     +--------v--------+        +--------v--------+        +--------v--------+
+     |  MCP Server #1  |        |  MCP Server #2  |        |  MCP Server #3  |
+     +-----------------+        +-----------------+        +-----------------+
+```
+
+## MCPの通信方法
+
+- MCP自体はLSP(Language Server Protocol)から影響を受けていると言われている
+    - LSPは元々、MicrosoftがVSCodeのために開発した
+    - コード補完やコードジャンプに利用される
+- 下位プロトコル
+    - いずれの方式でもメッセージのフォーマットにはJSON(JSON-RPC 2.0)を採用している
+    - 標準入出力(主にローカル用途)
+    - SSE(Server-Sent Events)
+        - HTTPベース
+        - `Content-Type: text/event-stream` を使用する
+        - 以下の理由等から非推奨になりつつある
+            - プロトコル自体がステートフルでステートの扱いが面倒で拡張性に乏しい
+            - データフォーマットの制約が厳しめ
+            - curl等のHTTPクライアントからの扱いが難しい
+    - Streamable HTTP
+        - HTTPベース
+        - レスポンス形式にはチャンク化されたNDJSON(Newline-Delimited JSON)が利用される
+            - NDJSONは複数のJSONが改行で区切られたデータ構造
+            - HTTPヘッダーとしては `Transfer-Encoding: chunked` と `Content-Type: application/x-ndjson`
+        - セッションの仕組みはアプリケーションが持つため、シンプルな設計で拡張性が高い
+- また、OAuth 2.1による認証仕様も最近追加された
+
+## MCPの機能
+
+- 機能としては主に Resources / Prompts / Tools がある
+- 基本的にそれぞれに機能一覧の取得と個別機能の実行が用意されている
+
+|機能|説明|
+|--|--|
+|Prompts|誰がどのような状況で言ったか等、従来よりも構造化され、文脈を持った指示を行える機能|
+|Resources|モデルにドキュメントやコード等の外部知識を与えることで、検索拡張生成(RAG)を通じて文脈に沿った正確な応答を生成できるようにする機能|
+|Tools|モデルが外部ツールやAPIを利用できるようにし、ファイル作成や検索など、モデル単体では行えない操作を可能にする機能|
+
+## MCPの未来
+
+- MCPの動的な発見
+    - 現在はAIエージェントに静的に設定している
+    - 審査基準のしっかりしたストアや、HTTPSのようにPKIを組み込むことでセキュリティ的な観点からも実現可能になるかもしれない
+- AIエージェントがどんどん現実世界を操作するようになる
+    - ユーザフレンドリなスマホ常駐アプリとして出てきそう
+    - 家電とかとの連携もできそうだし、そういうクライアントを自作するのも楽しそう
+- MCPは徐々にAI x HCIにおけるUI/UXを変え始めている
+    - 考えるだけ -> 外部サービスとの連携による行動する能力の獲得
+    - LLMのコンテキストウィンドウの拡大やパーソナライズとはまた別軸での発展
+- LLMの役割の変化
+    - LLMは言語理解と生成に専念
+    - 特定のドメイン知識やツール等の副作用の扱いは個別のMCPサーバに任せてしまえば良い
+    - LLMやMCPサーバに単一責任原則(SRP)が適用されたようなかんじ
+    - 現在もSakanaAIやDeepSeekが中心にやっているような、MoEや蒸留等によって軽量のモデルを扱う、という試みがまた一歩進むのでは
+- AIを育てる、という視点
+    - [これからのAIの在り方を想像する](https://uyupun.github.io/takada-semi/presentations/2025/04-09/kazukichi/) でも触れた
+    - AIを自分でパーソナライズして育て上げていくのでは、という予想
+    - Anthoropicが提供しているMCPサーバであるMemory Serverとして部分的に実現されている
+    - 過去のやり取りや知識を保存し、検索できるような作りになっている
+    - ChatGPT等で提供されているメモリ機能よりもより包括的
+    - どんなMCPサーバを選んで自分のAIパイプラインに組み込むかが重要になる
+    - 業務や日常の何をMCPサーバとして切り出せるか？という視点が必要になってくる
+- MCPサーバへの通信増加
+    - HTTP同様、どうスケールするかみたいな問題は出そう
+- MCPサーバのMCPサーバの登場
+    - 人気の高い複数のMCPサーバをバンドルしたMCPサーバが出ても良さそう
+    - 初期化時の通信がどんどん増えたり、MCPサーバの管理が面倒になりそうなので
+- インフラでも恩恵を被ることができそう
+    - ログを取得・分析できるようなMCPサーバを立てればシームレスに解析できる
+- 人間のMCPサーバ化
+    - 最近はUber Eatsを初めとして、コンピューティングリソースが高度なアルゴリズムによってリソースを最適化し、人間がインタフェースとなって動くというモデルが増えつつある
+    - 今後、様々な職業において、AIが全体としての動作を考え、MCPサーバーとして(副作用を持つ現実世界への操作として)人間が駆り出させるという機会が増えるのでは
+    - 少なくともブルーカラーを置き換えられるだけのロボティクス技術が発展するまでは
+    - コンピュータと人間の立場の逆転
+
+## これからやりたいこと
+
+- MCPを実際に使う・作る
+    - Git操作系、ログ分析系、Memory Serverが気になっている
+    - 面白い事例
+        - [MCPサーバーを作るMCPサーバーを作った](https://zenn.dev/tesla/articles/c66bda76c4a523)
+        - [👨‍🔧 人間をMCPツールとして利用する](https://times.serizawa.me/p/human-mcp)
+        - [GoogleCloudPlatform/kubectl-ai](https://github.com/GoogleCloudPlatform/kubectl-ai)
+- Clineを使い倒す(ショートカットとか)
+- プロンプトエンジニアリング入門
+- A2Aの調査
+
+## 参考
+
+- [やさしいMCP入門](https://speakerdeck.com/minorun365/yasasiimcpru-men)
+- [MCPに入門する](https://speakerdeck.com/shuntaka/introduction-to-mcp)
+- [MCPに1mmだけ入門](https://zenn.dev/ks0318/articles/053b5bc1701c31)
+- [Model Context Protocol(MCP)の動作原理の概要を掴むための記事](https://zenn.dev/medopstech/articles/699eece5bc9841)
+- [MCP入門](https://zenn.dev/mkj/articles/0ed4d02ef3439c)
+- [【AIエージェント】MCPサーバーって何？](https://zenn.dev/tomo0108/articles/6b472b4c9cacfa)
+- [「MCP？聞いたことあるけど使ってない…😅」人向けに初歩から少し踏み込んだ内容まで解説](https://zenn.dev/yamada_quantum/articles/465c4993465053)
+- [MCPの通信方法がステートフルからステートレスに？：HTTP+SSEからStreamable HTTPへ](https://zenn.dev/ks0318/articles/f92589946cd344)
+- [MCP サーバーの Streamable HTTP transport を試してみる](https://azukiazusa.dev/blog/mcp-server-streamable-http-transport/)
+- [MCPで広がるLLM　〜Clineでの動作原理〜](https://zenn.dev/codeciao/articles/cline-mcp-server-overview)
+- [MCPはLLMにとってのDependency Injectionである](https://zenn.dev/tesla/articles/3d1ba14614f320)
+- [MCPについての私見と期待](https://note.com/hidenorigoto/n/nc91075d1aa24)
+- [AGIは人間10億人を「MCPサーバー」として使い、産業爆発のコールドスタートを成功させる。](https://note.com/bioshok/n/n6ad7e2a00ef1)
+- [ここはMCPの夜明けまえ](https://speakerdeck.com/nwiizo/kokohamcpnoye-ming-kemae)
