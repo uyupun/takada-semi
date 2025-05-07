@@ -1,0 +1,118 @@
+---
+title: A2A - MCPのその先へ
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- 前回までMCPの概念的な説明やその活用や実践について紹介してきた
+- 今回はMCPと同様、AIエージェントに関連するもう一つのプロトコルであるA2Aについて、概念的な説明を試みる
+
+## A2Aの概要
+
+- Googleが2025年4月に発表したプロトコル
+- A2AとはAgent to Agentのこと
+- つまり、AIエージェントとAIエージェントを結ぶようなプロトコルとなる
+- 一次情報はこのへんにある
+	- [GitHub | google/A2A](https://github.com/google/A2A)
+	- [Agent2Agent Protocol (A2A)](https://google.github.io/A2A/)
+- コミュニティベースで仕様が策定されており、仕様策定にはAtlassian、Box、Cohere、Intuit、LangChain、MongoDB、PayPal、Salesforce、SAP、ServiceNow等を初めとする、50以上の企業が参加している
+- 企業群を見て分かる通り、AIとは直接的に関係しないようなSaaS企業も積極的に参加しており、いかにSaaSにおいてAI機能の提供が重要か、というのが垣間見える
+
+## A2Aのメリット
+
+- AIエージェント間の通信を標準化するためのプロトコルで、これにより、異なるベンダやフレームワークで構築されたAIエージェント同士がそれぞれの強みを活かしながら協調してタスクに取り組み、解決することができる
+- ある課題を解決する上で、それらをタスクとして要素分解し、タスクの特性に合致したAIエージェントにそれぞれ解決してもらい、最終的にそれらを統合することにより、より質が高く、シームレスに統合された課題解決が可能となる
+- ちなみに、ここでのAIエージェントとは、我々開発者や一般ユーザがよく想起するようなCursorやCline、Claude Desktopだけでなく、例えばSalesforceのEinstein CopilotやAtlassianのAtlassian Intelligence、SAPのJoule、ServiceNowのNow Assist等のSaaSに付属する形態で提供されるものも含んでいると思われる
+
+## A2Aの動作モデル
+
+- クライアントサーバモデルを採用している
+- 役割としてはクライアントエージェントとリモートエージェントが存在する
+- 大まかには、クライアントエージェントがタスクを作成し、リモートエージェントがタスクを処理するという流れ
+
+## A2Aの構成要素
+
+- Agent Card
+	- AIエージェントのスキル、エンドポイント、認証要件等を記述したメタデータファイル
+	- `.well-known/agent.json` として公開される
+	- クライアントエージェントはこれを取得し、AIエージェントの機能を発見する
+- Task
+	- 作業の単位であり、以下のようなステータスを持つ
+	- `submitted`: タスク送信直後の初期状態
+	- `working`: タスクの処理中
+	- `input-required`: タスクの続行に追加の入力が必要
+	- `completed`: タスクが正常に完了した
+	- `failed`: タスクの処理に失敗した
+	- `canceled`: タスクがキャンセルされた
+- Message
+	- クライアントエージェントとリモートエージェントでやり取りされるデータ
+	- いくつかのPartから構成される
+- Artifact
+	- リモートエージェントによって生成された最終的な成果物
+	- いくつかのPartから構成される
+- Part
+	- メッセージやアーティファクト内の基本的なコンテンツ単位であり、以下のような種類がある
+	- TextPart: テキスト
+	- FilePart: ファイルへの参照。バイナリそのものではないことに注意
+	- DataPart: JSON等の構造化データ
+
+## A2Aの通信の流れ
+
+- 発見
+	- クライアントエージェントがAgent Cardを取得してそのリモートエージェントが提供する機能を確認する
+- 開始
+	- 具体的なタスクをリモートエージェントに依頼する
+	- ストリーミング/非ストリーミングの二種類の依頼方法がある
+- 処理
+- インタラクション
+	- クライアントエージェントで追加の入力等が必要な場合等に発生
+- 完了
+
+## A2Aの通信方法
+
+- HTTPベースでSSE(Server-Sent Events)やJSON-RPCを使用するような設計
+	- ただし、MCPほど型付け/構造化されておらず、プレーンテキストな部分が多く、抽象度が高い
+- OAuth等による認証機能も用意されている
+- 基本的にはMCPの設計を踏襲したような作り
+- MCPの通信方法については [Middle Dive MCP > MCPの通信方法](https://uyupun.github.io/takada-semi/presentations/2025/04-30/kazukichi/#mcp%E3%81%AE%E9%80%9A%E4%BF%A1%E6%96%B9%E6%B3%95) を参照
+
+## A2Aの対応状況
+
+- Cursor / Cline / Claude Desktopは現状、対応していない
+- LangChain / CrewAI / LangGraph等のAIエージェントを構築するためのライブラリ/フレームワークでは対応済み
+- その他、大手のSaaS系のAIエージェントでも対応されていることが多い傾向にある
+
+## A2Aの開発方法
+
+- [GitHub | google/A2A](https://github.com/google/A2A/) にサンプルコードが用意されている
+- [GitHub | google/adk-python](https://github.com/google/adk-python) にADK(Agent Development Kit)としてA2Aの開発をPythonで行えるようなライブラリが用意されている
+- 他にはLangChain / CrewAI / LangGraph等のA2A対応ライブラリ/フレームワークを利用するという選択肢もある
+
+## A2Aの未来
+
+- Cursor / Cline / Claude Desktop等でのA2A対応
+- A2A対応AIエージェントの動的な発見と連携
+- AIエージェント間の知識共有
+- AIエージェント間の共同学習
+- A2A対応AIエージェントマーケットプレイスの勃興
+
+## 余談
+
+- 最近、Roo CodeにOrchestratorモードが実装されていた
+	- A2Aプロトコルを利用するのかは不明かつ、実際に使ってはないが、複数のAIエージェントを統合して扱うためのモードだと思われる
+
+## まとめ
+
+- 個人的にはMCPのように、エンドユーザを直接的にエンパワーメントするような技術ではないように感じる
+- あくまでAIエージェントの分散システムの実現のインタフェースとして裏側でひっそりと使われるような着地点になりそう
+
+## 参考
+
+- [うさぎでもわかるAgent2Agent - AIエージェント連携の新時代](https://zenn.dev/taku_sid/articles/20250410_agent2agent)
+- [次のMCP？？A2Aはなんですか](https://zenn.dev/acrosstudioblog/articles/8f1da485810b42)
+- [AI エージェントの連携を標準化する A2A プロトコルを試してみる](https://azukiazusa.dev/blog/ai-a2a-protocol/)
+- [リモートMCPがやってくる、そしてA2Aについて](https://blog.lai.so/remote-mcp/)
