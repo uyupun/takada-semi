@@ -1,0 +1,50 @@
+---
+title: Corepack
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+- [Corepack](https://github.com/nodejs/corepack) は Node.js 公式が提供するパッケージマネージャーとの橋渡しを担う
+  - shim 構造(橋渡し)
+    - コマンドを一度受け取り、該当バージョンの npm / yarn / pnpm のバイナリを探して実行を委譲(exec)するプロキシ構造
+      - shim 自体は数行～数 KB 程度のスクリプトで、本番実行時にはロードされない(ゼロ実行時依存)
+  - パッケージマネージャー(npm / yarn / pnpm)の種類とバージョンをプロジェクト単位で管理できる
+    - パッケージマネージャーのバージョンの不一致によるトラブルを防ぐ
+  - Node.js v16.9.0 で実験的に同梱される
+
+## 導入
+
+- 現在の Node.js v22.15.0(2025/05/07 時点での LTS) には梱包されており `$ corepack enable` コマンドを打つことで Corepack を使用することができる
+  - npm からのインストールも可能
+- nodenv などを使用している場合、 `$ corepack enable` 後に `$ nodenv rehash` を行う必要がある(かも)
+
+```bash
+# yarn と pnpm をアンインストール
+$ npm uninstall -g yarn pnpm
+
+# Corepack をインストール
+$ npm install -g corepack
+```
+
+## 流れ
+
+- `$ corepack enable` を行い shim を作成する
+- `$ yarn install` や `$ pnpm install` を実行すると以下の処理が行われる
+  - shim から Corepack が起動する
+  - package.json にある packageManager フィールドを読み取る
+    - packageManager フィールドがなければ、作成される
+  - 指定バージョンのバイナリがキャッシュに無ければ自動的にダウンロードされる
+  - npm / yarn / pnpm を exec で呼び出し、以降の処理を引き継ぐ
+
+## 今後
+
+- Node.js v25 (2025/10 予定) から Corepack は同梱されなくなる
+- Node.js v24 (2027/04 EOL 予定) までは従来どおり同梱版も利用可能である
+  - 以降は npm からインストールする必要がある
+- Corepack 自体は非推奨ではなく、独立プロジェクトとしてバグ修正・セキュリティパッチが提供され続ける
+- 参考 [Node.js Takes Steps Towards Removing Corepack](https://socket.dev/blog/node-js-takes-steps-towards-removing-corepack)
