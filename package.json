@@ -10,11 +10,11 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/starlight": "^0.34.2",
-    "astro": "^5.7.10"
+    "@astrojs/starlight": "0.34.2",
+    "astro": "5.7.10"
   },
   "devDependencies": {
-    "gray-matter": "^4.0.3"
+    "gray-matter": "4.0.3"
   },
   "engines": {
     "node": ">=22.14.0 <22.15.0"
