@@ -1,0 +1,113 @@
+---
+title: MCPサーバの活用と構築
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- 前回はMCPがどんなプロトコルか、という部分にフォーカスして紹介した
+- 今回は実際にMCPサーバを利用したり、作成したりしてみる
+- 検証にはRoo Codeを利用する
+  - 他の主要なAIエージェントはMCPに対応しているはず
+
+## MCPを探すには？
+
+- Clineを利用している場合
+  - [Cline | MCP Marketplace](https://cline.bot/mcp-marketplace)
+  - MCPサーバをシームレスに利用するためのエコシステムが出来上がりつつある
+  - Roo Codeでは使えなかった😭
+- その他(汎用的)
+  - 基本的なMCPサーバは公式から提供されているものを使えば良い
+    - [modelcontextprotocol/servers > src](https://github.com/modelcontextprotocol/servers/tree/main/src)
+  - それ以外のサードパーティは以下のサイト等で検索可能
+    - [Glama | Open-Source MCP servers](https://glama.ai/mcp/servers)
+
+## MCPサーバを使ってみる
+
+- [Knowledge Graph Memory Server](https://github.com/modelcontextprotocol/servers/tree/main/src/memory) を使ってみる
+    - コンテキストを超えて記憶を引き継ぐためのMCPサーバ
+    - [Middle Dive MCP](https://uyupun.github.io/takada-semi/presentations/2025/04-30/kazukichi/) でも少し触れた
+    - マスタの情報はローカルのJSONファイルに保存し、それをベクトル化したものをさらにChromaDBに保存し、適宜ベクトル検索するという仕組みらしい
+- `mcp_settings.json`
+  - Roo Codeの場合はこんな感じの設定
+
+```json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+    }
+  }
+}
+```
+
+- 使ってみた感想
+  - タスクやプロジェクトを跨いでも情報を思い出せるのは便利
+  - MCPがシームレスに呼び出されるかというと微妙で、具体的なMCPサーバ名をプロンプトに含めないといけないことも多かった
+  - まだクラウド対応のメモリ関連のMCPサーバは成熟していない感じがするので今後に期待
+  - また、これはMCPサーバ全般に言えることだが、現状はまだローカルでMCPサーバを起動して標準入出力で接続するというのが一般的
+    - Node.jsだと `npx` が使えるのでまだ良いが、基本的にインストールが手間
+    - 今後はOAuth 2.1 + Streamable HTTPでクラウドにあるMCPサーバに接続する、というのが一般的になってくるはず
+    - この辺の仕様に関しては [Middle Dive MCP](https://uyupun.github.io/takada-semi/presentations/2025/04-30/kazukichi/) でも触れた
+  - [GitHub MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/github) は設定はしたけどまだ使えていない
+
+## MCPサーバを作ってみる
+
+- 現在時刻を返してくれるようなシンプルなMCPサーバを作る
+- 仮想環境 + パッケージマネージャにはPoetryを利用する
+- MCPサーバの構築に利用するライブラリは [python-sdk](https://github.com/modelcontextprotocol/python-sdk)
+  - 他にもTSを初めとした様々な言語向けのSDKが用意されている
+  - https://github.com/modelcontextprotocol?q=sdk&type=all&language=&sort=
+
+```bash
+$ poetry add "mcp[cli]"
+```
+
+- `now.py`
+  - FastAPIっぽい書きあじで個人的には好き
+
+```python
+from mcp.server.fastmcp import FastMCP
+from datetime import datetime
+
+mcp = FastMCP("Now Time MCP Server")
+
+@mcp.tool(description="Returns the current time (ISO8601 format)")
+def now() -> str:
+    now = datetime.now()
+    return now.isoformat()
+
+if __name__ == "__main__":
+    mcp.run()
+```
+
+- `mcp_settings.json`
+  - コマンド以外は基本的にGUIから設定できる
+
+```json
+{
+  "mcpServers": {
+    "NowTimeServer": {
+      "command": "poetry",
+      "args": [
+        "run",
+        "python",
+        "/path/to/now.py"
+      ]
+    }
+  }
+}
+```
+
+- プロンプトで現在時刻を聞くと、MCPサーバが呼び出されて現在時刻が取得できた
+- 使ってみた感想
+  - 小規模なサンプル程度であれば容易に構築できることは分かった
+  - すでに様々なMCPサーバがリリースされている中で、自分が作るべきMCPサーバは何か？と問われると非常に悩ましい
+  - このあたりはすでにある便利なMCPサーバを段階的に導入しつつ、日常や業務の中で意識的にMCPサーバとして分離できそうな「隙間家具」的な単位を日々、模索する必要がありそう
