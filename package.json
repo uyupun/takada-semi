@@ -14,7 +14,8 @@
     "astro": "^5.7.10"
   },
   "devDependencies": {
-    "gray-matter": "^4.0.3"
+    "gray-matter": "^4.0.3",
+    "sharp": "^0.34.1"
   },
   "engines": {
     "node": ">=22.14.0 <22.15.0"
