@@ -9,17 +9,17 @@ importers:
   .:
     dependencies:
       '@astrojs/starlight':
-        specifier: ^0.34.2
+        specifier: 0.34.2
         version: 0.34.2(astro@5.7.10(rollup@4.40.1)(typescript@5.8.3))
       astro:
-        specifier: ^5.7.10
+        specifier: 5.7.10
         version: 5.7.10(rollup@4.40.1)(typescript@5.8.3)
     devDependencies:
       gray-matter:
-        specifier: ^4.0.3
+        specifier: 4.0.3
         version: 4.0.3
       sharp:
-        specifier: ^0.34.1
+        specifier: 0.34.1
         version: 0.34.1
 
 packages:
