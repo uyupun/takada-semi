@@ -10,6 +10,7 @@ export default defineConfig({
 	integrations: [
 		starlight({
 			title: '高田ゼミ',
+			description: '──生き残るのは、最も強い者でも、最も賢い者でもなく、変化に最もよく適応した者である。',
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/uyupun/takada-semi' }],
 			sidebar: [
 				{
@@ -21,6 +22,43 @@ export default defineConfig({
 					collapsed: false,
 					items: generatePresentationItems(),
 				}
+			],
+			head: [
+				{
+					tag: 'meta',
+					attrs: {
+						property: 'og:type',
+						content: 'article',
+					},
+				},
+				{
+					tag: 'meta',
+					attrs: {
+						property: 'og:site_name',
+						content: '高田ゼミ',
+					},
+				},
+				{
+					tag: 'meta',
+					attrs: {
+						property: 'og:description',
+						content: '──生き残るのは、最も強い者でも、最も賢い者でもなく、変化に最もよく適応した者である。',
+					},
+				},
+				{
+					tag: 'meta',
+					attrs: {
+						property: 'og:image',
+						content: 'https://uyupun.github.io/takada-semi/logo_uyupun_square.png',
+					},
+				},
+				{
+					tag: 'meta',
+					attrs: {
+						property: 'twitter:card',
+						content: 'summary_large_image',
+					},
+				},
 			],
 		}),
 	],
