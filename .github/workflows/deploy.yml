@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Build Astro
-        run: pnpm run build
+        run: pnpm build
       - name: Upload artifacts
         uses: actions/upload-pages-artifact@v3
         with:
