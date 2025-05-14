@@ -11,11 +11,18 @@ export default defineConfig({
 		starlight({
 			title: '高田ゼミ',
 			description: '──生き残るのは、最も強い者でも、最も賢い者でもなく、変化に最もよく適応した者である。',
+			defaultLocale: 'ja',
+			locales: {
+				root: {
+					label: '日本語',
+					lang: 'ja',
+				},
+			},
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/uyupun/takada-semi' }],
 			sidebar: [
 				{
 					label: 'コンセプト',
-					slug: 'concept',
+					link: '/concept',
 				},
 				{
 					label: '発表資料',

@@ -6,7 +6,7 @@ import matter from 'gray-matter';
 /**
  * @typedef {Object} PresentationItem
  * @property {string} label - 表示ラベル
- * @property {string} slug - スラッグ（URL用のパス）
+ * @property {string} link - リンク先のパス
  */
 
 /**
@@ -123,7 +123,7 @@ function createPresentationItem(rootPath, year, date, file) {
 
   return {
     label: title,
-    slug: `${PRESENTATION_PATH_PREFIX}/${year}/${date}/${name}`,
+    link: `/${PRESENTATION_PATH_PREFIX}/${year}/${date}/${name}`,
   };
 }
 
