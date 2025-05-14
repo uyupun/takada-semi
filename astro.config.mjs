@@ -62,6 +62,13 @@ export default defineConfig({
 				{
 					tag: 'meta',
 					attrs: {
+						property: 'og:image:alt',
+						content: 'ぅゅ...ぷんぽぷんぽのロゴ',
+					},
+				},
+				{
+					tag: 'meta',
+					attrs: {
 						property: 'twitter:card',
 						content: 'summary_large_image',
 					},
