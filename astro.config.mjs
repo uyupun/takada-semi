@@ -66,13 +66,6 @@ export default defineConfig({
 						content: 'ぅゅ...ぷんぽぷんぽのロゴ',
 					},
 				},
-				{
-					tag: 'meta',
-					attrs: {
-						property: 'twitter:card',
-						content: 'summary_large_image',
-					},
-				},
 			],
 		}),
 	],
