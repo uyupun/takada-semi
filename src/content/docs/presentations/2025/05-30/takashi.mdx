@@ -1,0 +1,208 @@
+---
+title: Flutter 3.32
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+- 2025 年 5 月 20 日に Flutter v3.32 が発表された
+- 参照: [What's new in Flutter 3.32](https://medium.com/flutter/whats-new-in-flutter-3-32-40c1086bab6e)
+
+## 内容
+
+### Web
+
+#### ホットリロード（実験的機能）
+
+- Web でのホットリロードが利用可能に
+- Flutter トラッカーで 2 番目に投票数の多かった機能
+- `--web-experimental-hot-reload` フラグを使用して実行
+- VS Code での設定方法
+  - launch.json に設定を追加
+  - "Dart: Flutter Hot Reload On Save" 設定の有効化を推奨
+- コマンドライン実行
+  - `flutter run -d chrome --web-experimental-hot-reload`
+  - "r" でホットリロード、"R" でホットリスタート
+- DartPad でも新しい **Reload** ボタンで利用可能
+
+### フレームワーク
+
+#### 新しいウィジェット
+
+- `Expansible` ウィジェット
+  - 展開・折りたたみウィジェットの作成を簡素化
+  - Material スタイルの `ExpansionTile` の基盤
+- `RawMenuAnchor` ウィジェット
+  - Material スタイルの `MenuAnchor` の基盤
+  - スタイル無しメニューとしても独立利用可能
+
+### Cupertino
+
+#### Squircles（角丸超楕円）
+
+- iOS デザイン言語の重要な新機能
+- "Apple squircle" として知られる形状
+- 従来の角丸長方形よりもスムーズで連続的な曲線
+- `CupertinoAlertDialog` と `CupertinoActionSheet` で使用
+- 新しい API
+  - `RoundedSuperellipseBorder`: ペイントやウィジェット形状用
+  - `ClipRSuperellipse`: クリッピング用
+  - `Canvas.drawRSuperellipse`, `Canvas.clipRSuperellipse`, `Path.addRSuperellipse`: 低レベル API
+- 注意事項
+  - iOS と Android でのみサポート（他では標準角丸長方形にフォールバック）
+  - パフォーマンス最適化は継続中
+
+#### シート
+
+- Android でのシステム UI テーマ設定の修正
+- ナビゲーションバーの高さ調整とコンテンツの切り取り修正
+- `PopupMenuButton` との互換性問題解決
+- 角丸コーナー遷移の改善
+- `enableDrag` 引数の追加
+  - `CupertinoSheetRoute` と `showCupertinoSheet` で利用可能
+  - ドラッグダウンによる閉じる動作の無効化
+
+#### ナビゲーションバー
+
+- `CupertinoSliverNavigationBar.search` の改善
+  - 開閉時のアニメーション精度向上
+  - 検索フィールドのプレフィックス・サフィックスアイコンの配置修正
+- `CupertinoNavigationBars` と `CupertinoSliverNavigationBars` 間の遷移を最新 iOS に合わせて更新
+
+### Material
+
+#### 機能強化
+
+- `CarouselController`
+  - `animateToIndex` メソッドの追加
+  - 固定サイズまたは動的サイズアイテムでのスムーズなインデックスベースナビゲーション
+- `TabBar`
+  - `onHover` と `onFocusChange` コールバックの追加
+- `SearchAnchor` と `SearchAnchor.bar`
+  - `viewOnOpen` と `onOpen` コールバックの追加
+- `CalendarDatePicker`
+  - `calendarDelegate` の受け入れ
+  - グレゴリオ暦以外のカスタムカレンダーロジックの統合
+- `showDialog`, `showAdaptiveDialog`, `DialogRoute`
+  - `animationStyle` の追加
+- `Divider`
+  - `borderRadius` の受け入れ
+
+#### バグ修正
+
+- `DropdownMenu`
+  - メニュー幅がテキストフィールドより小さくなることを許可
+  - `RenderFlex` オーバーフローエラーの解決
+  - デフォルト幅がテキストラベル幅を尊重
+- `RangeSlider` と `Slider`
+  - ホバー時のオーバーレイ表示修正
+  - 透明トラック色での thumb の両端到達問題解決
+
+### アクセシビリティ
+
+#### セマンティクスツリーコンパイル最適化
+
+- コンパイル時間を約 80% 削減
+- Web では、セマンティクス有効時のフレーム時間を 30% 削減
+
+#### 細分化されたセマンティクスロール
+
+- 新しい `SemanticsRole` API
+- `Semantics` ウィジェットとその関連コンポーネントに統合
+- 支援技術による UI 要素の解釈をより精密に制御
+- サブツリー全体への特定ロール割り当てが可能
+
+### Impeller
+
+#### 機能改善
+
+- Android デバイスでの Impeller がデフォルトで有効
+- 新しい Android デバイスでのオプトアウト機能は今後のリリースで削除予定
+- テキストレンダリングの改善
+  - グリフアトラスの高解像度化
+  - 浮動小数点計算の丸め誤差修正
+  - テキストアニメーションのスムーズ化
+- その他の改善
+  - 部分再描画の最適化
+  - ブラー速度の向上
+  - 180 度回転テキストの向き修正
+
+### DevTools と IDE
+
+#### Flutter Property Editor（新機能）
+
+- ウィジェットプロパティの簡単な編集
+- VS Code のサイドバーパネルまたは Android Studio/IntelliJ のツールウィンドウからアクセス
+- ドキュメントの読み取り機能
+
+#### DevTools の改善
+
+- Network 画面のオフラインサポート
+- 履歴レビュー、インスペクターエラー、Deep Links ツールのバグ修正
+- CPU プロファイラーとメモリ画面のデータ改善
+- パフォーマンスとメモリの改善
+
+#### アナライザーの改善
+
+- "doc imports" の追加
+- クイックフィックス、アシスト、リネーミングの改善
+
+#### Gemini in Android Studio
+
+- Dart と Flutter 開発のファーストクラスサポート
+- IDE 内で直接 Gemini の活用が可能
+
+#### Model Context Protocol（MCP）サポート
+
+- Dart MCP SDK の開発中
+- Dart Tooling MCP Server の開発中
+- より正確で関連性の高いコード生成
+- 複雑なタスクの実行可能性向上
+
+### AI との構築
+
+#### Firebase AI Logic の導入
+
+- Vertex AI in Firebase から Firebase AI Logic へ進化
+- Gemini API と Vertex AI の両方にアクセス
+- `firebase_ai` パッケージの提供
+- `firebase_vertexai` パッケージからの移行推奨
+
+#### AI モニタリングダッシュボード
+
+- Gemini API 使用量の詳細な洞察
+- 消費パターン、パフォーマンスメトリクス、潜在的問題の可視化
+- データ駆動型の意思決定支援
+- デバッグとトラブルシューティング機能
+
+### 破壊的変更と非推奨化
+
+#### Android アクセシビリティアナウンス
+
+- API 36 以降でセマンティックアナウンスイベントが非推奨
+- `SemanticProperties.liveRegion` による "polite" 暗黙アナウンスの使用推奨
+
+#### 6 つのパッケージのサポート終了
+
+- `flutter_markdown`
+- `ios_platform_images`
+- `css_colors`
+- `palette_generator`
+- `flutter_image`
+- `flutter_adaptive_scaffold`
+
+#### iOS と macOS の最小バージョン
+
+- 次回安定版リリースで iOS 12 と macOS 10.14（Mojave）のサポート非推奨
+- iOS 13 と macOS 10.15（Catalina）を最小対象に
+
+#### その他の破壊的変更
+
+- `ExpansionTileController` の非推奨化
+- `SelectionChangedCause.scribble` から `SelectionChangedCause.stylusHandwriting` への名前変更
+- `ThemeData.indicatorColor` の非推奨化
+- `SpringDescription` の計算式修正
