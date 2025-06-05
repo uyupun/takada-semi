@@ -1,0 +1,13 @@
+---
+interface Props {
+  path: string;
+  width?: number;
+}
+
+const { path, width } = Astro.props;
+---
+
+<img
+  src={`${import.meta.env.BASE_URL}/content/images/${path}`}
+  width={width}
+/>
