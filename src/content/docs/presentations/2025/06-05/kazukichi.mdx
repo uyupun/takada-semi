@@ -1,0 +1,100 @@
+---
+title: 画像生成AIの「画風」
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- 昨今、テキストベースの生成AIと並行して画像生成AIに関しても次々とリリースされている
+- 各画像生成AIはどのような学習データを利用し、また、どうチューニングされているかによって、基本的な「画風」が異なる
+- 今回はベンチマーク用のプロンプトを用意し、画像生成AIにおける一種の作家性のようなものを探ってみる
+
+## 題材
+
+- ベンチマークの題材には「雨の中の傘を差す少女」を採用する
+- このモチーフは、質感(雨、服、肌、背景)・感情表現・色調などに差が出やすいため、作風比較に適していると言える
+- 画像生成AIは内部的に英語で解釈されることが多く、英語のほうが安定して高品質な出力を得られるケースが多いため、プロンプトには英語を使用する
+- プロンプトには写実的な画像を生成するプロンプトと、アニメチックな画像を生成するプロンプトの二種類を用意した
+
+### 写実的なプロンプト
+
+- 英語
+> A young girl standing on a rainy city street at night, holding a transparent umbrella. She wears a dark blue coat and has wet hair sticking slightly to her cheeks. Reflections of neon lights shimmer on the wet pavement. Hyper-realistic, cinematic lighting, shallow depth of field, 4K, highly detailed, soft raindrops in the air.
+
+- 日本語(訳)
+> 夜の雨の降る都市の通りに立つ少女。彼女は透明な傘をさしており、濃い青のコートを着ている。頬には濡れた髪が少し張り付いている。濡れた路面にはネオンの光が反射してきらめいている。ハイパーリアルな表現、映画のようなライティング、浅い被写界深度、4Kの高精細描写、空気中に浮かぶ柔らかい雨粒。
+
+### アニメチックなプロンプト
+
+- 英語
+> An anime-style girl holding a clear umbrella in the rain, standing in the middle of a city street at night. Her long hair is slightly wet, and she wears a navy school uniform. Colorful neon signs reflect off the wet ground. Soft lighting, glowing effects, anime shading, finely detailed eyes and hair, illustrated in Japanese anime style.
+
+- 日本語(訳)
+> 夜の雨の中、都市の通りの中央に立つ、透明な傘を差したアニメ風の少女。彼女は長い髪をしており、少し濡れている。濃紺のセーラー服を着ている。濡れた地面にはカラフルなネオン看板が反射している。柔らかなライティング、光のエフェクト、アニメ特有の陰影、精密に描かれた瞳と髪、日本のアニメスタイルで描かれている。
+
+## 4o Image Generation
+
+- OpenAIが開発
+- http://chatgpt.com/
+- ChatGPT 4oはマルチモーダルAIであり、テキスト以外にも画像の生成が可能
+- 元々、OpenAIは画像生成AIとしてDALL-Eシリーズを提供していたが、これを置き換える形で提供されている模様
+- ChatGPTに画像生成機能が統合されているという面ではかなり使用感が良いが、生成速度があまり速くないことや、「AIが生成した画像感」があることなどのデメリットが挙げられる
+- 特にアニメ風のイラストにおける塗りののっぺり感や特徴的な髪の光の描画が色濃く出ている
+
+<ContentImage path="2025/06-05/kazukichi/chatgpt_real.png" width="300" />
+
+<ContentImage path="2025/06-05/kazukichi/chatgpt_anime.png" width="300" />
+
+## Midjourney
+
+- https://www.midjourney.com/
+- 以前までは無料で提供されていたが、現在は有料でしか利用できない
+	- 一番安いプランで月額$11
+- パラメータはほぼデフォルトのままで生成した
+	- モデルのバージョンは6.1
+	- 画像サイズだけ他と合わせるために1:1から3:4に変更した
+- 画像の生成速度がかなり速く、生成された画像もあまり「AI感」を感じさせない幻想的でアーティスティックな仕上がり
+- ただし、アニメ風のイラストはCG感のある出来となり、あまり得意でないように感じた(これはこれで良いが)
+
+<ContentImage path="2025/06-05/kazukichi/mj_real.jpg" width="300" />
+
+<ContentImage path="2025/06-05/kazukichi/mj_anime.jpg" width="300" />
+
+## Stable Diffusion
+
+- Stability AIが開発
+- 一番安いプランで月額$9
+	- 月額のサブスクリプションで一定のクレジットが付与される課金体系
+	- ただし３日間のフリートライヤルが可能
+	- また、モデルが公開されており、ローカルで動作させられるようになっている
+- 生成される画像サイズは他とできるだけ合わせるために4:5に変更
+- モデルレベルで統合されているのか、UIレベルで統合されているのかは不明だが、同じWeb UIから画像、音楽、動画を生成可能となっている
+- 画像の生成速度はこちらもかなり速く、アニメ風のイラストの生成に関しては一番高品質で、画像の生成後に追加で加工できるようなUIも提供されている
+- アニメ風のイラストは色数も多く、立体的な印象を与える一方で、写実的な画像はCG感が強く、あまり得意ではなさそう
+
+<ContentImage path="2025/06-05/kazukichi/stable_real.png" width="400" />
+
+<ContentImage path="2025/06-05/kazukichi/stable_anime.png" width="400" />
+
+## Gemini 2.5 Pro
+
+- Googleは元々、Imagenという画像生成AIを提供していたが、現在はAPI経由でしか利用できない模様
+- OpenAIと同様、マルチモーダルAIを実現する方向に舵を切ったように見え、Gemini 2.5 Pro及び、その下位モデルであるGemini 2.0 Flash / Gemini 2.5 Flash等のモデルで画像の生成が可能
+- これらのマルチモーダルなモデルがImagenの機能を利用しているのか、部分的に影響を受けているのか等に関しては不明
+- 写実的な画像はなぜか真横を向いてしまったし、アニメ風のイラストは背景が写実寄りなこともあり、浮いているように見える
+
+<ContentImage path="2025/06-05/kazukichi/gemini_real.jpeg" width="400" />
+
+<ContentImage path="2025/06-05/kazukichi/gemini_anime.jpeg" width="400" />
+
+## まとめ
+
+- 画像生成関連で気になったいくつかのモデルを実際に検証し、比較した
+- 今後の趣味のイラスト制作への画像生成AIの適用も視野に入れていきたい
+- サンプル数が少ないため、一概には言えないが、品質的な側面で言うと、アートを作るならMidjourney、イラストを作るならStable Diffusionといった感じがするが、ChatGPTやGeminiのようにUI/モデルレベルで統合されている利便性も捨てがたい
+- 他のAI関連の大手企業が提供するサービスに関して言うと、DeepSeekは画像生成に対応しておらず、Anthoropicに関しては不明(おそらくできない)
+- また、以前にたかしが紹介していた、すでにある画像を組み合わせたり、enhanceさせるサービスである [Whisk](https://uyupun.github.io/takada-semi/presentations/2025/02-19/takashi/) も依然として興味深いなと思う
