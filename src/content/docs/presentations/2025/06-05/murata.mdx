@@ -1,0 +1,87 @@
+---
+title: Devcontainer と Docker in Docker の通信
+author: murata
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## devcontainer って？
+
+- [これ](https://github.com/uyupun/takada-semi/blob/main/src/content/docs/presentations/2025/03-18/murata.mdx)見てください。
+- 簡単にいうとローカルを汚さない開発環境を Docker 上につくる機能
+
+## なんでこんなこと調べたのか
+
+- 最近、CakePHP の勉強をしていて、とりあえず何か作ってみようとなった
+- ローカルを汚すのが嫌いなタイプなので、Docker 環境で本体も DB も動かしたくなった
+- そこで、DB と本体が接続できない不具合に 2 日くらい悩まされたため
+
+## サンプルというか本体
+
+- https://github.com/TakumiOkayasu/CakePhpChatApp
+
+## なにやったの？
+
+(project-root)/.devcontainer/compose.yaml
+
+```yaml
+services:
+  cakephp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USER_NAME: ${USER_NAME}
+        USER_UID: ${USER_UID}
+        USER_GID: ${USER_GID}
+    command: sleep infinity
+    networks:
+      - db-common-network
+    ports:
+      - "8765:8765"
+    env_file:
+      - ./.env
+
+networks: # ここ！
+  db-common-network:
+    external: true
+```
+
+(project-root)/compose.yaml
+
+```yaml
+services:
+  db:
+    build:
+      context: ./database
+      dockerfile: Dockerfile
+    container_name: chat-db
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - TZ=Asia/Tokyo
+    volumes:
+      - chat-db-data:/var/lib/mysql
+    command: mysqld --collation-server=utf8mb4_0900_bin --transaction-isolation=READ-COMMITTED
+    networks:
+      - db-common-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 1
+
+volumes:
+  chat-db-data:
+
+networks: # ここ！
+  db-common-network:
+    external: true
+```
+
+- めちゃくちゃシンプルで、別の compose.yaml 同士で同一ネットワークを示せばよかった
+- 自分はそこのネットワーク部分について誤解していて、別ファイルに同じネットワーク情報書けば DockerEngine がいい感じにやってくれると知らんかった
+- 無事に接続できましたとさ
