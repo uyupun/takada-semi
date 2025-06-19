@@ -1,0 +1,163 @@
+---
+title: 生成AI関連ツールを使い倒すII
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- 少し前に発表した [生成AI関連ツールを使い倒す](https://uyupun.github.io/takada-semi/presentations/2025/04-23/kazukichi/) では検証できなかったサービスを検証していく
+
+## Grok
+
+- https://grok.com/
+- イーロン・マスクがCEOを務めるxAIが開発
+- X(旧Twitter)にバンドルされているものだけでなく、ChatGPTやClaudeのような独立したWeb UIも提供している
+- 思っていたよりもクオリティが高く、ChatGPT / Claude / Gemini / DeepSeekあたりと十分に戦えるような段階にあるのだなと思った
+- ディープリサーチ相当の機能が用意されている
+	- DeepSearchとDeeperSearchの二段階で機能を提供している点がユニーク
+- 情報のソースにXのポストをふんだんに盛り込んでくるのが特徴
+	- かえって情報の質を下げているのではw
+- AuroraというxAIが独自に開発した画像生成モデルも提供されているが、そこまで品質が高いという感じはしなかった
+- 月額$30で上位プランであるSuperGrokが利用可能
+	- Big Brainという計算リソースを最大限に活用し、複雑な問題や高度なタスクに対応できる機能が目玉(気になる)
+
+## Claude Desktop
+
+- MCPサーバと連携させられるのが強み
+	- ※ ただし開発者向けの機能という位置付けで、JSONを直書きするようなUIとなっている
+	- ※ ただし有料プランならWeb版でも連携可能
+- ChatGPTのデスクトップアプリも利用してみたけど、こっちはWeb版と機能差はほぼなし
+	- むしろUIはウェブ版のほうが品質が高いように思う
+
+## Genspark
+
+- [https://www.genspark.ai/](https://www.genspark.ai/)
+- 無料プランでは毎日、クレジットが補充されるというのが新しい
+- Plusプランは月額$24で10,000クレジットが付与される
+	- 少し価格設定としては高い印象
+- ChatGPT、Gemini、Claude等と異なり、AIエージェントを協調させて利用するサービス、という点でユニーク
+- AIエージェントを自動的に協調させることもできるし、個別の目的に沿ったAIエージェントを利用することも可能
+	- スライド作成、表作成、画像作成、動画作成、etc ...
+- リアルタイムの情報取得に力を入れている
+- Sparkpageという機能があり、調査内容をWebページとして出力してくれる
+	- 出力例: https://page1.genspark.site/page/toolu_019wuhAhRZZHT8yC8uHqgicX/accenture_yumemi_acquisition.html
+- スライド形式でも出力できる
+    - 出力例: https://genspark.genspark.site/slides_wrapper.html?project_id=7820b033-00e6-4625-a459-0385e405b83d&slide_id=toolu_01WTM2K5Q6JHQ1rQyhkjDeJZ
+
+## DeepWiki
+
+- https://deepwiki.com/
+- GitHubリポジトリを読み込み、その内部構造等を説明する詳細なドキュメントを自動作成してくれる
+- 他にも、チャットインタフェースも同梱され、ドキュメントで不明点があれば質問することもできる
+- READMEにバッジを追加したら自動更新される
+    - 手動で更新ボタンを押すこともできる
+- 高田ゼミのリポジトリでも作成してもらった
+	- https://deepwiki.com/uyupun/takada-semi
+	- ちなみに人気のサービスで作成までに半日かかった
+- 内部的にはDevinを使用しているらしい
+- いつまで無料で提供されるのか分からないレベルで便利
+- ClineやCursor、Devin等のAIエージェントを導入できていない層にはより一層刺さると思った
+- 一度、誰かがドキュメント作成をすると誰でも閲覧/質問できるのも良い
+	- 近いうちに気になるOSSのDeepWikiが生成したドキュメントを読んでみようと思う
+- 今後はプライベートリポジトリへの対応、セルフホスティング対応、追加機能の提供等の方向でマネタイズしていくのだろうか
+- 多言語対応もしてほしいですね...
+
+## ChatGPT GPTs
+
+- ChatGPTが提供しているカスタムされたチャットボットを作るための機能
+	- 擬似的に人格や性格を与えたりすることが可能
+	- 特定分野にチューニングされているようなイメージ
+- Monday
+	- シニカルで冷淡な性格を持つAI
+	- 普段、ユーザフレンドリーなAIに触れている我々へのアンチテーゼとも言える
+- 高橋・バーチャル・秀明
+	- たかしを擬似的に再現するという前衛的な試み
+	- ここから使える: https://chatgpt.com/g/g-UySIbDMTF-gao-qiao-hatiyaruxiu-ming
+- 現状、お遊び程度にしか使いこなせていないが、ChatGPT公式またはサードパーティの高品質なGPTsを徐々に導入して利便性を享受したい
+	- Function Callingのような機能も提供しているので外部サービスの操作もできる模様(MCPが使われているかは不明)
+
+## ChatGPT Projects機能
+
+- ファイルをアップロードし、それらのコンテンツにAIがアクセスできるようにする機能
+	- 簡易的なGoogleのNotebookLMのような感じだが、ChatGPTとして統合されているのが良い
+- 基本的なプロンプトを与える機能
+	- GPTsに近い機能
+- ローカルにしかないドメイン知識を与える等の方向で活用していきたい
+
+## NotebookLM 音声概要
+
+- NotebookLM自体は以前に触れた
+	- [生成AI関連ツールを使い倒す > NotebookLM](https://uyupun.github.io/takada-semi/presentations/2025/04-23/kazukichi/#notebooklm)
+- 音声概要(ポッドキャストのような生成が可能)の日本語を含む50の言語への対応
+- ChatGPTだと音声入力、音声読み上げ程度
+- アクセンチュアによるゆめみの買収ニュースをポッドキャスト風にしてもらった
+	- 出力例: https://notebooklm.google.com/notebook/1c6ce801-772d-473b-a75e-13580a56c3ff/audio
+	- わずか7つ程度のニュース記事からここまで質の高いやりとりが生成されることに驚き
+- 勤務時にハンズフリーで勉強したい層(Audibleをよりパーソナライズしたような位置づけ)に刺さりそう
+- うゆぷんラヂオのような取り組みの自動化ができるかも
+- ちなみにNotebookLMで使われているモデルがGemini 2.0 FlashからGemini 2.5 Flashに変わったらしい
+
+## Aqua Voice
+
+- https://withaqua.com/
+- 主に音声入力のインタフェースを提供する
+- superwhisperのオルタナティブという感じ
+	- Cline vs Cursorの構図に近いかも
+- superwhisperと違い、複数のモデルから選択することはできない
+- 設定はsuperwhisperよりも分かりやすい
+- Deep Contextという画面のテキストを読み取って変換時の分析情報として加えるという機能がユニーク
+- 月額$10近くするため、superwhisperの価格設定よりも若干高め
+- モデルの精度と起動速度がsuperwhisperより劣るということで正式採用を見送った
+- 無料で1,000ワードまで利用できるので是非
+
+## Cursor
+
+- 学生ならProプランを１年間、無料で利用できる
+	- https://x.com/cursor_ai/status/1919846420234031146
+- 放送大学生なので申請してみた
+	- https://www.cursor.com/ja/students
+- 返答なし
+	- 諦め
+
+## notta
+
+- https://www.notta.ai/
+- 珍しく国産サービス
+- 録音 / YouTube / Zoom / 画面 等の色んなデータソースから文字起こし可能
+- 何分何秒に何を話している、というのが分かりやすく文字起こしされる
+- 無料だと3分以内しか文字起こしできなかったり、１ヶ月120分の文字起こししかできなかったり、エクスポートできなかったりするので、有料プランは必須という感じがする
+- デザイン自体は悪くないが、画面が驚くほどごちゃついていてストレスが溜まる
+- 支払いに月額プランがなく、年額￥14,220支払う必要があるため敷居が高い
+	- ※ ただし、有料プランの無料トライアルも用意されている
+- 動画形式の講義資料を文字起こししてNotebookLMに突っ込んで利用するというのも考えている
+
+## そのうち検証したいもの
+
+- Windsurf
+	- VSCodeベースのAIエージェントで、CursorやClineの競合
+	- 最近、OpenAIに買収されることが決定した
+	- SWE-1シリーズという独自のLLMを持つ
+- Goose
+	- https://github.com/block/goose
+	- Rust製のOSSのAIエージェントでCLI / デスクトップアプリ / コアモジュールに分かれている
+	- どちらかというとCodex CLIやClaude Codeの競合という感じがする
+- OpenHands
+	- https://github.com/All-Hands-AI/OpenHands
+	- DevinのOSS版のようなポジショニング
+- MastraやLangChain、CrewAI、Dify等のフレームワーク、ライブラリ
+- Hugging FaceやOllamaでLlama等のLLMをローカルで動かす
+
+## 感想
+
+- LLMのモデル自体の品質での差別化(推論能力の高さやコンテキストのサイズ、RAG対応)以外にも、どういう形式で出力するか(Webページ、スライド、ポッドキャスト)、さらにその提供を行う上でUIやUXをどう設計するか、というところもかなり重要視されているように思う
+
+## 参考
+
+- [DeepWiki がやってきた](https://blog.starbug1.com/archives/3088)
+- [グーグルの「NotebookLM」でポッドキャストのようなAIの会話を生成可能に、さっそく使ってみた](https://k-tai.watch.impress.co.jp/docs/news/2011089.html)
+- [NotebookLMの“中身”が進化　「Gemini 2.0 Flash」からアップデート](https://www.itmedia.co.jp/aiplus/articles/2505/07/news145.html)
+- [Rust製MCP対応AIエージェント『Goose』の技術概要](https://laiso.hatenablog.com/entry/2025/02/05/210854)
