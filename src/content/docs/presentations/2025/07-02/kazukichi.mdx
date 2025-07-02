@@ -1,0 +1,142 @@
+---
+title: GitHub Actionsで人生のPDCAをぶん回す
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+<img src="https://cdn.snsimg.carview.co.jp/minkara/blog/000/042/582/902/42582902/p1.jpg?ct=e77d65d2801f" width="500" />
+
+## はじめに
+
+- 日々のタスク管理と振り返りをGitHub Actionsを使って改善して爆速でPDCAを回せるようにしたという話
+
+## タスク管理の歴史
+
+- これまでの自分のタスク管理の歴史について説明
+- 学生時代: 紙や色んなアプリ(Todoist等)で管理していたが、乱立して破綻
+- 学生時代2: その反動でまともにタスクを管理していなかったが、社会人になるにつれて辛くなってきた
+- 社会人1: Webのポモドーロタイマー(The Pomodoro Tracker)上で管理し始めたが、タスクが増えすぎて破綻
+- 社会人2: タスク自体はGitHub Projects上で管理し、ポモドーロタイマーは記録に専念させるようにしたが、GitHub Projects上のタスクが増えすぎてその日にすべきタスクが埋もれるようになった
+- 社会人3: GitHub Projectsは優先順位と期日を管理するマスターDBとし、その日にすべきタスクは紙に書くようにしたが、記述が面倒だったり振り返りが困難という問題が発生
+- 社会人4: GitHub Actionsを導入して毎朝、TODOと振り返りのテンプレートをissueとして自動で作成するよう変更 ← ｲﾏｺｺ
+
+## 詳解: タスク管理
+
+<ContentImage path="2025/07-02/kazukichi/01.png" width="900" />
+
+- 日本時間で毎朝5時にGitHub Actionsが実行され、タスク管理と振り返りのテンプレートがissueとして作成される
+	- タスクはルーティンワークのみ自動入力されている
+	- GitHub Actionsの定期実行はそこまで信頼性が高いわけではなく、遅延やスキップが発生するので注意
+	- 参照: [GitHub Actions workflow not triggering at scheduled time](https://upptime.js.org/blog/2021/01/22/github-actions-schedule-not-working/)
+	- 朝9時に実行していたが、実行がスキップされていたので空いてそう(憶測)な朝5時に移動
+	- それでも平均10分以上の遅延あり
+	- スキップされた時のために、手動で実行できるようにもしている(ボタン押すだけ)
+- その後、作成されたissueにGitHub Projectsや前日のissueの積み残しから手動でタスクを追記
+
+<ContentImage path="2025/07-02/kazukichi/02.png" width="700" />
+
+- あとはタスクの内容をロボットのように実行していくだけ
+	- どこまで頭を使わず、自我を捨てられるかが勝負(目指せ無我の境地)
+	- タスクはルーティン、仕事、その他で分けている
+	- 優先順位は管理しておらず、やりたいタスクからこなしている(モチベーション重視)
+	- 流石にあまりにも締め切りが近いものは優先している
+	- まだ改善の余地はありそう
+- 実行時はポモドーロタイマーで時間を管理する
+	- ※ 読書はStudyplusで管理している
+	- １日の終わりには自分の稼働時間が分かるイメージ
+- ポモドーロタイマーのログは最終的にSibylに集約される
+	- 自作のライフログ管理・分析基盤
+	- MetabaseというBIツールベース + 自作のPythonスクリプト群
+- その日の夜、もしくは翌日の朝に振り返りをしてissueをclose
+	- 振り返りは簡易KPT
+	- まだ改善の余地はありそう
+	- 毎日、PDCAを回せる
+	- 今まではなんとなくポモドーロタイマーのログを見たり、Sibylを見ることしかしていなかった
+
+## GitHub Actionsの設定
+
+```yaml
+name: Create daily issue
+
+on:
+  schedule:
+    # 日本時間で毎朝5時(= UTCでは前日20時)に実行
+    - cron: '0 20 * * *'
+
+  workflow_dispatch:
+
+jobs:
+  create-issue:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create TODO issue
+        id: create-todo-issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require("fs");
+
+            const dateString = new Date().toLocaleString("ja-JP", {
+              timeZone: "Asia/Tokyo",
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit"
+            });
+
+            const issueTitle = dateString.split(" ")[0];
+            const issueBody = fs.readFileSync(".github/assets/todo_template.md", "utf8");
+
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              assignees: ["tyokinuhata"]
+            });
+
+            core.setOutput("issue_number", issue.data.number);
+
+      - name: Add lookback comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = ${{ steps.create-todo-issue.outputs.issue_number }};
+
+            const fs = require("fs");
+            const commentBody = fs.readFileSync(".github/assets/lookback_template.md", "utf8");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: commentBody
+            });
+```
+
+- 基本的に操作はactions/github-script
+	- GitHub APIをNode.jsから操作できる
+- issueの作成、外部のマークダウン(タスクと振り返りのテンプレ)の読み込み、アサインの設定、コメントを行っている
+
+## やってみてどうなのか
+
+- 改善前は紙に書き出すのが億劫で、前日の紙を使いまわしたり、タスクに手つかずになるという本末転倒な事象も発生していた
+- 改善後はルーティンワークは自動入力されており、他のタスクも前日のissueからコピペできるため、かなり楽になった
+- タスク管理のみならず、振り返りのフレームワークまで統合して提供してくれるので、自然とPDCAを回せるようなサイクルが整ってきた
+
+## これから
+
+- 生成AI(特にMCP)を統合することでもっと柔軟なタスク管理が可能にならないか検討していきたい
+- GitHub Projectsやポモドーロタイマーの記録形式も大雑把なので面倒にならない範囲で優先順位付けやカテゴリ分け等を導入していきたい
+- ※ 何よりもサステナブルに運用できることが大事！！習慣化できるか？を常に考えよう！！(自戒)
