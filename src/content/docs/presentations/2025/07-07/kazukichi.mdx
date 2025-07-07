@@ -1,0 +1,72 @@
+---
+title: AG-UI - 第三のプロトコル
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- 生成AI界隈において、MCP、A2Aに引続き、AG-UIというプロトコルが2025年5月に発表されたため、その概要を紹介をする
+
+## おさらい
+
+- MCP
+	- AIエージェントから様々なツールを操作するためのプロトコル
+	- 詳しくは [Middle Dive MCP](https://uyupun.github.io/takada-semi/presentations/2025/04-30/kazukichi/) と [MCPサーバの活用と構築](https://uyupun.github.io/takada-semi/presentations/2025/05-07/kazukichi/)
+- A2A
+	- AIエージェント間の通信を標準化するプロトコル
+	- 詳しくは [A2A - MCPのその先へ](https://uyupun.github.io/takada-semi/presentations/2025/05-14/kazukichi/)
+
+## AG-UIとは
+
+- Agent-User Interaction Protocolの略称
+- AIエージェントとUI(フロントエンドアプリケーション)間の通信を標準化するためのプロトコル
+
+```
+     ┌────────────────────────────┐
+     │             UI             │
+     │   (Frontend Application)   │
+     └─────────────┬──────────────┘
+                   │   AG-UI (SSE + JSON)
+                   ▼
+     ┌────────────────────────────┐
+     │          AI Agent          │
+     │          (Backend)         │
+     └─────────────┬──────────────┘
+                   │   MCP (stdio/SSE/Streamable HTTP + JSON-RPC)
+                   ▼
+     ┌────────────────────────────┐
+     │            LLM             │
+     └────────────────────────────┘
+```
+
+- シアトルのスタートアップであるTawkit, Inc.のCopilotKitの開発チームを中心にオープンなコミュニティで仕様が議論されている
+- 一次情報はこのへんにある
+	- [AG-UI Protocol](https://docs.ag-ui.com/introduction)
+	- [GitHub | CopilotKit/CopilotKit](https://github.com/CopilotKit)
+- SSE(将来的にはWebSocketも)を使用し、シンプルなJSONをやり取りするような作り
+- MCPやA2AのようにJSON-RPCは採用されていない
+- 双方向のチャット、ツール呼び出し、状態管理、セッション管理等が行える
+- 開発者がAIエージェントのフロントエンドの実装に労力を費やさなくて良くなる
+- MCPやA2Aと競合するプロトコルではなく、補完的な関係
+
+## CopilotKitとは
+
+- AIエージェント開発のためのフレームワーク
+- 主にReact向けにUIコンポーネント等を提供している
+- AG-UIのリファレンス実装のような立ち位置
+- フロントエンドアプリケーション内に簡単にAIとのチャットインタフェースを実装できるようなイメージ
+- GitHubリポジトリ: https://github.com/CopilotKit/CopilotKit
+
+## 対応状況
+
+- LangGraph、Mastra、CrewAI、Amazon Bedrock Agent等が対応、もしくは対応予定
+- OpenAI、Anthoropic、Googleの御三家は特に公式な声明は出していないように見える
+
+## 参考
+
+- [知らないと損かも!AG-UIを入門しよう!](https://qiita.com/Syoitu/items/8d58bbf8cb5c2c57837d)
+- [フロントエンドアプリケーションがエージェントに接続する方法を標準化する AG-UI](https://azukiazusa.dev/blog/how-to-standardize-frontend-apps-connecting-to-agents/)
