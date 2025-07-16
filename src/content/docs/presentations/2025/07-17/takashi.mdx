@@ -1,0 +1,50 @@
+---
+title: Figma Dev Mode MCP
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+Figma Dev Mode MCP は、 Figma のデザインファイルから AI エージェントにデザインデータとコンテキストを提供する
+
+## 主な機能
+
+- Figma のフレームやコンポーネントから React などのコードを自動生成
+- コンポーネント、スタイル、変数の一貫性チェック
+- Figma ファイルのコメント読み込みと投稿
+- 変数、コンポーネント、テーマの管理
+- 画像や SVG の自動エクスポート
+
+## Figma MCP の設定
+
+1. Figma デスクトップアプリをインストール
+2. Figma デスクトップアプリからデザインファイルを開く
+3. メニューアイコンから Preferences > Enable Dev Mode MCP Server を選択
+4. MCP クライアントの設定（以下は Cursor の例）
+
+```json
+{
+  "mcpServers": {
+    "Figma": {
+      "url": "http://127.0.0.1:3845/sse"
+    }
+  }
+}
+```
+
+## MCP クライアントに指示を送る
+
+1. Figma デスクトップアプリでフレームやレイヤーを選択
+2. AI エージェントに指示を出す
+
+## 生成された React のコード
+
+- [figma-mcp-test PR #1](https://github.com/takashi0602/figma-mcp-test/pull/1)
+
+## 参考
+
+- [Dev Mode MCP サーバー利用ガイド](https://help.figma.com/hc/ja/articles/32132100833559-Dev-Mode-MCP%E3%82%B5%E3%83%BC%E3%83%90%E3%83%BC%E5%88%A9%E7%94%A8%E3%82%AC%E3%82%A4%E3%83%89)
