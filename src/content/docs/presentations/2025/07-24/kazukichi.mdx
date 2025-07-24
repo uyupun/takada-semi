@@ -1,0 +1,163 @@
+---
+title: Webブラウザから内蔵LLMが使えるようになった
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+- 2025/06/24にGoogle Chrome 138が安定版としてリリース
+- WebブラウザとLLMの連携が強化された
+	- WebブラウザにAI関連のAPIが追加
+	- 内蔵のLLMとしてGemini Nanoも搭載
+
+## 追加されたAPI
+
+- Translator API
+	- テキストの翻訳
+- Language Detector API
+	- テキストの言語の判別
+- Summarizer API
+	- 長文テキストから要約を生成
+
+## Gemini Nanoとは
+
+- ChromeではGemini Nanoが内蔵のLLMとして搭載されている
+- オンデバイス(スマホ等)向けのモデル
+- クラウド無しで動作する
+- モデルのスペックは以下
+	- ※ ブラウザ用にスペックに制限がかけられた状態でのスペック
+	- コンテキストウィンドウは6,144トークン
+	- パラメータ数は40億〜60億程度
+- なお、EdgeではPhi-4-miniが内蔵されている模様
+
+## やってみた
+
+### 検証環境
+
+<ContentImage path="2025/07-17/kazukichi/01.png" width="600" />
+
+### Translator API
+
+- 試しにSF作家のアーサー・C・クラークの名言でいくつか試してみた
+- ラグ無しで翻訳される
+
+#### 日->英翻訳
+
+- ソースコード
+
+```js
+(async () => {
+  const translator = await Translator.create({ sourceLanguage: "ja", targetLanguage: "en" });
+  const res = await translator.translate("可能の限界を見出す唯一の方法は、不可能の世界へ踏み出すことだ。");
+  console.log(res);
+  translator.destroy();
+})();
+```
+
+- 実行結果
+
+```
+The only way to find the limits of the possible is to step into the impossible world.
+```
+
+#### 英->日翻訳
+
+- ソースコード
+
+```js
+(async () => {
+  const translator = await Translator.create({ sourceLanguage: "en", targetLanguage: "ja" });
+  const res = await translator.translate("Any sufficiently advanced technology is indistinguishable from magic.");
+  console.log(res);
+  translator.destroy();
+})();
+```
+
+- 実行結果
+
+```
+十分に高度な技術は、魔法と区別がつきません。
+```
+
+### Language Detector API
+
+- ソースコード
+
+```js
+(async () => {
+  const detector = await LanguageDetector.create();
+  const text = "人類史における最大の悲劇は、道徳が宗教に乗っ取られたことかもしれない。";
+  const results = await detector.detect(text);
+
+  for (const res of results) {
+    const confidencePercent = (res.confidence * 100).toFixed(2);
+    console.log(`detected language: ${res.detectedLanguage}, confidence: ${confidencePercent}%`);
+  }
+
+  detector.destroy();
+})();
+
+```
+
+- 実行結果
+
+```
+detected language: ja, confidence: 99.88%
+detected language: und, confidence: 0.00%
+```
+
+### Summarizer API
+
+- 要約には(長さにもよると思うが)10秒くらいかかった
+
+
+```js
+(async () => {
+  const summarizer = await Summarizer.create({
+    type: "key-points", // 箇条書き
+    format: "plain-text",
+    length: "short"
+  });
+  await summarizer.ready;
+
+  const text = `アーサー・C・クラークは、20世紀を代表するSF作家であり未来学者でもある。
+                彼の代表作『2001年宇宙の旅』は映画としても有名で、科学と哲学を融合させたストーリーテリングが特徴である。
+                また、彼は「十分に発達した科学技術は魔法と見分けがつかない」といった名言でも知られている。`;
+
+  const summary = await summarizer.summarize(text);
+  console.log("summary:", summary);
+
+  summarizer.destroy();
+})();
+```
+
+- 実行結果(成功)
+	- 基本的に日本語を与えても英語に要約される
+    - 部分的に日本語が混ざったりと品質が安定しない
+
+```
+summary: * Arthur C. Clarke was a prominent science fiction author and futurist, known for his works like "2001: A Space Odyssey," which have been adapted for film.
+* Clarke's storytelling style often blends science and philosophy, as seen in his iconic work.
+* He is also famous for his quote, "十分に発達した科学技術は魔法と見分けがつかない."
+```
+
+- 実行結果(失敗)
+	- 品質基準に満たない場合はChromeにブロックされ、エラーが出力される
+
+```
+Uncaught (in promise) NotSupportedError: The model attempted to output text with low quality, and was prevented from doing so.
+```
+
+## 補足情報
+
+- まだ実験的な機能として提供されている
+- 現状、外部のLLMを使用できない
+- 今後の機能拡充や開発者体験向上に期待したい
+
+## 参考
+
+- [「Google Chrome 138」が公開 ～翻訳や要約などのAI APIを搭載、古いAndroid対応は打ち切り](https://forest.watch.impress.co.jp/docs/news/2025519.html)
