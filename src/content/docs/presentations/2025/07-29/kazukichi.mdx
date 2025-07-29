@@ -1,0 +1,121 @@
+---
+title: container-use - AIエージェントにおけるコンテナ技術活用
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- 前回のたかしの話『[Figma Dev Mode MCP](https://uyupun.github.io/takada-semi/presentations/2025/07-24/takashi/)』に引き続きMCPの話
+- MCP自体については以下を参照
+  - [Middle Dive MCP](https://uyupun.github.io/takada-semi/presentations/2025/04-30/kazukichi/)
+  - [MCPサーバの活用と構築](https://uyupun.github.io/takada-semi/presentations/2025/05-07/kazukichi/)
+
+## container-useとは
+
+- Dagger社が開発しているOSS
+	- ソロモン・ハイクスが創設したアメリカのスタートアップ
+  - 現在はDaggerというOSS製品をメインに開発している
+	- ちなみにソロモン・ハイクスはDockerの創設者
+- 複数のAIエージェントが安全に並列動作できるように、隔離された環境を提供する
+- 各AIエージェントが専用のコンテナ環境とGitブランチを利用する仕組み
+- MCPサーバとして起動される
+- GitHub: https://github.com/dagger/container-use
+
+![](https://raw.githubusercontent.com/dagger/container-use/refs/heads/main/docs/images/container-use.png)
+
+## 余談: Daggerとは？
+
+- 過去にむらたさんが紹介していた: [Daggerって知ってる？](https://uyupun.github.io/takada-semi/presentations/2025/04-30/murata/)
+- CI/CDの設定をプログラマブルに記述でき、Dockerコンテナ上で動作させることで、複数のCI/CDを抽象化して扱える
+
+## 環境構築
+
+- container-useのインストール
+  - ※ macOSの場合
+
+```bash
+$ brew install dagger/tap/container-use
+```
+
+- Gitリポジトリの作成
+
+```bash
+$ mkdir container-use-practice
+$ cd container-use-practice
+$ git init
+$ git commit --allow-empty -m "Initial commit"
+```
+
+- container-useの起動
+	- `container-use stdio` コマンドを実行する
+	- 標準入出力で通信される
+	- SSEやStreamable HTTPには現時点で対応していない模様
+  - 今回はRoo Codeで検証したため、以下のような設定となる
+
+```json
+{
+  "mcpServers": {
+    "container-use": {
+      "command": "container-use",
+      "args": [
+        "stdio"
+      ]
+    }
+  }
+}
+```
+
+## 使ってみる
+
+- プロンプト
+	- モデルやコンテキストにもよると思うが、container-useを使用する旨を明記しないと使われなかった
+
+```
+SolidJSを使用し、「hello, world!」を表示するアプリケーションを作成してください。
+なお、開発環境にはcontainer-useを使用してください。
+```
+
+- そこからは適当に承認していれば、AIエージェントから随時、MCPサーバにリクエストが投げられてコンテナ上で機能が開発され、最終的に接続先(ローカルホストのエフェメラルポートが開く)を教えられる
+
+<ContentImage path="2025/07-29/kazukichi/01.png" width="300" />
+
+## ブランチの操作
+
+
+- container-useによって作成されたブランチの確認
+
+```bash
+$ git branch --all
+* main
+  remotes/container-use/welcomed-wildcat
+```
+
+- 以下のコマンドでcontainer-useによるコードの変更をローカルに落とすことができる
+
+```bash
+$ git checkout -b welcomed-wildcat remotes/container-use/welcomed-wildcat
+```
+
+## 環境が不要になったら
+
+- 以下のコマンドで削除できる
+	- AIエージェント越しでうまく実行させられなかったので手動で実行した
+
+```bash
+$ container-use delete welcomed-wildcat
+```
+
+## 感想
+
+- 向いている人
+	- ローカルを汚したくなく、隔離された環境で開発したい人
+	- 隔離された環境で単発のスクリプトを作成してもらい、実行したい人
+	- AIエージェントを複数同時に使うような環境にある人
+- 自分はどうか
+  - ローカルを汚したくないケースが現状、あまりない
+  - AIエージェントを複数同時に動かせるほど使いこなせていない
+  - 正式な採用は見送り
