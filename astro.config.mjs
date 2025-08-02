@@ -32,6 +32,14 @@ export default defineConfig({
 			],
 			head: [
 				{
+					tag: 'link',
+					attrs: {
+						rel: 'icon',
+						href: '/takada-semi/logo_takada_semi.jpeg',
+						type: 'image/jpeg',
+					},
+				},
+				{
 					tag: 'meta',
 					attrs: {
 						property: 'og:type',
@@ -56,7 +64,7 @@ export default defineConfig({
 					tag: 'meta',
 					attrs: {
 						property: 'og:image',
-						content: 'https://uyupun.github.io/takada-semi/logo_uyupun_square.png',
+						content: 'https://uyupun.github.io/takada-semi/logo_takada_semi.jpeg',
 					},
 				},
 				{
