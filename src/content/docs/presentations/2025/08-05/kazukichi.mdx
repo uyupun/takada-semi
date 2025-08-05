@@ -1,0 +1,154 @@
+---
+title: Appleがコンテナ製品を出したらしい
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## その名も「container」
+
+- ググりにくい命名は勘弁してほしい
+- MSもそういう命名しがちだし、大企業病だろこれ
+- macOS上でAppleシリコンに最適化された軽量のLinuxベースのVMを作成・実行できるツール
+- GitHub: https://github.com/apple/container
+- OCI準拠のコンテナイメージを読み込めるため、GHCRやDocker Hubにあるコンテナイメージを活用できる
+- Swift製
+- macOS 26の新機能と拡張機能に依存しているため、macOS 15では実行は可能だが主にネットワーク周りでの動作に制限がある
+
+## 余談: OCIとは
+
+- Open Container Initiativeの略
+- OCI Runtime Spec
+	- コンテナを実行するための標準インタフェースの定義
+	- 高レベルランタイム(containerd等)と低レベルランタイム(runc等)の橋渡し
+- OCI Image Spec ... コンテナイメージの標準フォーマットを定義
+
+## 余談: containerの内部構造
+
+- 高レベルランタイム、低レベルランタイムが全てApple内製っぽい
+- container CLI -> Containerization -> Virtualization.framework という呼び出し関係
+- Virtualization.frameworkはApple が macOS 11 以降に提供している仮想化のフレームワーク
+- Dockerに代表されるコンテナ技術のようなホストOSのカーネルを共有するようなモデルではなく、あくまで軽量の仮想マシンを起動するモデル
+    - ※ macOS版のDocker Desktopもそういうアーキテクチャなので、珍しいわけではない
+
+## 検証環境
+
+- macOS 15.5
+	- ※ macOS 26ではないので機能的に制限あり
+
+<ContentImage path="2025/08-05/kazukichi/01.png" width="400" />
+
+## インストール
+
+- GitHubのreleases上でインストールパッケージが提供されている
+	- ※ 自分でビルドすることも可能
+	- https://github.com/apple/container/releases
+- 今回は現時点で最新版のバージョン0.2.0(2025/6/28リリース)を利用する
+- バージョン確認
+
+```bash
+$ container --version
+container CLI version 0.2.0 (build: release, commit: 3b5c253)
+```
+
+## 使ってみる
+
+- システムの起動
+
+```bash
+$ container system start
+$ container system status
+Verifying apiserver is running...
+apiserver is running
+```
+
+- コンテナイメージのpull
+
+```bash
+$ container image pull docker.io/library/alpine:latest
+```
+
+- コンテナの起動
+	- Alpineを起動してみた
+	- 現状、systemdを使うような複雑なコンテナの起動は難しいらしい
+
+```bash
+$ container run --detach --name my-alpine alpine:latest sleep infinity
+$ container ls
+ID         IMAGE                            OS     ARCH   STATE    ADDR
+my-alpine  docker.io/library/alpine:latest  linux  arm64  running  192.168.64.4
+```
+
+- コンテナのシェルに入る
+
+```bash
+$ container exec --tty --interactive my-alpine sh
+/ # ls
+bin         etc         lib         media       opt         root        sbin        sys         usr
+dev         home        lost+found  mnt         proc        run         srv         tmp         var
+/ # echo hello
+hello
+/ # exit
+```
+
+- コンテナを一時停止
+
+```bash
+$ container stop my-alpine
+$ container ls
+ID  IMAGE  OS  ARCH  STATE  ADDR
+$ container ls --all
+ID         IMAGE                            OS     ARCH   STATE    ADDR
+my-alpine  docker.io/library/alpine:latest  linux  arm64  stopped
+```
+
+- コンテナの削除
+
+```bash
+$ container delete my-alpine
+$ container ls --all
+ID  IMAGE  OS  ARCH  STATE  ADDR
+```
+
+- システムの停止
+
+```bash
+$ container system stop
+$ container system status
+apiserver is not running and not registered with launchd
+```
+
+## おまけ: ContainerUI
+
+- Appleのcontainer向けの非公式のGUI
+	- ※ 現時点で公式のGUIは提供されていない
+- 中国の個人開発者によって開発
+- GitHub: https://github.com/lcandy2/container-ui
+- インストールパッケージは提供されていないので自分でビルドする必要がある
+	- ※ Xcodeが必要
+    - ※ READMEの方法ではビルドできなかったため、以下の手順を参考にしてほしい
+
+```bash
+$ git clone https://github.com/lcandy2/container-ui.git
+$ cd container-ui
+$ touch ContainerUI.xcconfig
+$ open ContainerUI/ContainerUI.xcodeproj
+```
+
+- cmd + Rでビルドを実行すると起動する
+
+<ContentImage path="2025/08-05/kazukichi/02.png" width="800" />
+
+## 感想
+
+- バージョンがまだ0.2.0ということもある他、機能を完全にサポートしているmacOS 26でないこともあり、活用方法が限定的という印象
+- 起動できるコンテナイメージが部分的、エコシステムが成長していない、公式のGUIが存在しない等の課題がある
+- また、コンテナイメージをビルドできなかったり、Dockerfileのような設定ファイルを使う方法がなかったり、Docker Composeのような簡易的なオーケストレーションの仕組みもない
+- Appleシリコンに最適化されているという点はAppleユーザにとって利点だと思うので、今後の進化に期待
+
+## 参考
+
+- [Apple、macOS上でLinuxコンテナを直接実行できる「container」をオープンソースとして公開](https://gihyo.jp/article/2025/06/apple-container)
+- [Appleが公開したMacでOCI準拠のLinuxコンテナを作成/実行できるCLIツール「container」をGUIで管理できるMacアプリ「ContainerUI」がリリース。](https://applech2.com/archives/20250702-containerui-for-apple-container.html)
