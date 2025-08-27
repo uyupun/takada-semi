@@ -1,0 +1,349 @@
+---
+title: 我々が創ってきたもの、そしてこれから
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- これまでに我々([ぅゅ...ぷんぽぷんぽ](https://uyupun.tech/))が制作してきた作品を振り返る(抜粋)
+- 振り返りから過去、大事にしてきた哲学や反省点を改めて掘り起こし、未来に繋げる
+- ハッカソンが近づいている他、最近、また活動が活発化してきているという背景がある
+
+## 過去の作品たち
+
+### Winds Servo [2018]
+
+<ContentImage path="2025/08-27/kazukichi/winds_servo.gif" width="400" />
+
+- 処女作
+- うちわのデジタル化
+- Bluetoothシャッター \<-> ラズパイ \<-> サーボモーター というアーキテクチャ
+- Bluetoothシャッターで方向転換や仰げる他、特定の温湿度を超えると自動で仰ぐ機能付き
+- サーボモーターが重量に耐えられるようにひたすらうちわを軽量化したら、仰がれても全く涼しくない代物ができた
+- 当日の発表はエアコンでキンキンに冷えた部屋で執り行われた
+- 当時の発表スライド: https://speakerdeck.com/uyupun/winds-servo
+- GitHubリポジトリ: https://github.com/uyupun-archive/winds-servo
+
+### Cyme Capsule [2019]
+
+- タイムカプセルのデジタル化
+- Cyme Capsule = Cyber TimeCapsule (なんのひねりもない)
+- 埋める人(Umerer)がタイムカプセルを埋め、掘り出す人(Horidar)がタイムカプセルを取り出すという世界観
+- Umererは現在いる場所の座標に対して、タイムカプセル(実際にはメッセージ)を埋めることができる
+- Horidarは現在いる場所の座標から半径nメートル(忘れた)のタイムカプセルをダウジング機能で探し当てることができる
+- コンセプトはそこそこ面白かったが、インターンやら留学やらでメンバーがカナダ、東京、大阪に分散しており、開発が難航
+- 当時の発表スライド: https://speakerdeck.com/uyupun/cyme-capsule
+- GitHubリポジトリ
+    - https://github.com/uyupun-archive/cyme-capsule-docs
+    - https://github.com/uyupun-archive/cyme-capsule-frontend
+    - https://github.com/uyupun-archive/cyme-capsule-backend
+- 以下は近未来的なミーティング風景
+
+<ContentImage path="2025/08-27/kazukichi/cyme_capsule.png" width="500" />
+
+### Xen [2019]
+
+- 坐禅のデジタル化
+- 坐禅アプリを起動したスマホを頭の上に載せた状態で坐禅を組み、揺れをジャイロセンサーが検知
+- 揺れが閾値を超えると手に取り付けた警策グローブ(に内蔵されているラズパイ)に通知が飛び、電流が流れる
+
+<ContentImage path="2025/08-27/kazukichi/xen_01.png" width="500" />
+
+<ContentImage path="2025/08-27/kazukichi/xen_02.png" width="500" />
+
+<ContentImage path="2025/08-27/kazukichi/xen_03.jpg" width="500" />
+
+- 当時の発表スライド: https://speakerdeck.com/uyupun/xen
+- GitHubリポジトリ
+    - https://github.com/uyupun-archive/xen
+    - https://github.com/uyupun-archive/xen-backend
+
+### Duel [2019]
+
+- 喧嘩仲裁アプリ
+- カードゲーム風のUIで、それぞれのターンに表示される無茶振りに対応しながら和解を目指す
+- 「面白おかしい無茶振り」というアクセントが喧嘩を「真っ当な主張」に引き戻すのでは、という考えから生まれた
+
+<ContentImage path="2025/08-27/kazukichi/duel.png" width="600" />
+
+- 和解に失敗するとパトランプが回る謎オプション付きだった
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/7Ud90A7gBso?si=yiMDkKlJ42t2r3gM" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+- 当時の発表スライド: https://speakerdeck.com/uyupun/duel
+- GitHubリポジトリ
+    - https://github.com/uyupun-archive/duel
+    - https://github.com/uyupun-archive/duel-backend
+
+### Menstagram [2019]
+
+- ラーメンに特化したSNS
+- メンバー全員が狂ったようにラーメンを啜っており、ただならぬ愛を感じて作った
+- ラーメン判定AIが裏側で動作しており、ラーメンではない画像を投稿しようとするとブロックする仕組みになっていた
+- ラーメン判定AIはKerasを使って優秀なモデルに大量のラーメン画像を転移学習させて作った
+- が、悪い先輩達にうどんの画像とか投稿(ハック)されていた
+- 残念ながらスクショが現存していない
+- 当時の発表スライド: https://speakerdeck.com/uyupun/menstagram
+- GitHubリポジトリ
+    - https://github.com/uyupun-archive/menstagram-docs
+    - https://github.com/uyupun-archive/menstagram-web
+    - https://github.com/uyupun-archive/menstagram-api
+    - https://github.com/uyupun-archive/menstagram-ai
+
+### gour.me [2019]
+
+- 二次元グリッド上で「その時の気分」を示すと、それに合致した料理(というか店)をレコメンドしてくれるサービス
+- CSSゴリ押しでスマホ/PC両対応の二次元グリッドを描画したのは良い思い出(絶対にそういうライブラリがあった)
+
+<ContentImage path="2025/08-27/kazukichi/gour_me.png" width="600" />
+
+- 当時の発表スライド: https://speakerdeck.com/uyupun/gour-dot-me
+- GitHubリポジトリ: https://github.com/uyupun-archive/gour-me
+
+### SOCIAL RESISTANCE [2020]
+
+- Nintendo Switchのアソビ大全にも収録された『ウサギと猟犬』から着想を得た
+- 当時、コロナ禍だったため、うさぎがウイルスから逃げ惑うゲーム(≒ ソーシャルディスタンス)として仕上げた
+
+<ContentImage path="2025/08-27/kazukichi/social_resistance.png" width="600" />
+
+- ウイルスとうさぎの2プレイヤーによるゲームで、前のターンに選択した単語との関係性(ベクトル値)によって移動距離・方向が変わるという奇怪なゲーム(ゲームとして成立しているのかといわれると微妙なライン)
+- 単語のベクトル値算出にはword2vecの技術を用いており、Text8コーパスをJanomeで形態素解析 -> 取り出した名詞をgensimでベクトル値に変換 -> scikit-learnで主成分分析、ということをやっていた
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/fWtINMBnVYs?si=9Wp_rPGHif98q_hj" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+- 当時の発表スライド: https://speakerdeck.com/uyupun/social-resistance
+- GitHubリポジトリ
+    - https://github.com/uyupun-archive/social-resistance-docs
+    - https://github.com/uyupun-archive/social-resistance
+    - https://github.com/uyupun-archive/mitsu
+
+### Pripla [2020]
+
+- 当時、開発メンバーがマッチングアプリにハマっていたが、デートプランを毎回考えるのが面倒だった
+- そこから着想を得て、デートプランをフローチャートにして共有できるプラットフォームを作ろうという話になった
+- ちなみにPriplaは"Princess & Prince date planning service"の略称で無駄に洒落ている
+- フローチャートのデータ構造はTreeModelを使って表現し、描画はCSSはゴリ押しした
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/UvOajAmvPSw?si=jFhl0TTIeZkzqJhx" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+- 当時の発表スライド: https://speakerdeck.com/uyupun/pripla
+- GitHubリポジトリ: https://github.com/uyupun-archive/pripla
+
+### Shaker [2020]
+
+- 筋トレをちょっと楽しくできるアプリ
+- アプリを起動し、プロテインシェイカーにスマホを貼り付け、そのままシェイクすると「癒やしポイント」が得られる
+- ポイントを使うとスマホが振動し、マッサージ機となり、筋トレで疲れた身体を癒やすことができる
+
+<ContentImage path="2025/08-27/kazukichi/shaker.png" width="500" />
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/-NMrECdQD-s?si=fqTFTix5h2r1mhA0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+- 当時の発表スライド: https://speakerdeck.com/uyupun/shaker
+- GitHubリポジトリ
+    - https://github.com/uyupun-archive/shaker-frontend
+    - https://github.com/uyupun-archive/shaker-backend
+
+### Smapets [2020]
+
+- スマホでペットを飼えるアプリ
+- 鳴き声やスマホの振動、放っていたら死ぬ等の機能により、ペットの存在を感じられる作りになっていた
+- それにしてもしょぼい
+- 発表用にHPを短めに設定していたら、ペットが大量死するという笑えない事態に
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/id3A3JVwBF8?si=dtWjdS-L7T22VPgi" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+- 当時の発表スライド: https://speakerdeck.com/uyupun/smapets
+- GitHubリポジトリ: https://github.com/uyupun-archive/smapets
+
+### Yonks! [2021]
+
+- アプリ上のステータスを「人肌恋しい」に設定していると、同じステータスの友だちと自動でマッチングされるサービス
+
+<ContentImage path="2025/08-27/kazukichi/yonks.png" width="600" />
+
+- 当時の発表スライド: https://speakerdeck.com/uyupun/yonks
+- GitHubリポジトリ
+    - https://github.com/uyupun-archive/yonks
+    - https://github.com/uyupun-archive/yonks-api
+    - https://github.com/uyupun-archive/yonks-ai
+
+### SAUNIL [2022]
+
+- 物理的なサウナがnilになる(いらなくなる)というところから名付けられた作品
+- 首にペルチェ素子を巻き付け、アロマディフューザーとドライヤーを吹き付けることで、どこでもサウナができるようになるのでは、という試みだった
+
+<ContentImage path="2025/08-27/kazukichi/saunil_01.jpg" width="600" />
+
+<ContentImage path="2025/08-27/kazukichi/saunil_02.jpg" width="600" />
+
+- 当時の発表スライド: https://speakerdeck.com/uyupun/saunil
+- GitHubリポジトリ: https://github.com/uyupun-archive/saunil
+
+### Don't cunning! Think. [2023]
+
+- 新時代のウォーキングアプリ
+- アプリから「答えの無い哲学的な問い」を与えられ、それについて考えながらウォーキングができるというアプリ
+- 歩いているときに物事を考えると捗るらしい、という言説から着想を得た
+- 歩数に応じてEthereum ERC-20準拠の独自トークンである"Cunning Token (CNG)"を貰うことができ、それを使うことで他のユーザの回答を「カンニング」できるようなインセンティブ設計となっている
+
+<ContentImage path="2025/08-27/kazukichi/dct.png" width="700" />
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/r8zASKpD8nk?si=NuLuLz_8RU_5ASo4" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+- 当時の発表スライド: https://speakerdeck.com/uyupun/dont-cunning-think
+- GitHubリポジトリ
+    - https://github.com/uyupun-archive/dct-app
+    - https://github.com/uyupun-archive/dct-api
+    - https://github.com/uyupun-archive/dct-cng-token-issuer
+
+### 堪忍袋チクチクチクンレース [2023]
+
+- 堪忍袋の緒が切れない程度には他人をチクチクしてみたい...という、あるのかないのかよく分からない需要を満たすための作品
+- チャットアプリの要領で相手にチクチク言葉を投げ、言葉のチクチク度を数値化
+- チクチク度に応じて針が風船を突付き、割ってしまったら負け
+
+<ContentImage path="2025/08-27/kazukichi/kcc_race_01.png" width="600" />
+
+<ContentImage path="2025/08-27/kazukichi/kcc_race_02.jpg" width="600" />
+
+- 当時の発表スライド: https://speakerdeck.com/uyupun/kan-ren-dai-tikutikutikunresu
+- GitHubリポジトリ
+    - https://github.com/uyupun-archive/kcc_race_client
+    - https://github.com/uyupun-archive/kcc-race-game-server
+    - https://github.com/uyupun-archive/kcc-race-text-evaluator
+
+### Qiboard [2023]
+
+- 曲げセンサーを取り付けたグローブを手に取り付け、空中で打鍵することで音楽が演奏できるという新たな楽器
+- 「視えない。だが確かにそこにある鍵盤。」というキャッチコピーだった
+- 結局、ブレッドボード上にプロトタイプを実装した時点で開発が停止している
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/sUQb0D3RGFU?si=vLdJZxc4IPhp-95A" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/qPQaT1kPgW8?si=MLkyLdsKh_HWhY_7" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+- 当時の発表スライド: https://speakerdeck.com/uyupun/qiboard
+- GitHubリポジトリ: https://github.com/uyupun/qiboard
+
+### ハートフルランナー聖(コウキ) [2024]
+
+- インターネットが普及し、オンラインで気軽にメッセージを届けられるようになった時代に一石を投じるアプリ
+- 送信者から受信者までの間を聖火リレーの如く走り、汗水流してバトン(メッセージ)を繋ぎながら届けるというコンセプト
+- 本当はNFCを使ってメッセージを繋いでいきたかったけど、QRコードで妥協した
+
+<ContentImage path="2025/08-27/kazukichi/heartful_runner_koki.png" width="700" />
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/4msYwyEu2Ag?si=FBglxFfYP62O66XL" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+- 当時の発表スライド: https://speakerdeck.com/uyupun/hatohururannasheng-kouki
+- GitHubリポジトリ
+    - https://github.com/uyupun-archive/heartful_runner_koki_app
+    - https://github.com/uyupun-archive/heartful-runner-koki-api
+
+### Smahorn [2024]
+
+- ハンドベルのデジタル化
+- スマホアプリからNFCタグを読み込むとハンドベルの音が鳴るシステム
+- 気軽に合奏できて楽しそうという話から生まれた
+
+<ContentImage path="2025/08-27/kazukichi/smahorn.png" width="600" />
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/d681Em7FTSc?si=jHuZR6jvrTd0B1OT" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+- 当時の発表スライド: https://speakerdeck.com/uyupun/smahorn
+- GitHubリポジトリ: https://github.com/uyupun-archive/smahorn
+
+## 根底に流れる思想性・哲学性
+
+### 遊びという無駄な営み
+
+- 「遊び」という「無駄だけど最も人間らしい営み」を作品に封じ込めている
+- これが最も中核となる軸
+- デジタルというポジションの中から非生産性、非合理性、不完全性の肯定を主張する
+
+### ユーモアとアイロニー
+
+- 根底では前提や慣習を疑いつつも、それを風刺的に面白いフォーマットとしてパッケージング
+- 見かけは面白いが、どこか皮肉が効いていて、人間性を抉る仕掛けになっている
+- 特に最近の作品で傾向が強い
+    - SOCIAL RESISTANCE ... コロナ禍という社会情勢をゲーム化
+    - Don't cunning! Think. ... カンニングという問題をある種、肯定的に捉える
+    - 堪忍袋チクチクチクンレース ... 「人を怒らせる」というネガティブな題材の取り扱い
+    - ハートフルランナー聖 ... インターネット全盛期のメッセージングの手軽さに対する批判をあえてデジタルの中から行う
+
+### 現実世界のデジタル化
+
+- 古くから日常に溶け込んでいるモノ・行為・考え・概念・存在等のデジタル化
+- 遊びを作るための手段・道具としてのテクノロジー
+- 特に初期はこの傾向が強かった
+    - Winds Servo ... うちわのデジタル化
+    - Cyme Capsule ... タイムカプセルのデジタル化
+    - Xen ... 坐禅のデジタル化
+    - Smapets ... ペットのデジタル化
+    - SAUNIL ... サウナのデジタル化
+
+### 感覚の刺激
+
+- 多様なセンサーとアクチュエータによる刺激的なHCI
+- 遊びの愉しみを最大化するインタフェース
+- センサー
+    - Winds Servo ... Bluetooth
+    - Cyme Capsule ... GPS
+    - Xen ... ジャイロセンサー
+    - Shaker ... ジャイロセンサー
+    - SAUNIL ... ジャイロセンサー
+    - Don't cunning! Think. ... ジャイロセンサー、加速度センサー
+    - Qiboard ... 曲げセンサー
+    - ハートフルランナー聖 ... QRコード
+    - Smahorn ... NFC
+- アクチュエーター
+    - Winds Servo ... サーボモーターによる風
+    - Xen ... 電流
+    - Smapets ... 音、バイブレーション
+    - SAUNIL ... ペルチェ素子、アロマディフューザー、ドライヤー
+    - 堪忍袋チクチクチクンレース ... サーボモーターによる音
+    - Smahorn ... 音
+
+### 身体性の重要視
+
+- 物理空間に物理的な人間が存在するということ
+- これも遊びの愉しみを最大化する仕掛け
+- 例
+    - Cyme Capsule ... タイムカプセル自体はデジタル化するが、探索は現実世界
+    - ハートフルランナー聖 ... メッセージを届けるために現実世界で走る必要がある
+
+### 共同体としての人間
+
+- 人と人の関わり、すなわち共同体としての人間
+- 遊びとは他者との関わりによって成立するという考え
+- 例
+    - Cyme Capsule ... メッセージを埋める人と掘り出す人
+    - Pripla ... デートプランという知の共有
+    - Yonks! ... 寂しい人同士を結びつける
+    - ハートフルランナー聖 ... みんなでメッセージを届ける
+    - Smahorn ... みんなで手軽に合奏ができる
+
+### まとめ
+
+<ContentImage path="2025/08-27/kazukichi/conclusion.png" width="700" />
+
+- テクノロジーによって刺激的かつ根源的な遊びを実現する
+- アイロニーによって遊びが課題を提起する
+
+## 反省点とこれから
+
+- 「遊び」という「無駄だけど最も人間らしい営み」 -> ポストAI時代にも残る大事な視点
+- あくまで、社会課題を解決する課題解決的な「製品」ではなく、社会課題を映し出す問題提起的な「芸術」という方向性で良いのでは
+- 面白さや刺激によってアテンションを集め、じっくりと読み解くと社会課題が映し出されるような鏡としての実験装置
+- 単なる、すでに存在するモノのデジタル化ではなく、新しい組み合わせによるデジタル化(ジェームス・W・ヤング的なアイデア創出)
+- なんとなく技術が面白そう、刺激があって面白そう、ではなく、根底にストーリーを組み込みたい
+- とはいえ、ストーリーを中核に据えるとしたら技術やインタラクションは意識しなくても扱えるような「名巧」になっておきたい
+- 社会課題の意識、アートステートメントの確立は不完全なので、このゼミ等を通して深めていきたいところ
+- 作品で扱う課題はできる限り当事者意識の持てる「自分ごと」でないと情熱を注げない
+- プロセス的、技術的な反省については別の記事で行う予定
