@@ -1,0 +1,33 @@
+---
+title: Simple Design System
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+Simple Design System(SDS) は Figma が提供する、基本的なデザインシステムを構築するための Figma のベストプラクティスを網羅した UI キットです。
+また、 GitHub には UI キットと紐づけられた React プロジェクトも提供されています。
+そのため、あらかじめ用意されたサンプルやコンポーネントなどを用いて、素早く開発に取り組めます。
+
+## 主な特徴
+
+- シンプルなデザインが構成されており、タイポグラフィやカラーパレット、スペーシングなどデザインシステムがすでに揃っている
+- Variables によってライトモードとダークモードのスタイルが定義されている
+- Code Connect によって、コードとデザインが紐づけられている
+- React プロジェクトには Storybook が導入されており、コンポーネントをカタログとして閲覧できる
+
+## 個人的感想
+
+- プロジェクトに導入せずとも、とても参考になる
+  - デザインシステムが整備されていたり、基本的な Auto Layout やレイヤー構造など参考になるものばかり
+- プロジェクトに導入する場合は社内プロダクトなど、ブランドイメージなどに左右されないプロダクトに導入するのが良さそう
+  - ブランドイメージなどによってデザインの改修が大きい場合、 Code Connect などが負債となってしまう恐れがある
+
+## 参考
+
+- [https://www.figma.com/community/file/1380235722331273046](https://www.figma.com/community/file/1380235722331273046)
+- [https://github.com/figma/sds](https://github.com/figma/sds)
