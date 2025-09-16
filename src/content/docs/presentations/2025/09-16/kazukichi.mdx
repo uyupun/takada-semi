@@ -1,0 +1,65 @@
+---
+title: Astro + Cloudflare Pages構成を試してみた感想とか
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+- Astro + Cloudflare Pages構成で我々のチーム「ぅゅ...ぷんぽぷんぽ」のホームページを作成したという話をします
+
+## 抱える課題
+
+- これまで、以下のリポジトリで断続的に開発はしていた
+	- https://github.com/uyupun/official
+- コントリビューターがほぼ1人かつ、日中は働いており、ページ数やデザインの量もそれなりに多いということで思うように進まなかった
+	- 現代のサグラダ・ファミリアあるいはレベルファイブ
+
+<ContentImage path="2025/09-16/kazukichi/01.png" width="700" />
+
+- 他にも、「uyupun.tech」というドメインを長らく保持しており、時々、サブドメインを切って使ったりはしていたが、継続的な活用はほぼできていなかった
+
+## ではどうするか
+
+- 当時はなかった強力なAIエージェントのパワーを借りて、とりあえず見るに耐えるホームページを一時的なものとして作る
+- リポジトリは新たに作成し、なるべく労力をかけないように(≒ Vibe Coding)作る
+- 制作したホームページに対して長年、有効活用できていないドメインを割り当てる
+
+## 技術選定(Webフロントエンド)
+
+- Astro
+- 軽量かつ高速な静的サイトの構築に優れている
+- [高田ゼミ](https://uyupun.github.io/takada-semi/) でもAstroを活用しているのでなんとなく使い勝手が想像できる
+- シンプルに開発できる
+- JSXが書ける
+- Tailwind CSSとの統合もされている
+- Cloudflareとの相性も良い
+
+## 技術選定(ホスティング先)
+
+- Cloudflare Pages
+- ドメインをすでにCloudflareで管理していた
+- 独自ドメインを設定しても実質的に無料で利用できる
+- チーム内にもある程度、知見がある
+	- むらたさんの記事: [ClaudeCode と Claude4Opus だけでで Cloudflare Pages 上にプロフィールページ作ってみた](https://uyupun.github.io/takada-semi/presentations/2025/07-07/murata/)
+- デプロイが簡単
+- Astroと相性が良い
+- ちなみにCloudflareはWorkersを推しているが今回は静的サイトなのでPagesで問題なしという認識
+
+## 開発者体験
+
+- Cloudflare Pagesが優秀
+- mainブランチへの変更を検知して自動でデプロイしてくれるのでCIの設定を書かなくて良い
+- コミット毎、PR毎に別途、検証用のページがデプロイされるのも良い
+- 独自ドメインの設定も比較的簡単
+- 今回は静的サイトなのでAstroに `@astrojs/cloudflare` を入れる必要もなかった
+- エッジで配信されてる + Astro自体の軽量・高速性も相まって表示が速い
+- これで無料...?
+
+## 成果物
+
+- GitHub: https://github.com/uyupun/tmp-official
+- デプロイ先: https://uyupun.tech/
