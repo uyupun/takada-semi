@@ -1,0 +1,116 @@
+---
+title: ハッカソンの技術選定 [Flutter編]
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- 前々回、『[ハッカソンの技術選定 [デザイン・フロントエンド編]](https://uyupun.github.io/takada-semi/presentations/2025/09-16/takashi/)』でデザイン・フロントエンドの技術選定について共有した
+- 今回はフロントエンドの技術選定で挙げた Flutter について共有する
+
+## Flutter とは
+
+[Flutter](https://flutter.dev/) は Google が開発したフレームワークで、クロスプラットフォーム開発ができる。現在は Android、iOS、Web、Windows、macOS、Linux のアプリを作成できる。また、[Flutter Casual Games Toolkit](https://flutter.dev/games) を利用してゲーム開発もできる。
+
+## Flutter の特徴
+
+- クロスプラットフォーム開発ができる
+- ネイティブコードの拡張がしやすい
+- ホットリロードが利用可能
+  - 3.32 では Web でのホットリロードが利用可能になった
+- 豊富なウィジェットが提供されている
+  - Material Design や Cupertino デザインのウィジェットを標準提供しており、標準のウィジェットで様々なデザインを作成することができる
+  - ウィジェットを組み合わせて、独自のウィジェットを作成することが容易にできる
+- UI の一貫性が保たれる
+  - デバイスごとに異なる挙動や UI 差異を抑えやすい
+
+## Flutter の環境構築
+
+### FVM
+
+- Flutter のバージョン管理を行うためのツール
+- 以下は [公式の Quick Start](https://fvm.app/documentation/getting-started#quick-start)
+
+```bash
+# Install FVM
+brew tap leoafarias/fvm
+brew install fvm
+
+# Set Flutter version for a project
+cd my_project
+fvm use 3.19.0
+
+# Run Flutter commands
+fvm flutter doctor
+```
+
+### 主なコマンド
+
+```bash
+# 開発環境のチェックツール
+fvm flutter doctor
+
+# プロジェクトの作成
+fvm flutter create my_project
+
+# プロジェクトの実行
+fvm flutter run
+
+# プロジェクトのビルド
+fvm flutter build
+```
+
+## ハッカソンでの利用
+
+ハッカソンでは主に以下のパッケージを使用して開発を行う
+
+### API リクエスト
+
+- [http](https://pub.dev/packages/http)
+  - API リクエストを行うためのパッケージ
+  - [dio](https://pub.dev/packages/dio) と比較して、コード量が少なく、シンプルに利用できる
+
+### 状態管理
+
+- [flutter_hooks](https://pub.dev/packages/flutter_hooks)
+  - React Hooks のような感覚で使用できる
+  - ローカルな状態管理を行う
+- [Riverpod](https://pub.dev/packages/riverpod)
+  - グローバルな状態管理を行うためのパッケージ
+  - コンポーネントを横断するような場合に利用する
+
+### モデル作成
+
+- [Freezed](https://pub.dev/packages/freezed)
+  - モデルを作成するためのパッケージ
+  - 少ないコード量で、fromJson や toJson などを自動で生成してくれる
+
+### ストレージ
+
+- [Shared Preferences](https://pub.dev/packages/shared_preferences)
+  - 漏れても問題ないデータを保存する
+  - 例えばテーマの設定など
+- [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage)
+  - 漏れては困るデータを保存する
+  - 暗号化されて保存されるため、アクセストークンなどを保存する場合に利用する
+
+### アプリアイコン
+
+- [Flutter Launcher Icons](https://pub.dev/packages/flutter_launcher_icons)
+  - アプリのアイコンを設定するためのパッケージ
+
+### スプラッシュ画面
+
+- [flutter_native_splash](https://pub.dev/packages/flutter_native_splash)
+  - スプラッシュ画面（アプリを起動したときに表示される画面）を設定するためのパッケージ
+
+## ハッカソンで利用しない
+
+- [Firebase](https://firebase.google.com/) 関連のパッケージ
+  - ハッカソンでは API を独自で作成することが多いため、Firebase の特にストレージ系は利用する必要がない
+  - Firebase を利用するための準備が大変
+  - ただし、プッシュ通知などを実装する場合は利用を検討する
