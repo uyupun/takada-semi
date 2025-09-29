@@ -1,0 +1,92 @@
+---
+title: 続・ハッカソンの技術選定 [ハードウェア編]
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- 前回『[ハッカソンの技術選定 [ハードウェア編]](https://uyupun.github.io/takada-semi/presentations/2025/09-24/kazukichi/)』において、ハードウェア周りの技術選定を行った
+- しかし、その時点では実機でまだ検証できていない段階だったため、いくつか選定や理解に誤りがあり、また、周辺機器等の技術選定もあまりできていなかった
+- 今回はいくつかのセンサとアクチュエータを実際に検証した上での技術選定の結果について共有する
+
+## M5Stackの開発環境
+
+- 前回の時点ではMicroPythonを主に使用し、それでも対応しきれない部分はC++で開発すると言っていた
+- MicroPython環境を提供するファームウェアではセンサやアクチュエータに簡単にアクセスするAPIが用意されていなかった(後から追加もできない)
+- MicroPythonをベースに構築されたUIFlowのファームウェアではUIコンポーネントは強化されているが、それ以外は同様だった
+- 基本的にC++で開発し、PlatformIOというツール(CUI)でプロジェクト作成・ライブラリ追加・ビルド・書き込みを行うよう方向転換した
+- C++の場合は豊富なAPI(M5Stack公式のAPIが無くても、Adafruitが用意しているケースが多い)が利用できる他、CUIベースの開発ができ、Git管理もしやすく快適
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/BaIr2VBSAwc?si=MxZRGDW81Z_2Wa45" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## センサのハードウェア選定
+
+- M5Stack CoreS3にはかなりの種類のセンサが内蔵されている
+- e.g. カメラ、加速度センサ、ジャイロセンサ、磁気センサ、照度センサ、近接センサ、マイク
+- そのため、内蔵のセンサでは補いきれない部分を外部接続するユニットでカバーすることにした
+- なお、M5Stackの扱いに慣れていないこともあるので、今回はM5Stack公式が用意しているユニットかつ、ある程度メジャーな指標が取れるセンサに絞っている
+- 今回、用意したセンサ
+    - ENV III Unit
+        - 温湿度、気圧センサ
+    - Color Sensor RGB Unit
+        - カラーセンサ
+    - ToF Ranging Unit
+        - 比較的、精度の高い距離センサ
+    - TMOS PIR Unit(STHS34PF80)
+        - 人感センサ
+    - Mini TVOC/eCO2 Gas Unit
+        - 有機化合物、二酸化炭素センサ
+
+## アクチュエータのハードウェア選定
+
+- M5Stack本体には実質的にアクチュエータは存在しない
+- ※ モニタやスピーカーといった出力は存在している
+- 今回はM5Stack公式が用意しているユニットかつ、直感的に面白そうなアクチュエータを選定
+- 今回、用意したアクチュエータ
+    - Fan Unit
+        - 外部電源不要の小型ファン
+    - Vibration Motor Unit
+        - 外部電源不要の振動モータ
+    - 8Servos UNIT(STM32F030)
+        - 最大8つのサーボモータを接続可能なユニット
+        - サーボモータは別途用意する必要がある
+        - SG90で動作確認済み
+    - Watering Unit
+        - 水を供給できるアクチュエータ
+        - 流体を制御してみたくて選定
+        - 意外と外部電源不要で動作する
+        - 土壌水分センサもバンドルされている模様
+
+## 複数のユニットを動作させたいケース
+
+- M5Stack公式のユニットは通信プロトコルにI2C、ケーブルにGroveを使うPort.Aと呼ばれるポートを使うことが一般的
+- しかし、M5Stack一台につき、Port.Aは一つしか存在しないため、複数のユニットを接続したい場合には何らかの方法でポートを拡張する必要がある
+- ポートを3つ以上に拡張できる以下のユニットが有力(未検証)
+    - [1 to 3 HUB Expansion Unit](https://shop.m5stack.com/products/mini-hub-module)
+    - [I2C Hub 1 to 6 Expansion Unit v2.1 with DIP Switch (PCA9548A)](https://shop.m5stack.com/products/i2c-hub-1-to-6-expansion-unit-v2-1-with-dip-switch-pca9548a)
+- 他にもPort.BやPort.Cを拡張するハブや、M-Busを引き出すモジュールも用意されている模様
+
+## 外部電源が必要なケース
+
+- サーボモータ等のアクチュエータを動作させるユニットの場合、M5Stack本体からの給電とは別に電源を用意する必要があることがある
+- 外部電源をモバイルバッテリーとし、ブレークアウト基板で5VとGNDのみ引き出し、それをユニットに接続するという取り回しにした
+- ちなみにユニット側の外部電源の引き込み口のインタフェースはターミナルブロックになっているケースが多い
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/d71RPUCu6rU?si=MEfCJ-tz9f_szojN" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## アプリとの連携方法
+
+- 前回はM5Stack上でWebサーバを立て、フロントエンドやバックエンドからAPIを叩いてもらうというモデルを考えていた
+- しかし、実装が複雑になりそうな他、LANを超えるために工夫が必要
+- M5Stackからバックエンドにポーリングし、トリガとなるデータがあれば処理、のようなモデルのほうが良さそう
+
+## おわりに
+
+- 結構、入念に調査したつもりだったが、実際にやってみると上手くいかないというケースが多く、手戻りが発生することが多かったので反省
+- しばらくはセンサとアクチュエータの検証に専念し、M5Stackの理解度を上げていく
+- 検証コードはGitHubの [tyokinuhata/m5stack-cores3-practice](https://github.com/tyokinuhata/m5stack-cores3-practice) に置いている
+- 検証動画についても随時、 [うゆぷんラヂオ](https://www.youtube.com/@%E3%81%86%E3%82%86%E3%81%B7%E3%82%93%E3%83%A9%E3%83%82%E3%82%AA/videos) にアップロード中
