@@ -1,0 +1,100 @@
+---
+title: 続・ハッカソンの技術選定 [Flutter編]
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- 前回、『[ハッカソンの技術選定 [Flutter編]](https://uyupun.github.io/takada-semi/presentations/2025/09-29/takashi/)』で Flutter について共有した
+- 今回はハッカソンで使用するプロジェクトの構成やパッケージについて共有する
+
+## プロジェクトの構成
+
+```text
+lib/
+├── constants/ # 定数を管理するディレクトリ ex: api_endpoint.dart
+├── features/ # 機能を管理するディレクトリ ex: features/auth/
+├── pages/ # ページを管理するディレクトリ ex: home_page.dart
+├── storages/ # ストレージを管理するディレクトリ ex: secure_storage.dart
+├── utils/ # ユーティリティを管理するディレクトリ ex: api_request.dart
+├── main.dart # アプリのエントリーポイント
+└── router.dart # ルーティングを管理するファイル
+```
+
+### コード生成
+
+- [build_runner](https://pub.dev/packages/build_runner) を使用して、コードを生成する
+  - コマンドは `flutter pub run build_runner build -d` を使用する
+  - `flutter pub run build_runner watch -d` とすると、コードが変更されたら自動でコードを生成する
+
+### 環境変数
+
+- [flutter_dotenv](https://pub.dev/packages/flutter_dotenv) を使用して環境変数を管理する
+  - `.env.example` をコピーして `.env` を作成し、環境変数を設定する
+
+### 証明書管理
+
+- 証明書は [fastlane match](https://docs.fastlane.tools/actions/match/) を使用して管理する
+  - fastlane とは iOS と Android のビルドなどを自動化するためのツール
+  - fastlane match は証明書の管理やプロビジョニングプロファイルの管理、アプリの配布などに特化したツール
+  - `ios/fastlane/Fastfile` に記載した lane を実行して、証明書の管理・配布を行う
+  - 以下の lane を用意した
+    - `recreate`: 証明書を再作成する
+    - `sync_certificates`: 証明書を同期する
+
+### ルーティング
+
+- ルーティングは [go_router](https://pub.dev/packages/go_router) を使用している
+  - `lib/router.dart` ですべてのページのルーティングを管理している
+  - 使用する際は以下のような使い分けを意識する
+    - `context.go`: 現在のナビゲーションスタックを置き換えて指定したルートに遷移（前の画面には戻れない）
+    - `context.push`: 現在のスタックに新しいルートを追加して遷移（前の画面には戻れる）
+
+## パッケージ
+
+### センサー系
+
+- [sensors_plus](https://pub.dev/packages/sensors_plus)
+  - センサー類を使用するためのパッケージ
+  - 以下のセンサーが使用可能
+    - 加速度
+    - ジャイロ
+    - 地磁気
+    - 気圧
+- [flutter_compass](https://pub.dev/packages/flutter_compass)
+  - 方位を取得できるパッケージ
+  - 以下のセンサーが内部で使用されている
+    - 加速度
+    - ジャイロ
+    - 地磁気
+    - （部分的に）位置情報
+- [shake](https://pub.dev/packages/shake)
+  - 振動を検出するためのパッケージ
+  - 加速度センサーが内部で使用されている
+- [ambient_light](https://pub.dev/packages/ambient_light)
+  - 環境光センサーを使用するためのパッケージ
+- [proximity_sensor](https://pub.dev/packages/proximity_sensor)
+  - 近接センサーを使用するためのパッケージ
+- [arkit_plugin](https://pub.dev/packages/arkit_plugin)
+  - ARKit を使用するためのパッケージ
+  - LiDAR センサーが扱える
+
+### NFC
+
+- [nfc_manager](https://pub.dev/packages/nfc_manager)
+  - NFC の読み書きを行うためのパッケージ
+  - タグの種類ごとのアクセスに対応
+
+### スキャナー
+
+- [mobile_scanner](https://pub.dev/packages/mobile_scanner)
+  - カメラを使用してバーコードや QR コードをスキャンするためのパッケージ
+
+### 位置情報
+
+- [geolocator](https://pub.dev/packages/geolocator)
+  - 位置情報を取得するためのパッケージ
