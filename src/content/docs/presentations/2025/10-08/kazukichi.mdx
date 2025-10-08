@@ -1,0 +1,189 @@
+---
+title: 真・ハッカソンの技術選定 [ハードウェア編]
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- 前回の [続・ハッカソンの技術選定 [ハードウェア編]](https://uyupun.github.io/takada-semi/presentations/2025/09-29/kazukichi/) において、技術選定の方針自体はほぼ固まっていた
+- 今回はM5Stackの個別のユニット(センサ、アクチュエータ)を検証する中で分かったこと等を備忘録的にまとめていく
+
+## 内蔵
+
+### 加速度センサ
+
+- 本来は加速度を計測するセンサだが、地球の重力加速度を用いることによって傾きを捉えることができる
+- 逆三角関数(アークタンジェント)を使って比から角度を求めた
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/BU_l8gfE43Q?si=k087NXBAjf7byOLo" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### ジャイロセンサ
+
+- 角速度を計測するセンサ
+- センサの誤差を減らすためにキャリブレーション(バイアス補正)が必要
+- 角度は角速度を積分して求められるが、その際にドリフトという誤差が積み重なる現象が起きてしまうため、そのあたりの補正が必要
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/Ug68g0D5Qjc?si=Lk1ParjcL9GNf7JZ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### 磁気センサ
+
+- 地磁気は数十μTだが、近くに家電等が存在すると平気に数百μTの誤差が出るため、そのままでは使いものにならない
+- フュージョンライブラリを使って加速度センサやジャイロセンサの値と統合して扱ったり、補正したりすることが重要
+- あまりにも面倒なため、今回は検証していない
+
+### 近接センサ
+
+- 赤外線反射式の近接センサ
+- 「近づいたかどうか」を取得するのは得意だが、「どれくらい近いか」を判定するのは苦手
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/ybnZFCjgu_A?si=jyXTIUAXrAcbD_E_" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### 照度センサ
+
+- 光の強さを取得できるセンサ
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/Dk7MgacaM80?si=CL0Ll_BwBcwweR8Q" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### カメラ
+
+- 意図せずエモい感じの色味になったので活用していきたい
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/SyFvYJrbjio?si=fqz6P99NkARB2LRC" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### マイク
+
+- 今回は音程ではなく音量を表示してみた
+- データがPCM(Pulse Code Modulation、パルス符号変調)で符号化されたほぼ生の状態で渡されるため、とにかく加工が面倒
+- RMS(Root Mean Square、二乗平均平方根)に変換 -> dBFSに変換 -> EMA(Exponential Moving Average、指数移動平均)を用いた平準化
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/AjjBVXWOvSQ?si=KQFOhImDhHsNTDMB" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### スピーカー
+
+- 割とパワーのある音が出せる
+- 音の波を急に切るとクリックノイズが入ってしまうので、綺麗に鳴らしたいなら、そのあたりを滑らかにする制御が必要
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/GjnjKa9DM30?si=jsRfpBVcF0C2uGG9" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### タッチパネル
+
+- C++でリッチなUIを作ろうと思うと大変だと思うが、タッチを検知して何かを表示する程度の制御なら割と楽に行える
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/V0hwtf_Zfkc?si=PH8at64nZdeOUYAR" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### RTC
+
+- Real-Time Clock
+- 時計みたいなもの
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/5DTkEhHh8NU?si=C7t9m6OPsoIeoVXV" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## 外部センサ
+
+### I2Cアドレス
+
+- 外部センサはM5StackのPort.Aを使用し、I2Cで通信するケースが大半
+- センサ毎にI2Cアドレスが異なり、このアドレスの手違いで動作しないトラブルが頻発したため、接続されているI2Cアドレスを一覧化できるスクリプトを作成
+- ちなみにSDA(データの送受信)にはGPIO2、SCL(クロック信号)にはGPIO1を使用するのが一般的
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/VKHPy59G_ho?si=yuuwyItcwPB9vP4A" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### 気温センサ
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/LoAgK74q_PA?si=H37TISZtvEULuUg2" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### 湿度センサ
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/NlX6X8_Vedg?si=ZYyXO1CN3YHFIF2A" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### 気圧センサ
+
+- Paで取得されるのでhPaへの変換が必要
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/nwfzLlSiqVU?si=9yHbKS9ujFQhBLQ4" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### 測距センサ
+
+- ToF(Time of Flight、飛行時間方式)の測距センサ
+- 近接センサと比べ、ミリ単位で比較的精度高く距離を測定できる
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/7KMH9Tv4OLs?si=cFtDty1Cmfyuvksw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### 人感センサ
+
+- TMOS PIR = Thermal Metal-Oxide-Semiconductor Passive Infrared
+- トランジスタのMOS構造を用いて、赤外線で熱を探知するセンサ
+- 近接センサや測距センサとは異なり熱を持っているかに焦点が当てられる
+- Presence(存在)、Motion(動き)、Temperature(温度)等が取得できる
+- Presenceはセンサ独自仕様の値が返されるため、閾値をどこに設けるかは悩みどころ
+- Motionはヒステリシスかつデバウンスのため、検知してから戻るまでにラグがある印象
+- TemperatureはΔT、すなわち対象と背景の相対的な温度差が返されるため注意
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/KgCbGQikRmA?si=5TOVdtMqODsnE2xm" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### TVOCセンサ
+
+- TVOC(Total Volatile Organic Compounds、総揮発性有機化合物)を測定できるセンサ
+- 平たく言うと、空気中の有機ガス類の総量を測定できる
+- ペンキ、接着剤、建材、タバコ、香水 etc ...
+- ウォームアップに20秒弱かかる点に注意が必要(しばらく測定値が0が続く)
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/qmJKxEF26Mw?si=PspEfahCFrzSvNxt" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### eCO2センサ
+
+- eCO2(equivalent CO2)
+- TVOCから推定されたCO2濃度
+- CO2を直接計測しているわけではないので精度は落ちる
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/LY2qBQPYFnc?si=kglv59b4hVw7XI2E" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### カラーセンサ
+
+- 色を取得できるセンサ
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/yC_FBUlvK3I?si=3Pl-IGhXDaFND7zM" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## 外部アクチュエータ
+
+### サーボモータ
+
+- サーボモータはM5Stackに直接、接続するということはせず、サーボモータドライバ経由で接続する
+- 今回検証したのは最大、8つまでサーボモータが接続可能なドライバ
+- 外部からの給電が必要になるため、 モバブ -> Type-Cのブレークアウト -> ターミナルブロック -> サーボモータドライバ という経路で給電している
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/d71RPUCu6rU?si=diGxhjKT5sqwWPSG" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### ファン
+
+- 外部電源不要なので甘く見ていたが、予想以上にパワフルで羽根が指に当たってちょっと怪我した
+- DCモーター(N20)に羽根がついているだけのシンプルな作り
+- シンプルなアクチュエータ全般だが、Port.Bに接続し、GPIOで制御することに注意
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/uiRkg0jnE44?si=Bd6UvjFA59O5GFS6" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### バイブレーションモータ
+
+- 外部電源不要なので甘く見ていたが、予想以上にパワフル
+- DCモーター(N20)の先端に振動子がついているだけのシンプルな作り
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/W9HhsSjcJg4?si=OBXMFGosRrprx3R9" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### ポンプ
+
+- 水をA地点からB地点に移動させられ、ビジュアル的に新鮮
+- 外部電源不要なので甘く見ていたが、予想以上にパワフル
+- 土壌湿度センサもバンドルされているが、こちらは検証していない
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/SExoVe2K9wo?si=JumC5nNyMsZwLtFn" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## おわりに
+
+- 購入していた分のセンサ、アクチュエータは一通り検証できた
+- [m5-docs Products](https://docs.m5stack.com/ja/products) を眺めつつ、面白いものが他にないか探すつもりではいる
+- Bluetooth接続、Wi-Fi接続、HTTP通信、SDカードへのアクセス等を検証していく予定
+- Port.A、Port.Bの拡張周りを考える
