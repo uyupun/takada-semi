@@ -1,0 +1,113 @@
+---
+title: Docker DesktopのオルタナティブとしてのColima
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- 本日は以前たかしがDiscordで言っていたColimaという技術を検証します
+
+<ContentImage path="2025/10-15/kazukichi/01.png" width="500" />
+
+## Colimaとは
+
+- Docker Desktopの代替としての選択肢
+- Docker Desktopの商用ライセンス問題を契機に作られ(2021年〜)、動作も比較的軽い
+- Colima = Container On Localhost In MAcos/Linux
+- 名前の通り、macOSとLinuxに対応しており、ローカル開発環境での利用を想定している(本番環境での利用は想定していない)
+- Docker互換なのでDockerfileやDocker Composeも扱える
+- Go製
+- GUIは提供されていない
+- GitHub: https://github.com/abiosoft/colima
+	- Organizationではなく個人アカウント上のリポジトリで開発されている模様
+
+## Colimaの内部構造
+
+- Colimaは主にLimaのラッパー
+- LimaはmacOS/Linux上でLinuxのVMを動かすためのOSS
+- LimaはmacOSの場合、macOSに用意されたVMの制御のためのAPIを利用している
+	- Appleシリコンの場合はVirtualization.framework
+	- Intel Macの場合はHypervisor.framework + HyperKit
+- ColimaはLimaにdockerd(高レベルランタイム)を入れ、それを操作する形でDocker互換を実現している
+
+## VS  OrbStack + Docker Desktop
+
+|            | Colima      | OrbStack          | Docker Desktop    |
+| ---------- | ----------- | ----------------- | ----------------- |
+| ライセンス      | MIT(商用利用可能) | MIT(将来的に有料ライセンス化) | 会社の規模によっては有料ライセンス |
+| パフォーマンス    | 高い          | 高い                | あまり高くない           |
+| UI         | CUIのみ       | CUI/GUIを提供        | CUI/GUIを提供        |
+| ソースコード     | 公開          | GUI部分は非公開         | GUI部分は非公開         |
+| 開発言語       | Go          | Go                | Go                |
+| 開発時期       | 2021-       | 2023-             | 2013-             |
+| GitHubスター数 | 23.8k       | 7.1k              | 70.4k             |
+
+## インストール
+
+- macOSの場合
+
+```bash
+$ brew install colima
+$ colima --version
+colima version 0.8.1
+```
+
+## DockerのCLIの設定
+
+- DockerのCLIのコンテキストがColimaを指していることを確認
+	- ちなみにDockerのCLI自体は商用ライセンス問題に関係なく利用できる
+	- ただし、DockerのCLI自体にDockerのエンジンは付帯していない
+
+```bash
+$ docker context use colima
+$ docker context ls
+NAME            DESCRIPTION                               DOCKER ENDPOINT                                      ERROR
+colima *        colima                                    unix:///Users/k-tobita/.colima/default/docker.sock
+default         Current DOCKER_HOST based configuration   unix:///var/run/docker.sock
+desktop-linux   Docker Desktop                            unix:///Users/k-tobita/.docker/run/docker.sock
+```
+
+## 操作
+
+- Colimaの起動
+
+```bash
+$ colima start
+$ colima status
+INFO[0000] colima is running using macOS Virtualization.Framework
+INFO[0000] arch: aarch64
+INFO[0000] runtime: docker
+INFO[0000] mountType: sshfs
+INFO[0000] socket: unix:///Users/k-tobita/.colima/default/docker.sock
+```
+
+- ここからは通常のDockerと同じ操作が行える
+
+```bash
+$ docker run -it --name my-alpine alpine
+```
+
+- Colimaの停止
+
+```bash
+$ colima stop
+$ colima status
+FATA[0000] colima is not running
+```
+
+## 余談: Colimaのサポート環境
+
+- Docker以外のコンテナランタイムにも対応している
+	- containerdやIncus(LXDベース)
+
+## 感想
+
+- DockerのGUI機能、実はほとんど使っていないので乗り換えても良いかも
+- Dockerよりもパフォーマンスも高いので有力
+- OrbStackのような有償化の心配もいまのところない
+- Docker以外のコンテナランタイムをサポートしている点もGOOD
+- 追記: Supabaseとの相性は良くなかった
