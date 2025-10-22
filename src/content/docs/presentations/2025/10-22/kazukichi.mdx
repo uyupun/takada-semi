@@ -1,0 +1,83 @@
+---
+title: 終・ハッカソンの技術選定 [ハードウェア編]
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- 前回の [真・ハッカソンの技術選定 [ハードウェア編]](https://uyupun.github.io/takada-semi/presentations/2025/10-08/kazukichi/) において、センサやアクチュエータの紹介をした
+- M5Stackはアプリ等と連携してIoT的に利用することでより真価を発揮するため、今回は主に通信の部分についてまとめていく
+
+## シリアルモニタ
+
+- M5Stack CoreS3のタッチパネルは小さいため、デバッグ出力には不便
+- そういった場合に活用できるのがシリアルモニタ
+- M5StackとPC間でシリアル通信(UART)を行い、送られてきた文字列をPC上に表示できる
+- 表示にはシリアルモニタを利用し、シリアルモニタは `pio` コマンドから起動できる
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/ZhR28gfjdAk?si=E3vav3KhAFONUAoU" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## Wi-Fi
+
+- 基本的にはWiFiモジュールを使用し、SSIDとパスワードを指定すれば接続できる
+- デフォルトの設定ではNVS(Non-Volatile Storage、不揮発性ストレージ)に接続情報が保存され、次回接続時に優先して利用される
+- 接続先を変更した場合や、チャネルが変更された場合等にハマりがちなので、今回はデータを削除し、保存しないようにしている
+- 他にも、通信の安定性確保のため、省電力モードの無効化、自動再接続の有効化を行った
+- 接続の待機や再試行、タイムアウト処理を自分で書かないといけないのが少し面倒
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/g9AidPNmnbI?si=lKk__pDqXnlqdwVl" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## HTTPクライアント
+
+- M5StackをHTTPクライアントとし、インターネット上のリソースにアクセスするようなパターン
+- 当たり前だが、Wi-Fi接続を行っている前提となる
+- HTTPClientモジュールを使用する
+- HTTPメソッドとエンドポイントを指定してリクエストし、レスポンスをよしなに加工して使うという部分はフロントエンドやバックエンドでもよくある処理なので特に真新しさはない
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/-0vvzkYlgEQ?si=4_WCTGTuO1fnIJxl" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## Webサーバ
+
+- 頑張ればM5Stack上でWebサーバを動作させることも可能らしい(未検証)
+- 通信コスト、セキュリティコスト、電力消費、実装コストが高い
+- どうしてもWebアプリから通信させたい場合や、接続台数が多い場合、柔軟な通信方法が必要な場合等には考えても良いかも
+- リアルタイム性は落ちるが、M5StackからAPIサーバに定期的にデータをPOSTし、アプリからはそちらを読みに行くという逃げ道もある
+
+## BLE
+
+- BLE(Bluetooth Low Energy)はBluetooth Classicよりも低コストに利用できるプロトコルスタック
+- 上位層ではGAP(Generic Access Profile)やGATT(Generic Attribute Profile)というプロトコルが動いている
+- 今回はNimBLEという軽量なBLEのライブラリで実装した
+- NimBLEは元々、Apache MynewtというリアルタイムOS向けに開発されたライブラリ
+- GAPはデバイス同士の接続・切断、GATTは接続後のデータのやり取りのプロトコル
+- M5StackはGAPではペリフェラル(接続側がセントラル)、GATTではサーバ(接続側がクライアント)として動作させた
+- GAPではペリフェラル側が広告、スキャンレスポンス等を送信する
+- 両者ともにプロファイルという概念が存在する
+- GATTのプロファイルはサービス、キャラクタリスティック、ディスクリプタという階層構造を持つ
+- キャラクタリスティックには読み込み、書き込み、通知等の操作の権限を付与できる
+- GATTでは標準プロファイルと独自プロファイルという二種類のプロファイルが存在する
+- 他にも標準プロファイルではないが、デファクトとなっているプロファイルとして、UART通信のためのNUS(Nordic UART Service)も存在する
+- 今回は独自プロファイルを利用してバイト列を送受信(つまりUART的な通信)した
+- このあたりの話だけで記事が一本書けると思うので細かい話はそのうちしたい
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/V4CjaJzMHXo?si=1S7pVfA7bmsUY-fm" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/063Nu1h6FXE?si=X6prxoCPNBGcM-cY" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/UQ-1C8UFYBE?si=ya8FrbQ08j7snHIt" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## SDカード
+
+- 環境変数の保存に使えるかもと思ったが、NVS(Non-Volatile Storage、不揮発性ストレージ)が用意されているのでそちらを使ったほうが良さそう(そのうち検証する)
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/gMJ-kx3YjRw?si=B_Mey5Bq58g4cI9m" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## まとめ
+
+- これまで数回のまとめを通じて、柔軟なセンサやアクチュエータを持つハードウェアをネットワーク越しに操作するための基本ができた
+- 他にもM5Stackには公式に様々なユニットやモジュールがある他、サードパーティ製品も存在するため、検証していきたい
+- BLEのプロトコルスタックに関してもまとめていきたい
