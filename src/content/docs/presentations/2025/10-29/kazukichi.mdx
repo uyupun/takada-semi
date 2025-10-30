@@ -1,0 +1,184 @@
+---
+title: 技術的・思想的視点からの『頭部ふわふわ浄酔器』
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+<ContentImage path="2025/10-29/kazukichi/06.jpg" width="700" />
+
+## はじめに
+
+- 我々が制作した作品『頭部ふわふわ浄酔器』について、技術的・思想的な視点から少し深堀りしてみる
+- これにより、作品の技術的な面白さを理解する足がかりとし、また、作品の思想・物語と我々の持つ [思想性・哲学性](https://uyupun.github.io/takada-semi/presentations/2025/08-27/kazukichi/#%E6%A0%B9%E5%BA%95%E3%81%AB%E6%B5%81%E3%82%8C%E3%82%8B%E6%80%9D%E6%83%B3%E6%80%A7%E5%93%B2%E5%AD%A6%E6%80%A7) との関連付けからこの作品の位置付けを試みる
+
+## 『頭部ふわふわ浄酔器』とは
+
+- 『頭部ふわふわ浄酔器』は2日間のハッカソン [SPAJAM2025](https://spajam.jp/) の第6回東京予選大会において、我々が制作・発表した作品
+- ハッカソンのテーマは「ふわふわ」
+- 当日の発表スライド
+
+<iframe class="speakerdeck-iframe" frameborder="0" src="https://speakerdeck.com/player/32789d8a43c941eb82693688a95d96e2" title="頭部ふわふわ浄酔器" allowfullscreen="true" style="border: 0px; background: padding-box padding-box rgba(0, 0, 0, 0.1); margin: 0px; padding: 0px; border-radius: 6px; box-shadow: rgba(0, 0, 0, 0.2) 0px 5px 40px; width: 100%; height: auto; aspect-ratio: 560 / 315;" data-ratio="1.7777777777777777"></iframe>
+
+- 作品の紹介動画
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/L0-5qko8pbQ?si=zeke9EaCQYHFZClg" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+- 大まかな筋書きとしては
+    - 私たちは寝不足や飲み過ぎ、焦り等によって思考力が落ち、いわゆる頭が「ふわふわ」した状態になる
+    - ふわふわした状態では、勘が鈍り、意思決定の精度が低下し、世界を正しく認識できなくなる
+    - そこで、この「ふわふわ」した存在を一種の怨霊と見立て、浄化する現代の禊の装置として『頭部ふわふわ浄酔器』が登場する
+    - 『頭部ふわふわ浄酔器』はスマホアプリと専用ハードウェアであるヘッドギアから構成される
+    - スマホアプリではストループテスト(認知テストの一種)の実施とヘッドギアとの連携(通信)を行う
+    - ヘッドギアではアルコール濃度の測定と水の噴射(∴禊)を行う
+
+- ポンチ絵
+
+<ContentImage path="2025/10-29/kazukichi/05.png" width="800" />
+
+## 技術的側面
+
+### スマホアプリ
+
+- GitHubリポジトリ: https://github.com/uyupun/tobu_fuwafuwa_josuiki_app
+- Flutter製
+- ストループテスト
+    - 心理学者のジョン・リドリー・ストループが1935年に発表
+    - 注意の制御がどう働くかを測るための実験として考案された
+    - 1950〜60年代になると、認知心理学の発展とともに再評価され、認知テストとして活用
+    - e.g. 「単語の意味」ではなく「文字の色」 をできるだけ速く答える
+
+<ContentImage path="2025/10-29/kazukichi/01.png" width="300" />
+
+### ヘッドギア
+
+- GitHubリポジトリ: https://github.com/uyupun/tobu-fuwafuwa-josuiki-headgear
+    - ※ スパゲッティコード
+- C++製でM5Stack CoreS3上で動作させる前提で作られている
+- M5StackにM5Stack公式ユニットのウォーターポンプである [Unit Watering](https://docs.m5stack.com/ja/unit/watering) と TVOCセンサである [Unit Mini TVOC/eCO2](https://docs.m5stack.com/ja/unit/tvoc) を接続している
+- TVOCセンサは揮発性有機化合物の総量を測定するセンサだが、擬似的にアルコール濃度も測定できる
+- ウォーターポンプは制御部分はDCモータのため、操作感はDCモータと変わりない
+- ヘッドギア(単体)
+
+<ContentImage path="2025/10-29/kazukichi/02.jpeg" width="400" />
+
+- ヘッドギア(装着時)
+
+<ContentImage path="2025/10-29/kazukichi/03.jpg" width="400" />
+
+- プロトタイプ
+
+<ContentImage path="2025/10-29/kazukichi/04.jpg" width="400" />
+
+- TVOCセンサとウォーターポンプの単体の検証はそれぞれ以下の動画を参照
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/qmJKxEF26Mw?si=8ZkwzIsNek1SEAZe" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/SExoVe2K9wo?si=AGeRvX8c2W3vHW94" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+- M5Stack採用の経緯については以下の記事を参照
+    - [ハッカソンの技術選定 [ハードウェア編]](https://uyupun.github.io/takada-semi/presentations/2025/09-24/kazukichi/)
+    - [続・ハッカソンの技術選定 [ハードウェア編]](https://uyupun.github.io/takada-semi/presentations/2025/09-29/kazukichi/)
+    - [真・ハッカソンの技術選定 [ハードウェア編]](https://uyupun.github.io/takada-semi/presentations/2025/10-08/kazukichi/)
+    - [終・ハッカソンの技術選定 [ハードウェア編]](https://uyupun.github.io/takada-semi/presentations/2025/10-22/kazukichi/)
+
+### 通信
+
+- スマホアプリとヘッドギアの間の通信はBLE(Bluetooth Low Energy)を利用している
+- スマホアプリ側はBLE制御に [flutter_blue_plus](https://pub.dev/packages/flutter_blue_plus) を利用
+- ヘッドギア側はBLE制御に [NimBLE-Arduino](https://github.com/h2zero/NimBLE-Arduino) を利用
+- BLEの大まかな説明に関しては以下の記事を参照
+    - [終・ハッカソンの技術選定 [ハードウェア編] > BLE](https://uyupun.github.io/takada-semi/presentations/2025/10-22/kazukichi/#ble)
+
+## 思想とストーリー
+
+### 神道の多層的世界観
+
+- 日本の神道的な世界観において、世界は複数の層から構成されている
+- 現し世(うつしよ)は我々が日常的に生きる現実の世界
+- 幽世(かくりよ)は神々や精霊、悪霊、怨霊、死者等が住まう世界
+- この二つの世界の間には「あわい(間)」と呼ばれる境界領域が存在する
+- あわいとは、現し世と幽世が交錯し、混淆し、変容する場所
+- 黄昏時、水辺、夢、祭り、芸能等は全てあわい
+- このあわいの中でも特別な位置にあるのが聖域
+- 神社の境内、寺院の奥の院、巨石、ご神木等は全て聖域
+- あわいや聖域は人々が幽世に触れることができるインタフェースを提供している
+
+### 怨念の表出としての穢れ
+
+- 幽世には神々や精霊といった守護的な存在や、悪霊や怨霊といった破壊的な存在が住んでいる
+- 怨霊とは、恨み・悲しみ・無念を抱いて死んだ人の霊で、死後もその思いが鎮まらず、現世に影響を及ぼす存在
+- 怨霊の抱く強烈な感情エネルギーである怨念は、幽世から現し世へと流出し、人々の中に穢れとして表出する
+- 穢れとは、もともと「気枯れ」が語源で、生命力(気)が枯れた状態、すなわち生命の流れが滞った状態を意味する
+- 現代的に言えば、不安、不快、混乱、思考力の低下といった形で我々に影響を与える
+- 古来より、このような状況は百鬼夜行や魑魅魍魎の跳梁跋扈として表現されてきた
+
+### ふわふわ ─穢れの現代的再定義
+
+- 今回の作品『頭部ふわふわ浄酔器』では、現代人が経験する「頭がふわふわした状態」を、この古来からの穢れの概念として再定義している
+- 「頭がふわふわした状態」とは、寝不足や飲み過ぎによる酩酊、うまくいかない焦り等によって起こる
+- その結果、思考力の低下、判断力の低下が起こり、世界を正しく認識できなくなる
+- 重要なのは、この「ふわふわ」の状態が世界に靄をかけるフィルタとして作動すること
+- ストループテストが示すように、このような状態では認知的な干渉が増大し、注意制御機能が著しく低下する
+- つまり、「ふわふわ」状態とは、現し世に生きる人間が、あわいの領域に引き込まれ、幽世の悪影響を受けている状態
+
+### 頭部ふわふわ浄酔器 ─現代の禊の装置
+
+- 古来より、穢れを清める(浄化する)方法として禊(みそぎ)が存在してきた
+- 禊とは、身体や心に生じた穢れを主に水の力によって洗い清める行為
+- なぜ水かというと、水は「生命を生み出すもの」だったから
+- 『古事記』に記されたイザナギの禊では、黄泉の国から戻った神が穢れを落とすために水で身を清めた
+- その結果として天照大神、月読命、須佐之男命が生まれたとされる
+- 現代においても、神社の手水舎での手と口を清めたり、修験者が滝行を行ったりと、様々な形で禊の伝統は受け継がれている
+- 『頭部ふわふわ浄酔器』は、この古来からの禊を現代のデジタル技術によって再構築した装置
+- ウォーターポンプによる水の噴射が禊を実現している
+
+### アトラクション化した禊
+
+- 現代社会において、従来の宗教的な禊は形骸化し、多くの人にとって縁遠く、退屈で面白みのないものとなりつつある
+- しかし、浄化への欲求は人間の根源的な欲求として残り続けている
+- そのため、我々は禊を気軽にアクセスでき、楽しみながら体験できる一種のアトラクションとして再構築し、提示した
+- 我々はユーザが驚きと楽しさを感じながら浄化を体験し、自己の身体性を意識することを期待する
+- この取り組みは、我々の [我々が創ってきたもの、そしてこれから > 根底に流れる思想性・哲学性 > 遊びという無駄な営み](https://uyupun.github.io/takada-semi/presentations/2025/08-27/kazukichi/#%E9%81%8A%E3%81%B3%E3%81%A8%E3%81%84%E3%81%86%E7%84%A1%E9%A7%84%E3%81%AA%E5%96%B6%E3%81%BF) とも合致する
+
+### 身体性という王の復権
+
+- この作品を制作した2025年は、生成AIが社会に大きなインパクトを与えた年である
+- しかし、我々はあえてAIを使わない作品を制作した
+- ポストAI時代においては、人間のフィジカルこそが逆説的に重要になってくると我々は考えている
+- 今後、AIは人間の情報処理や知的作業を代替し、人間をオーケストレーションしていく
+- 一方で、その周縁で生きる我々人間は自己の身体性や感覚、刺激、存在感といった従来的な要素を再び意識せざるを得なくなる
+- 『頭部ふわふわ浄酔器』は、実際に物理的なヘッドギアを装着し、水を浴びるという一連の身体的な行為を通じて体験される
+
+### 現代社会への問題提起
+
+- 『頭部ふわふわ浄酔器』は、何らかの社会問題を直接的に解決するソリューションではない
+- むしろ、現代社会の問題を提起するアートとしての性格を持っている
+- この作品が提起する問題は多層的である
+    - 現代人の精神的な「穢れ」の蓄積 ... ストレス社会において日常的に蓄積される思考力の低下や判断力の鈍化
+    - 技術と精神性の関係 ... 高度に発達したテクノロジーと古来からの精神的な営みの統合
+    - 身体性の軽視 ... デジタル化が進む中で軽視されがちな身体的体験の重要性
+- 我々は解決策を提示するのではなく、これらの問題を可視化し、体験可能な形で提示することで、参加者自身に考察を促している
+
+### 行為を超え、霊性を捉える
+
+- 『頭部ふわふわ浄酔器』は、我々の過去作品である [Xen](https://uyupun.github.io/takada-semi/presentations/2025/08-27/kazukichi/#xen-2019) (坐禅のデジタル化)や [SAUNIL](https://uyupun.github.io/takada-semi/presentations/2025/08-27/kazukichi/#saunil-2022) (サウナのデジタル化)の延長線上に位置している
+- これらに共通するのは「現実世界のデジタル化」という思想性であり、古くから日常に溶け込んでいるモノ・行為・概念を現代のテクノロジーで再構築し、新たな体験を創出してきた
+- しかし今回は、単なる現実世界のデジタル化を超えて「精神世界・霊性の再解釈・再構築」という新たな領域に挑戦している
+- 穢れ、浄化、禊といった抽象的で精神的な概念をデジタル技術で表現することで、古来からの知恵と現代技術の真の融合を目指した
+- それは、技術が人間性を奪うのではなく、むしろ人間性を豊かにするための道具として機能する可能性を探求することでもある
+
+## おわりに
+
+- 『頭部ふわふわ浄酔器』を通じて、我々は技術と精神性の新たな関係性を模索してきた
+- この作品は単なるハッカソンの成果物を超えて、現代社会における人間性の在り方を問い直す試みでもある
+- 技術的観点から、我々は今後もフィジカルコンピューティングの可能性を追求していく
+- AIが知的作業を代替する時代において、センサとアクチュエータを組み合わせた身体的な体験こそが、人間固有の価値を再発見する鍵となる
+- 思想的観点から、我々は古来からの知恵と現代技術の融合をさらに深めていく
+- 神道的世界観、仏教的実践、民俗的儀式等、日本の精神的伝統に根ざした概念を現代的に再解釈し、デジタル技術で表現することで、失われつつある霊性を現代人にとってアクセス可能な形で提示していきたい
+- この技術的・思想的な両輪が回転することで、我々は技術が人間性を豊かにする未来の取っ掛かりを提示していく
+- それは、効率性や合理性だけでは測れない「遊び」や「無駄」の価値を大切にしながら、人間の根源的な欲求に応える体験を生み出すことでもある
+
+<ContentImage path="2025/10-29/kazukichi/07.jpg" width="700" />
