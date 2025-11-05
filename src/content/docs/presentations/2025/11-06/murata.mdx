@@ -36,16 +36,17 @@ import ContentImage from '@components/ContentImage.astro';
 - サンプルコードを記載する
 ```cpp
 /*
-* コンテキストの不完全な定義＝ポインタであれば使用可能
+* コンテキストの不完全定義＝ポインタであれば使用可能
 * いわゆるインターフェース
 */
+
 // 通信関係のコンテキスト(EX:SSH、Bluetoothなど)
 class ConnectionContext;
 
 // 出力関係のコンテキスト(EX:コンソール画面に出力、M5Stack内蔵の画面に出力)
 class WritableContext;
 
-// システム全体のコンテキストを管理
+// システム全体のコンテキストを管理。ここにサウンド関係、センサ関係のインターフェースを追加する。
 class SystemContext
 {
 public:
@@ -53,32 +54,58 @@ public:
     virtual ConnectionContext* getConnectionContext() const = 0;
     virtual WritableContext* getWritableContext() const = 0;
 };
-
-SystemContext* getContext();
-
-// 例えばM5Stack用の実装(別ファイル)
-class M5StackContext : public SystemContext
+```
+```cpp
+// 全体を把握するコンテキスト。いわば神様。
+class GlobalContext
 {
 public:
-    M5StackContext() {}
-    ~M5StackContext() = default;
+    virtual ~GlobalContext() = default;
+    // サンプルなので一つだけ
+    virtual SystemContext* getSystemContext() const = 0;
+};
+```
+```cpp
+// 例えばM5Stack用の実装
+class M5StackSystemContextImpl : public SystemContext
+{
+public:
+    M5StackSystemContextImpl() {}
+    ~M5StackSystemContextImpl() = default;
     // 本来はcppファイル内に実装を書く
     virtual ConnectionContext* getConnectionContext() const override { return nullptr; }
     virtual WritableContext* getWritableContext() const override { return nullptr; }
 };
-
-// コンテキストを取得するフリー関数(M5Stackの場合)
-SystemContext* getContext()
+```
+```cpp
+// ここではM5Stackに特化した神様を配置
+class GlobalContextForM5Stack : public GlobalContext
 {
-    static M5StackContext context;
+private:
+    SystemContext* system_ctx;
+public:
+    // 配置new書くの面倒だからこう書く
+    GlobalContextForM5Stack() : system_ctx(new M5StackSystemContextImpl()) {}
+    ~GlobalContextForM5Stack() = default;
+    SystemContext* getSystemContext() const { return  system_ctx; }
+};
+
+// コンテキストを取得するフリー関数
+GlobalContext* getContext()
+{
+    static GlobalContextForM5Stack context;
     return &context;
 }
-
+```
+```cpp
 int main()
 {
-    SystemContext* context = getContext();
+    auto context = getContext();
+	// これはセグフォ引き起こすけど、こう書ける
+    context->getSystemContext()->getWritableContext()->getScreen()->print("Hello, World"); // 出力先を意識せずprintしたり
 }
 ```
+[サンプルコード](https://wandbox.org/permlink/wPOxFU5d40myCffT)
 - System自身も不完全な定義にしてしまい、`GlobalContext`クラスを作成して、各マイコンごとのシステムに合わせるのもOK
 	- むしろそっちのが都合が良い？
 		- まあ上位のクラスなので付け替えるのは簡単ですね
