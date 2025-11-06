@@ -1,0 +1,106 @@
+---
+title: shake - Flutterでシェイク動作を検知する
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+- [shake](https://pub.dev/packages/shake) は振動を検出するためのパッケージ
+- 加速度センサーが内部で使用されている
+  - [sensors_plus](https://pub.dev/packages/sensors_plus) が用いられている
+    - 最新版の v7.0.0 には対応していない
+
+## 導入
+
+- `pubspec.yaml` に以下を追加
+
+```yaml
+dependencies:
+  shake: ^3.0.0
+```
+
+## 使用方法
+
+- 公式の[サンプルコード](https://pub.dev/packages/shake/example)を元に簡単なコードを作成
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:shake/shake.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {...}
+
+class MyHomePage extends StatefulWidget {...}
+
+class _MyHomePageState extends State<MyHomePage> {
+  ShakeDetector? _detector;
+  String _lastShakeInfo = 'No shake detected yet';
+  double _shakeThreshold = 2.7;
+  bool _useFilter = false;
+  int _minimumShakeCount = 1;
+  int _shakeCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _startDetector();
+  }
+
+  void _startDetector() {
+    _detector?.stopListening();
+
+    _detector = ShakeDetector.autoStart(
+      onPhoneShake: (ShakeEvent event) {
+        setState(() {
+          _shakeCount++;
+          _lastShakeInfo =
+              'Shake detected:\n'
+              'Direction: ${event.direction}\n'
+              'Force: ${event.force.toStringAsFixed(2)}\n'
+              'Time: ${event.timestamp.toString()}\n'
+              'Count: $_shakeCount';
+        });
+      },
+      minimumShakeCount: _minimumShakeCount,
+      shakeSlopTimeMS: 500,
+      shakeThresholdGravity: _shakeThreshold,
+      useFilter: _useFilter,
+    );
+  }
+  ...
+}
+```
+
+### 各プロパティの説明
+
+- `ShakeDetector.autoStart`
+  - 振動を検出するためのメソッド
+- `onPhoneShake`
+  - 振動を検出した時の処理を記述する
+- `minimumShakeCount`
+  - 振動を検出するための最小振動数を設定する（デフォルトは 1）
+- `shakeSlopTimeMS`
+  - 振動を検出するための時間を設定する（デフォルトは 500ms）
+- `shakeThresholdGravity`
+  - 振動を検出するための重力を設定する（デフォルトは 2.7）
+- `useFilter`
+  - 振動を検出するためのフィルターを設定する（デフォルトは false）
+- `shakeCountResetTime`
+  - 振動を検出するためのカウントをリセットする時間を設定する（デフォルトは 3000ms）
+- `ShakeEvent.direction`
+  - 振動の方向を取得する
+- `ShakeEvent.force`
+  - 振動の力を取得する
+- `ShakeEvent.timestamp`
+  - 振動の時間を取得する
+
+## まとめ
+
+簡単に振動を検出することができるため、ハッカソンでの利用が期待できそう
