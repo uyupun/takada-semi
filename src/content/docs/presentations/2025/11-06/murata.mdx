@@ -94,24 +94,9 @@ public:
 	
 	virtual ConnectionContext* getConnectionContext() const override { return this; }
 };
-
-class M5StackSystemContextImpl : public SystemContext
-{
-	ConnectionContextImpl m5stack_connection_ctx;
-	WritableContextImpl m5stack_writable_ctx;
-
-public:
-
-    M5StackSystemContextImpl(GlobalContext* ctx) {}
-    ~M5StackSystemContextImpl() = default;
-    // 本来はcppファイル内に実装を書く
-    virtual ConnectionContext* getConnectionContext() const override { return &m5stack_connection_ctx; }
-    virtual WritableContext* getWritableContext() const override { return &m5stack_writable_ctx; }
-};
 ```
 
 ```cpp
-// ここではM5Stackに特化した神様を配置
 /**
  * M5Stack用のシステムコンテキスト実装
  * 
@@ -141,6 +126,7 @@ public:
     WritableContext* getWritableContext() const override { return &m5stack_writable_ctx; }
 };
 ```
+
 ```cpp
 // ここではM5Stackに特化した神様を配置
 class GlobalContextForM5Stack : public GlobalContext
