@@ -1,0 +1,87 @@
+---
+title: FFI - PythonからCを呼び出す方法
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## FFIとは
+
+- Foreign Function Interfaceの略
+- あるプログラミング言語から別のプログラミング言語で書かれた関数やライブラリを呼び出すための仕組み
+- 多くの場合はC言語のコードが呼び出される
+- 理由としては、高速化や既存の財産を再利用するため
+- 今回は試しにPythonからC言語のコードを呼び出してみる
+	- 他の言語においても同様の仕組みは大抵、用意されている
+
+## 実践
+
+- `calc.c`
+
+```c
+int add(int a, int b) {
+  return a + b;
+}
+```
+
+- コンパイル
+	- `-shared`
+		- 動的リンクが可能な共有ライブラリ(`.dylib` 形式で出力されるようにする)
+		- ※ Linuxの場合は `.so` 形式、Windowsの場合は `.dll` 形式
+	- `-fPIC`
+		- Position Independent Code(位置独立コード)として生成
+		- 共有ライブラリは他のプロセス空間からロードされて使われるため、実行時のメモリアドレスが未定
+		- そのため、自分がどこに配置されても動けるコード=PICとしてコンパイルする必要がある
+
+```bash
+$ gcc -shared -o calc.dylib -fPIC calc.c
+```
+
+- `main.py`
+
+```python
+import ctypes
+import os
+
+# 先に生成した共有ライブラリを読み込み
+lib_calc = ctypes.CDLL(os.path.abspath("calc.dylib"))
+
+# 引数と戻り値の数や型を定義
+lib_calc.add.argtypes = [ctypes.c_int, ctypes.c_int]
+lib_calc.add.restype = ctypes.c_int
+
+# C言語側の関数を呼び出し
+res = lib_calc.add(3, 4)
+
+print(f"3 + 4 = {res}")
+```
+
+- 実行結果
+
+```bash
+$ python main.py
+3 + 4 = 7
+```
+
+- ちなみにNumPyやPandasのような高速性が求められるようなライブラリは、概ね上記のような方法でC言語で書かれた共有ライブラリを読み込んでいる
+
+## 内部的な仕組み
+
+- ざっくりと
+- Pythonのコードが `ctypes.CDLL()` を呼び出し
+- 内部で `_ctypes.CDLL()` (C言語の共有ライブラリ)が呼ばれる
+- OSの動的リンカAPIである `dlopen("libfoo.so")` が呼ばれる
+	- シンボルテーブル(関数名とメモリアドレスのペア)をメモリ上にロードし、ハンドルを返す
+- OSの動的リンカAPIである `dlsym(handle, "funcname")` が呼ばれる
+	- ハンドルから該当する関数名を探し、メモリアドレスを関数ポインタとして取得
+- 関数ポインタがPythonのオブジェクトとしてラップされる
+	- 以降、このPythonオブジェクトを通してアクセス
+- ※ ちなみに、関数以外にもグローバル変数や定数、構造体等もFFIできる
+
+## 感想
+
+- この実験を通してOSや言語処理系の深淵を垣間見れた気がする
+- この手の実験は定期的にやっていきたい
+- 実際にシンボルテーブルを覗いてみたり、リンカやローダで遊んでみても面白いかも
