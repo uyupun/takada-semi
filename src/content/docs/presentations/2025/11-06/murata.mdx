@@ -16,15 +16,27 @@ import ContentImage from '@components/ContentImage.astro';
 
 - ヒープ領域を使わない（スタック領域でなんとかする）
 	- どのくらいヒープ領域が使えるか不明なため
+
 - C++の目玉（？）であるSTLは使用しない
+	- ヒープ領域が使えないので
 	- そもそもtemplateも使用しない
-		- 結局、templateを使用するとバイナリサイズが読めないので
+		- 結局、templateを使用するとバイナリサイズ・ビルド時間が読みにくい
+			- コンパイル時やプリプロセス時にゴニョゴニョするのはOK
+		- std::string は使えません
+
+- 実装の考え方
+	- メモリのアライメントを意識する
+		- 構造体・クラスのインスタンスは4の倍数バイト単位で確保されやすい
+			- 確保されたメモリの余剰部分は0パディングされる
+			- 最悪、ビットフィールドなどで調節する
+	- この辺りはツールを作って、自動でサイズを調整する・無駄なパディングをされないようにする、でも良いかと
+		- 可能・不可能は置いといて
 
 ## 考え方
 
 - Androidの`context`という考え方を利用する
 	- いわゆる`Application Context`
-	- シングルトンとして機能
+	- シングルトンのように機能（実装は全く違う）
 		- 例
 			- リソース(文字列、画像など)へのアクセス
 			- データベースやファイルへのアクセス
@@ -34,6 +46,7 @@ import ContentImage from '@components/ContentImage.astro';
 ## 具体的には
 
 - サンプルコードを記載する
+
 ```cpp
 /*
 * コンテキストの不完全定義＝ポインタであれば使用可能
@@ -50,11 +63,13 @@ class WritableContext;
 class SystemContext
 {
 public:
+
     virtual ~SystemContext() = default;
     virtual ConnectionContext* getConnectionContext() const = 0;
     virtual WritableContext* getWritableContext() const = 0;
 };
 ```
+
 ```cpp
 // 全体を把握するコンテキスト。いわば神様。
 class GlobalContext
@@ -65,16 +80,65 @@ public:
     virtual SystemContext* getSystemContext() const = 0;
 };
 ```
+
 ```cpp
 // 例えばM5Stack用の実装
-class M5StackSystemContextImpl : public SystemContext
+
+class ConnectionContextImpl : public ConnectionContext
 {
 public:
-    M5StackSystemContextImpl() {}
+	ConnectionContextImpl() = default;
+	~ConnectionContextImpl() = default;
+
+	// 内部には関係するメンバ関数を用意
+	
+	virtual ConnectionContext* getConnectionContext() const override { return this; }
+};
+
+class M5StackSystemContextImpl : public SystemContext
+{
+	ConnectionContextImpl m5stack_connection_ctx;
+	WritableContextImpl m5stack_writable_ctx;
+
+public:
+
+    M5StackSystemContextImpl(GlobalContext* ctx) {}
     ~M5StackSystemContextImpl() = default;
     // 本来はcppファイル内に実装を書く
-    virtual ConnectionContext* getConnectionContext() const override { return nullptr; }
-    virtual WritableContext* getWritableContext() const override { return nullptr; }
+    virtual ConnectionContext* getConnectionContext() const override { return &m5stack_connection_ctx; }
+    virtual WritableContext* getWritableContext() const override { return &m5stack_writable_ctx; }
+};
+```
+
+```cpp
+// ここではM5Stackに特化した神様を配置
+/**
+ * M5Stack用のシステムコンテキスト実装
+ * 
+ * - GlobalContext*を受け取って相互参照を実現
+ * - 動的メモリ確保なし(実体を保持)
+ */
+class M5StackSystemContextImpl : public SystemContext
+{
+private:
+    GlobalContext* globalCtx;  // 親コンテキストへの参照
+    
+    // サブコンテキストの実体
+    mutable ConnectionContextImpl m5stack_connection_ctx;
+    mutable WritableContextImpl m5stack_writable_ctx;
+    
+public:
+    M5StackSystemContextImpl(GlobalContext* ctx)
+        : globalCtx(ctx),
+          m5stack_connection_ctx(),
+          m5stack_writable_ctx()
+    {}
+
+    ~M5StackSystemContextImpl() override = default;
+
+    // 本来はcppファイル内に実装を書く
+    ConnectionContext* getConnectionContext() const override { return &m5stack_connection_ctx; }
+    WritableContext* getWritableContext() const override { return &m5stack_writable_ctx; }
 };
 ```
 ```cpp
@@ -82,33 +146,57 @@ public:
 class GlobalContextForM5Stack : public GlobalContext
 {
 private:
-    SystemContext* system_ctx;
+    // SystemContextの実体を保持
+    M5StackSystemContextImpl system_ctx;
+    
 public:
-    // 配置new書くの面倒だからこう書く
-    GlobalContextForM5Stack() : system_ctx(new M5StackSystemContextImpl()) {}
-    ~GlobalContextForM5Stack() = default;
-    SystemContext* getSystemContext() const { return  system_ctx; }
+
+    GlobalContextForM5Stack()
+        : system_ctx(this)
+    {}
+    
+    ~GlobalContextForM5Stack() override = default;
+    
+    SystemContext* getSystemContext() const override { return const_cast<M5StackSystemContextImpl*>(&system_ctx); }
 };
 
 // コンテキストを取得するフリー関数
+// M5Stackに特化したVer
 GlobalContext* getContext()
 {
     static GlobalContextForM5Stack context;
     return &context;
 }
 ```
+
 ```cpp
 int main()
 {
     auto context = getContext();
-	// これはセグフォ引き起こすけど、こう書ける
-    context->getSystemContext()->getWritableContext()->getScreen()->print("Hello, World"); // 出力先を意識せずprintしたり
 }
 ```
-[サンプルコード](https://wandbox.org/permlink/wPOxFU5d40myCffT)
-- System自身も不完全な定義にしてしまい、`GlobalContext`クラスを作成して、各マイコンごとのシステムに合わせるのもOK
-	- むしろそっちのが都合が良い？
-		- まあ上位のクラスなので付け替えるのは簡単ですね
-- `context->getConnectionContext()->getBluetoothContext()->connect()`などとすると、コンテキストに合わせてBluetoothのコネクションができる
-	- トップレベルを付け替えるとArduinoでもraspberry piでも同じ書き方でコネクションができる
 
+[コンパイルが通るように手を加えたサンプルコード](https://wandbox.org/permlink/2SPP1O5ge3zr88nD)
+
+- System自身も不完全な定義にしてしまい、`GlobalContext`クラスを作成して、各マイコンごとのシステムに合わせる
+	- 上位のクラスなので付け替えるのは簡単
+
+- サンプルコードでは`new`でメモリ確保しているが、ヒープ領域は使わないので実際はスタックにインスタンスを作る
+
+## サンプル
+
+- `context->getSystemContext()->getConnectionContext()->getBluetoothContext()->connect()`などとすると、コンテキストに合わせてBluetoothのコネクションができる
+	- 実装を付け替えるとArduinoでもRaspberry piでも同じ書き方でコネクションができる
+		- コードの使い回しができる
+
+- `context->getSystemContext()->getWritableContext()->getScreen()->print("Hello, World");`
+	- これでどこに出力してるかは意識せずに出力処理が書ける
+
+---
+
+## Q&A
+
+- コードが冗長では？
+	- コードの再利用性を考えたらこの方が楽
+		- 実装は大変かもしれないが、ライブラリ作る側と使う側で同時並行でコードが書ける
+			- 使う側はハードを意識しなくていいし、作る側は使われ方を意識しないで良い
