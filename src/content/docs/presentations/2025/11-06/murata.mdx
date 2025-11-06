@@ -1,0 +1,188 @@
+---
+title: マイコンでのライブラリ開発概要
+author: murata
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- 筆者はマイコン自体、ラズパイ以外ほとんど触ることがないので想像でおぎなうことがある。
+- また、今回のゼミでは具体的なコードはほとんどない。
+
+## 今回のライブラリ作成の方針
+
+- ヒープ領域を使わない（スタック領域でなんとかする）
+	- どのくらいヒープ領域が使えるか不明なため
+
+- C++の目玉（？）であるSTLは使用しない
+	- ヒープ領域が使えないので
+	- そもそもtemplateも使用しない
+		- 結局、templateを使用するとバイナリサイズ・ビルド時間が読みにくい
+			- コンパイル時やプリプロセス時にゴニョゴニョするのはOK
+		- std::string は使えません
+
+- 実装の考え方
+	- メモリのアライメントを意識する
+		- 構造体・クラスのインスタンスは4の倍数バイト単位で確保されやすい
+			- 確保されたメモリの余剰部分は0パディングされる
+			- 最悪、ビットフィールドなどで調節する
+	- この辺りはツールを作って、自動でサイズを調整する・無駄なパディングをされないようにする、でも良いかと
+		- 可能・不可能は置いといて
+
+## 考え方
+
+- Androidの`context`という考え方を利用する
+	- いわゆる`Application Context`
+	- シングルトンのように機能（実装は全く違う）
+		- 例
+			- リソース(文字列、画像など)へのアクセス
+			- データベースやファイルへのアクセス
+			- 他のアプリケーションコンポーネントの起動
+			- システムレベルのサービスへのアクセス
+
+## 具体的には
+
+- サンプルコードを記載する
+
+```cpp
+/*
+* コンテキストの不完全定義＝ポインタであれば使用可能
+* いわゆるインターフェース
+*/
+
+// 通信関係のコンテキスト(EX:SSH、Bluetoothなど)
+class ConnectionContext;
+
+// 出力関係のコンテキスト(EX:コンソール画面に出力、M5Stack内蔵の画面に出力)
+class WritableContext;
+
+// システム全体のコンテキストを管理。ここにサウンド関係、センサ関係のインターフェースを追加する。
+class SystemContext
+{
+public:
+
+    virtual ~SystemContext() = default;
+    virtual ConnectionContext* getConnectionContext() const = 0;
+    virtual WritableContext* getWritableContext() const = 0;
+};
+```
+
+```cpp
+// 全体を把握するコンテキスト。いわば神様。
+class GlobalContext
+{
+public:
+    virtual ~GlobalContext() = default;
+    // サンプルなので一つだけ
+    virtual SystemContext* getSystemContext() const = 0;
+};
+```
+
+```cpp
+// 例えばM5Stack用の実装
+
+class ConnectionContextImpl : public ConnectionContext
+{
+public:
+	ConnectionContextImpl() = default;
+	~ConnectionContextImpl() = default;
+
+	// 内部には関係するメンバ関数を用意
+	
+	virtual ConnectionContext* getConnectionContext() const override { return this; }
+};
+```
+
+```cpp
+/**
+ * M5Stack用のシステムコンテキスト実装
+ * 
+ * - GlobalContext*を受け取って相互参照を実現
+ * - 動的メモリ確保なし(実体を保持)
+ */
+class M5StackSystemContextImpl : public SystemContext
+{
+private:
+    GlobalContext* globalCtx;  // 親コンテキストへの参照
+    
+    // サブコンテキストの実体
+    mutable ConnectionContextImpl m5stack_connection_ctx;
+    mutable WritableContextImpl m5stack_writable_ctx;
+    
+public:
+    M5StackSystemContextImpl(GlobalContext* ctx)
+        : globalCtx(ctx),
+          m5stack_connection_ctx(),
+          m5stack_writable_ctx()
+    {}
+
+    ~M5StackSystemContextImpl() override = default;
+
+    // 本来はcppファイル内に実装を書く
+    ConnectionContext* getConnectionContext() const override { return &m5stack_connection_ctx; }
+    WritableContext* getWritableContext() const override { return &m5stack_writable_ctx; }
+};
+```
+
+```cpp
+// ここではM5Stackに特化した神様を配置
+class GlobalContextForM5Stack : public GlobalContext
+{
+private:
+    // SystemContextの実体を保持
+    M5StackSystemContextImpl system_ctx;
+    
+public:
+
+    GlobalContextForM5Stack()
+        : system_ctx(this)
+    {}
+    
+    ~GlobalContextForM5Stack() override = default;
+    
+    SystemContext* getSystemContext() const override { return const_cast<M5StackSystemContextImpl*>(&system_ctx); }
+};
+
+// コンテキストを取得するフリー関数
+// M5Stackに特化したVer
+GlobalContext* getContext()
+{
+    static GlobalContextForM5Stack context;
+    return &context;
+}
+```
+
+```cpp
+int main()
+{
+    auto context = getContext();
+}
+```
+
+[コンパイルが通るように手を加えたサンプルコード](https://wandbox.org/permlink/2SPP1O5ge3zr88nD)
+
+- System自身も不完全な定義にしてしまい、`GlobalContext`クラスを作成して、各マイコンごとのシステムに合わせる
+	- 上位のクラスなので付け替えるのは簡単
+
+- サンプルコードでは`new`でメモリ確保しているが、ヒープ領域は使わないので実際はスタックにインスタンスを作る
+
+## サンプル
+
+- `context->getSystemContext()->getConnectionContext()->getBluetoothContext()->connect()`などとすると、コンテキストに合わせてBluetoothのコネクションができる
+	- 実装を付け替えるとArduinoでもRaspberry piでも同じ書き方でコネクションができる
+		- コードの使い回しができる
+
+- `context->getSystemContext()->getWritableContext()->getScreen()->print("Hello, World");`
+	- これでどこに出力してるかは意識せずに出力処理が書ける
+
+---
+
+## Q&A
+
+- コードが冗長では？
+	- コードの再利用性を考えたらこの方が楽
+		- 実装は大変かもしれないが、ライブラリ作る側と使う側で同時並行でコードが書ける
+			- 使う側はハードを意識しなくていいし、作る側は使われ方を意識しないで良い
