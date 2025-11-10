@@ -1,0 +1,131 @@
+---
+title: Teleword - アイデア創発プラットフォーム
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- 最近、趣味でTelewordというツールを開発した
+- 平たく言うと昨今のAI技術を使ってアイデアを創発するツール(プラットフォーム)
+- GitHubリポジトリ: https://github.com/uyupun/teleword
+- 今回はそのツールの紹介と内部の仕組みについて解説する
+
+## なぜ作ったか
+
+- ハッカソンのアイデア発散・収束フェーズで時間を浪費しがちで、実装時間が短くなるという課題があった
+- その時間を短縮したいというのがモチベーション
+
+## 着想
+
+- [創造的な人は「意味の遠い単語を組み合わせる」のが得意と明らかに](https://nazology.kusuguru.co.jp/archives/93854) という記事を読む
+- 広告業界の大家であるジェームズ・W・ヤングも『[アイデアのつくり方](https://www.amazon.co.jp/dp/4484881047
+)』という名著の中で「アイデアとは、既存の要素の新しい組み合わせ以外の何ものでもない。」と言っていた
+- しかし、この思考法を一般人の僕たちができるようになるには才能や相当の訓練が必要
+- これをシステムとして再現できれば誰でもこのアイデア力が手に入るのでは、と思った
+- Telewordの由来は、Teleport + Wordで突飛な言葉同士を結びつけるという意味を込めている
+
+## 使い方
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/XzzPhGULcsM?si=1boNrcY8hSZNoBnr" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+- このツールは3段階で利用する
+- 第一段階
+    - ユーザが単語(テーマ)を入力する
+    - その単語から意味の遠い単語の候補をいくつか出す
+- 第二段階
+    - ユーザが入力した単語と候補として出た単語をかけ合わせて無理やりアイデアにする
+    - そのアイデアを元に「オズボーンのチェックリスト」を活用して9つの視点から拡張する
+- 第三段階
+    - 出してもらったアイデアをイメージ画像にしてもらう
+
+## 仕組み
+
+### wordfreq
+
+- PyPI: https://pypi.org/project/wordfreq/
+- インターネット上に存在する大規模なテキスト情報から作られた語彙データベース
+- 今回はそこから日本語の頻出語彙を上位数十万語取得した
+
+### Janome
+
+- PyPI: https://pypi.org/project/Janome/
+- 日本語の形態素解析エンジン
+- 日本語は英語等と異なり、単語間にスペースがないのでこういったライブラリで単語を分割する必要がある
+- e.g. すもももももももものうち -> すもも|も|もも|も|もも|の|うち
+- 品詞も判定できるので名詞に絞る
+
+### SBERT
+
+- Sentence-BERTの略
+- 文をベクトル値に変換することに特化したモデル群
+- 生成AI技術の発展によって生まれたWord2vecやfastTextの進化版
+- PCでも十分動作する
+- Word2vecでは未知語に対応できないOOV(Out Of Vocabulary)が発生する(fastTextでも完全ではない)が、SBERTでは解決されている
+- fastTextはIO・メモリバウンドでPCが悲鳴を上げていたが、SBERTはCPUバウンドなのでなんとかなった
+- fastTextでも語彙数や次元数を減らしたり、サブワードを捨てたり、mmapを使えばある程度は対処可能だが、面倒かつ精度が下がる等のデメリットあり
+- Transformerとそこから発展したBERTをベースとしている
+- TransformerやBERTはChatGPTやClaude、Gemini等のLLMのベースにもなっている
+
+### SentenceTransformers
+
+- PyPI: https://pypi.org/project/sentence-transformers/
+- SBERT系のモデルを簡単に利用するためのラッパー
+- 今回は日本語に特化した [sonoisa/sentence-bert-base-ja-mean-tokens](https://huggingface.co/sonoisa/sentence-bert-base-ja-mean-tokens) というモデルを利用
+- 埋め込み(ベクトル値)からコサイン類似度を計算し、意味的に遠い単語を割り出した
+
+### LLM
+
+- アイデアの生成(テキスト)には `anthropic/claude-3.5-sonnet`
+- イメージ画像の生成には `google/gemini-2.5-flash-image-preview`
+- 金銭的コストが低めでレスポンスが速く、そこそこの品質で生成できるもの(体感)で選んだ
+
+### OpenRouter
+
+- https://openrouter.ai/
+- 複数のAIモデルのWebAPIを共通のインタフェースで利用できる
+- 今回はClaudeやGeminiを利用したのでOpenRouterでインタフェースを抽象化してもらった
+
+### オズボーンのチェックリスト
+
+- ブレインストーミングの生みの親でもあるアレックス・F・オズボーンが考案
+- 転用、応用、変更、拡大、縮小、代用、置換、反転、結合という9つの視点からアイデアを広げる
+
+### バックエンド
+
+- [FastAPI](https://fastapi.tiangolo.com/ja/) を利用
+- パッケージマネージャにはモダンな [uv](https://docs.astral.sh/uv/) を使用
+- 気付いたら [Rye](https://rye.astral.sh/) はメンテナンスが終わっていた
+
+### フロントエンド
+
+- とりあえず動作させることを目指していたため、フロントエンドに手をかけてReactやNext.jsで作ることは諦めた
+- 基本的には [Jinja2](https://pypi.org/project/Jinja2/) を使ったSSR
+- 非同期通信をしたい場面もあったので [htmx](https://htmx.org/) を活用
+
+## 将来の展望
+
+- UIは全く洗練できていない
+    - ネットワークグラフみたいなUIは割と良いかもしれない
+    - 基準の単語から意味の遠い単語を取り出すというのを連鎖的にやれるようなUI
+    - 何連鎖か離れた単語同士を結合してアイデアを生成できる
+    - 脳内のマインドワンダリング感がもっと再現できそう
+- 生成されたアイデアの特定部分をさらにLLMで深堀りする機能
+- ユーザ機能
+    - 今回はプロンプトをかなり自分好みのアイデアが出るようにプロンプトエンジニアリングした(精度が良いとは言えないが)
+    - プロンプトのカスタマイズ
+    - 生成したアイデアのシェア
+- ストリーミング対応
+    - 全てのレスポンスが完成してから返す今の方式だと遅く感じてしまう
+- KJ法等のアイデア収束の技法の統合
+
+## まとめ
+
+- 今回作ったツールはチーム内でドッグフーディングしていきたい(ハッカソン等で)
+- こういうちょっとしたアイデアの実現は生成AIとAIエージェントの発展によってやりやすくなったと感じる
+- 今後も定期的にアイデアは実現していきたい(とりあえずプロトタイプとして)
+- 実際に手を動かす奴 > 考えているだけの奴 > 考えてもいない奴
+- 手を動かせる奴になろう！
