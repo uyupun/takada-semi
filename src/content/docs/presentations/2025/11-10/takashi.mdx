@@ -1,0 +1,169 @@
+---
+title: geolocator - Flutterで位置情報を取得する
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+- [geolocator](https://pub.dev/packages/geolocator) は位置情報を取得するためのパッケージ
+
+## 導入
+
+- `pubspec.yaml` に以下を追加
+
+```yaml
+dependencies:
+  geolocator: ^14.0.2
+```
+
+## 使用方法
+
+フォアグラウンドでの位置情報の取得を対象としている
+
+### Android の設定
+
+- `android/app/build.gradle.kts` で `compileSdk` を `35` に設定する
+
+```android/app/build.gradle.kts
+android {
+    compileSdk = 35
+}
+```
+
+- `android/app/src/main/AndroidManifest.xml` で位置情報の取得権限を追加する
+
+```android/app/src/main/AndroidManifest.xml
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+```
+
+### iOS の設定
+
+- `ios/Runner/Info.plist` で位置情報の取得権限を追加する
+
+```ios/Runner/Info.plist
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>This app needs access to location when open.</string>
+```
+
+- `ios/Podfile` で `geolocator_apple` のビルド設定を変更する
+  - 常時位置情報の取得を不要にする
+
+```ios/Podfile
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    if target.name == "geolocator_apple"
+      target.build_configurations.each do |config|
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)', 'BYPASS_PERMISSION_LOCATION_ALWAYS=1']
+      end
+    end
+  end
+end
+```
+
+### コード例
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+
+class MyHomePage extends StatefulWidget {...}
+
+class _MyHomePageState extends State<MyHomePage> {
+  Position? _position;
+  bool _isLoading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: ...,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: () async {
+                    setState(() {
+                      _isLoading = true;
+                    });
+                    var permission = await Geolocator.checkPermission();
+
+                    if (permission == LocationPermission.denied) {
+                      permission = await Geolocator.requestPermission();
+                    }
+
+                    if (permission == LocationPermission.always ||
+                        permission == LocationPermission.whileInUse) {
+                      final serviceEnabled =
+                          await Geolocator.isLocationServiceEnabled();
+                      if (serviceEnabled) {
+                        final position = await Geolocator.getCurrentPosition(
+                          locationSettings: LocationSettings(
+                            accuracy: LocationAccuracy.high,
+                            timeLimit: const Duration(seconds: 60),
+                          ),
+                        );
+                        setState(() {
+                          _position = position;
+                        });
+                      }
+                    }
+
+                    setState(() {
+                      _isLoading = false;
+                    });
+                  },
+                  child: Text(_isLoading ? '取得中...' : '位置情報の取得'),
+                ),
+                const SizedBox(width: 20),
+                ElevatedButton(
+                  onPressed: () async {
+                    await Geolocator.openAppSettings();
+                  },
+                  child: const Text('設定を開く'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              '緯度: ${_position?.latitude ?? '-'} / 経度: ${_position?.longitude ?? '-'}',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+```
+
+### 各プロパティの説明
+
+- `Geolocator.isLocationServiceEnabled()`
+  - デバイスの位置情報サービスが有効かどうかをチェックする
+- `Geolocator.checkPermission()`
+  - アプリの位置情報権限の状態をチェックする
+- `Geolocator.requestPermission()`
+  - 位置情報の権限をユーザーにリクエストする
+- `Geolocator.getCurrentPosition()`
+  - 現在の位置情報を取得する
+- `LocationSettings.accuracy`
+  - 位置情報の精度を設定する
+- `LocationSettings.distanceFilter`
+  - 位置更新の最小距離を設定する
+- `LocationSettings.timeLimit`
+  - 位置情報の取得時間を設定する
+- `Position.latitude`
+  - 緯度を取得する
+- `Position.longitude`
+  - 経度を取得する
+
+## まとめ
+
+簡単に位置情報を取得することが可能で、[google_maps_flutter](https://pub.dev/packages/google_maps_flutter) などと組み合わせることで用途が広がる。
+常時位置情報を取得することも可能なため、ポケモン GO のようなアプリを作成することも可能。
