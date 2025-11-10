@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "gray-matter": "4.0.3",
-    "sharp": "0.34.3"
+    "sharp": "0.34.5"
   },
   "engines": {
     "node": ">=22.14.0 <22.15.0"
