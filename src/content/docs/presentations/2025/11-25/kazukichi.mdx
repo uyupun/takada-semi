@@ -1,0 +1,130 @@
+---
+title: Quine - 自分自身を語るプログラム
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+<img src="https://i.ytimg.com/vi/r_mfpy2ZyQQ/hqdefault.jpg" />
+
+## Quineとは
+
+- Quineはクワインと読む
+- 自分自身のソースコードを出力するプログラム群の総称
+- 論理学者・哲学者のウィラード・ヴァン・オーマン・クワインから由来するが、彼自身が考案したものではない
+- 彼が自己言及に関する論理学・哲学上の概念を研究した人物だったため、彼の名前から取られた
+
+## ルール
+
+- プログラムが自分自身のソースコードを出力する
+- 外部ファイルを読み込まない
+- 外部からの入力に頼らない
+
+## 実例
+
+- Pythonによる一例を紹介する
+	- 他の言語でもQuineを作成することは可能
+- 採用理由
+	- 筆者がPythonに慣れている
+	- 比較的簡単にQuineの要件を満たせる
+- ソースコード
+
+```python
+s = 's = {!r}\nprint(s.format(s))'
+print(s.format(s))
+```
+
+- 実行結果
+
+```bash
+s = 's = {!r}\nprint(s.format(s))'
+print(s.format(s))
+```
+
+- ソースコードと実行結果が同様であることが確認できた
+
+## 前提知識
+
+### str.format()
+
+- Pythonで変数展開を実現するための機能の一つ
+	- 他にもパーセント書式やf-stringを利用して変数展開することもできる
+- ソースコード
+
+```python
+name = "Takashi"
+print("hello, {}!".format(name))
+```
+
+- 実行結果
+
+```bash
+hello, Takashi!
+```
+
+### 変換指定子
+
+- `str.format()` と併せて利用する
+	- ※ f-stringでも利用可
+- `{}` 内に変換指定子を指定することで、変数展開時の挙動を制御できる
+
+```python
+name = "高橋\nたかし"
+print("{}".format(name))
+print("{!s}".format(name))
+print("{!r}".format(name))
+print("{!a}".format(name))
+```
+
+- 実行結果
+	- `{}`
+		- 通常の人間向けの出力
+		- エスケープシーケンスが解釈される
+		- 内部的に `str()` が呼ばれる
+	- `{!s}`
+		- `{}` と同じ挙動
+	- `{!r}`
+		- デバッグ用の厳密な出力
+		- エスケープシーケンスが解釈されない
+		- 内部的に `repr()` が呼ばれる
+	- `{!a}`
+		- 非ASCII文字をユニコードコードポイントにエスケープして出力
+		- エスケープシーケンスが解釈されない
+		- 内部的に `ascii()` が呼ばれる
+
+```bash
+高橋
+たかし
+高橋
+たかし
+'高橋\nたかし'
+'\u9ad8\u6a4b\n\u305f\u304b\u3057'
+```
+
+## 解説
+
+- `s` という変数に文字列を定義している
+- `{!r}` の箇所に `repr()` の表現形式で変数を展開できるようになっている
+
+```python
+s = 's = {!r}\nprint(s.format(s))'
+```
+
+- 変数 `s` の `{!r}` の箇所に変数 `s` 自身を渡して展開して出力している
+
+```python
+print(s.format(s))
+```
+
+- この操作により、以下のように変数展開され、これを出力するとソースコード自身となる
+
+```
+'s = \'s = {!r}\\nprint(s.format(s))\'\nprint(s.format(s))'
+```
+
+## 感想
+
+- 他のプログラミング言語でのQuineや他の超絶技巧プログラムもそのうち理解してみたい
+- こういった超絶技巧なパズルチックなプログラムの理解は短期的には全く役に立たないけど、長期的に見ると思考や理解のプロセスに良いフィードバックを与えそう
