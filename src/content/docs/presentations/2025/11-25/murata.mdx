@@ -7,6 +7,10 @@ import Author from '@components/Author.astro';
 
 <Author frontmatter={frontmatter} />
 
+## 前回のリンク
+
+- [前回](https://uyupun.github.io/takada-semi/presentations/2025/11-06/murata/)
+
 ## What's omusubi?
 
 - **Omusubi Modular Unified System for Ubiquitous emBedded Interfaces**
@@ -109,7 +113,7 @@ workspace/                    # 開発環境のルート
     - どんどん投げてください。
 - C++14 → C++17 への完全移行
   - 部分部分でC++14のコードが残っている
-    - C++17に完全移行する予定ではあるが、SPAJAMの後に本腰を入れる感じかな？
+    - C++17に完全移行する予定ではあるが・・・？
 - テストフレームワークの導入
   - 11/25対応
     - 自作、というかAIが作ったテストフレームワークを使っていたが、外部のフレームワークの方がよいのでは？と思った
@@ -128,6 +132,6 @@ workspace/                    # 開発環境のルート
 - omusubiはインターフェースの組み合わせでメインのプログラムが書ける
 - ヒープ領域を使用しないでスタック領域のみで処理を済ませるので、`bad_alloc`などで落ちることがない
   - 逆にいうと、スタック領域すら用意できないマイコンではアプリが起動しない
-- 基本的に自作（主にcode/）なので、ライセンスは関係ない
+- 基本的に自作（主にcore/）なので、ライセンスは関係ない
   - M5Stack向け実装の際は、M5Stackのライセンスに気をつければ良い
 - 何かあれば`issue`やら`discusstions`で議論しましょう
