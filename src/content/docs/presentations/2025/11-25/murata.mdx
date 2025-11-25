@@ -1,0 +1,137 @@
+---
+title: 汎用マイコン（？）向けライブラリ omusubi について
+author: murata
+---
+
+import Author from '@components/Author.astro';
+
+<Author frontmatter={frontmatter} />
+
+## 前回のリンク
+
+- [前回](https://uyupun.github.io/takada-semi/presentations/2025/11-06/murata/)
+
+## What's omusubi?
+
+- **Omusubi Modular Unified System for Ubiquitous emBedded Interfaces**
+  - "Omusubi - ユビキタス組み込みインターフェースのためのモジュラー統合システム"
+- pre-omusubiの[GitHubはこちら](https://github.com/TakumiOkayasu/pre-omusubi)
+- マイコン向けの軽量で型安全なC++17フレームワーク
+- バージョンのタグもついていないアルファ版
+- 特徴
+  - ゼロオーバーヘッド抽象化（動的メモリ確保なし、例外なし）
+  - C++17標準準拠
+  - インターフェース/実装の完全分離
+  - SystemContextによる統一的なハードウェアアクセス
+  - プラットフォーム独立型アーキテクチャ
+
+## ファイル構成
+
+- `omusubi-m5stack`はM5Stack向けに実装したディレクトリ
+  - `git submodule`を使用せず、このように管理したい。
+    - 理由は特にない。自分的にはこの方が管理しやすい？って思ったので。
+
+```
+workspace/                    # 開発環境のルート
+├── omusubi/                  # ← コアライブラリ（このリポジトリ）
+│   ├── include/omusubi/
+│   ├── examples/
+│   └── ...
+│
+├── omusubi-m5stack/          # ← M5Stack向け実装（別リポジトリ）
+│   ├── include/
+│   │   └── omusubi/
+│   │       └── platform/
+│   │           └── m5stack/
+│   │               ├── m5stack_system_context.h
+│   │               ├── m5stack_connectable_context.h
+│   │               ├── m5stack_sensor_context.h
+│   │               └── ...
+│   ├── src/
+│   │   └── platform/
+│   │       └── m5stack/
+│   │           ├── m5stack_system_context.cpp  # get_system_context()実装
+│   │           ├── m5stack_serial_context.cpp
+│   │           └── ...
+│   ├── examples/
+│   │   ├── serial_hello.cpp
+│   │   ├── ble_peripheral.cpp
+│   │   └── ...
+│   └── platformio.ini        # omusubiへのパスを../omusubi/includeで参照
+│
+└── my-m5stack-project/       # ユーザープロジェクト
+    ├── src/
+    │   └── main.cpp
+    └── platformio.ini        # ../omusubi/include と ../omusubi-m5stack/include を参照
+```
+
+## 強み
+
+- 設計思想 [アーキテクチャ設計](https://github.com/TakumiOkayasu/pre-omusubi/blob/main/docs/architecture.md)
+- 組み込みシステム特有の制約に対応するため、Context Patternを採用
+  - 静的書き込み領域をリンクできない環境が存在（BREW、Android Application Contextなど）
+    - グローバル変数やシングルトンに依存した設計は移植性が低い
+    - 実行時のメモリ確保が制限される組み込み環境
+  - Context Patternの利点
+    - データの配置場所を実装側で自由に決定できる（静的領域、動的領域、外部メモリ等）
+    - インターフェースを通じたアクセスにより、実装の詳細を隠蔽
+    - DIコンテナとして機能し、テスト時のモック差し替えが容易
+    - 階層構造により関心事を分離
+    - 参考デザインパターン
+      - Abstract Factory Pattern
+      - Dependency Injection Pattern
+      - Strategy Pattern
+- omusubiコア部分は外部ライブラリに依存していない
+  - つまり、ライブラリ自体は完全にライセンス制約なし
+    - コア機能（Optional, Result, Logger, StringViewなど）は標準C++のみ使用
+    - `Result`を導入してRustっぽくしたり、`Optional`を導入したり
+      - C++17に対応したので、`Optional`は`std::optional`に、`StringView`は`std::string_view`に変更する予定である
+      - もともとC++14で開発していたので、その名残りだが、基本的に標準クラスと互換性を持っているので、置換するだけで問題ない
+        - なお、ヒープ領域を使うのであればその限りではない
+  - コンパイル時処理を多用することで、実行時のオーバーヘッドを減らす
+    - マイコンの貧弱な環境でもある程度快適に使えるように気を使っている
+      - コンパイル時文字列、コンパイル時フォーマット文字列検証、固定長文字列など、文字列操作がクラスベースで、C Likeではない。
+        - `std::string`は制約により使えないので
+- 開発環境にDevContainerを採用
+  - `git clone`したら`開発コンテナで開く`を押せば必要なツールは導入されている
+    - 即開発可能！
+- 文字列はUTF-8対応
+  - C++ではこの辺**クソ**なので
+
+## まだ決めていない（決めあぐねている）項目
+
+- ライセンス（MIT？Apache 2.0？）
+- ライブラリインターフェース（まだ本決まりではない）
+  - たとえば、Bluetooth機能のないハードにBluetoothインターフェースを実装させるのはどうなの？とか
+  - 初期化のタイミングもちょっと考えたいところではある。
+    - 現状は実質シングルトンになってる。static変数なので初期化タイミングはある程度確定しているが、やっぱりきっちりコントロールしたいよな
+
+## 開発の現状
+
+- 自分がとりあえず暴走ぎみに書いている
+  - 本番リリース後は、機能追加するのにPRを投げてレビュアーにチェック→マージの流れ
+    - どんどん投げてください。
+- C++14 → C++17 への完全移行
+  - 部分部分でC++14のコードが残っている
+    - C++17に完全移行する予定ではあるが・・・？
+- テストフレームワークの導入
+  - 11/25対応
+    - 自作、というかAIが作ったテストフレームワークを使っていたが、外部のフレームワークの方がよいのでは？と思った
+      - 実績という面でも、自作より信頼度が高いテストができそう
+
+## 開発ヘルパーツール
+
+- omusubi組み込みフレームワーク用の自動コード生成ツール [omusubi-codegen](https://github.com/TakumiOkayasu/omusubi-codegen)
+  - GoでVibe Codingで作った
+  - テストはしていて、一応動く
+  - 最新版は `v0.0.4`
+  - 各プラットフォームの実装する時に使ってみてください
+
+## まとめ
+
+- omusubiはインターフェースの組み合わせでメインのプログラムが書ける
+- ヒープ領域を使用しないでスタック領域のみで処理を済ませるので、`bad_alloc`などで落ちることがない
+  - 逆にいうと、スタック領域すら用意できないマイコンではアプリが起動しない
+- 基本的に自作（主にcore/）なので、ライセンスは関係ない
+  - M5Stack向け実装の際は、M5Stackのライセンスに気をつければ良い
+- 何かあれば`issue`やら`discusstions`で議論しましょう
