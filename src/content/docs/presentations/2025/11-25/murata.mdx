@@ -21,15 +21,11 @@ import Author from '@components/Author.astro';
   - SystemContextによる統一的なハードウェアアクセス
   - プラットフォーム独立型アーキテクチャ
 
-## 設計思想
-
-- ほとんどドキュメントに書いてある。 ref : [アーキテクチャ設計](https://github.com/TakumiOkayasu/pre-omusubi/blob/main/docs/architecture.md)
-
 ## ファイル構成
 
-- このように配置してもらうと、開発が楽になる。
-- `omusubi-m5stack`はM5Stack向けに実装したディレクトリ。`git submodule`を使用せず、このように管理したい。
-  - 理由は特にない。自分的にはこの方がうれしいかな？って思ったので。
+- `omusubi-m5stack`はM5Stack向けに実装したディレクトリ
+  - `git submodule`を使用せず、このように管理したい。
+    - 理由は特にない。自分的にはこの方が管理しやすい？って思ったので。
 
 ```
 workspace/                    # 開発環境のルート
@@ -67,6 +63,7 @@ workspace/                    # 開発環境のルート
 
 ## 強み
 
+- 設計思想 [アーキテクチャ設計](https://github.com/TakumiOkayasu/pre-omusubi/blob/main/docs/architecture.md)
 - 組み込みシステム特有の制約に対応するため、Context Patternを採用
   - 静的書き込み領域をリンクできない環境が存在（BREW、Android Application Contextなど）
     - グローバル変数やシングルトンに依存した設計は移植性が低い
