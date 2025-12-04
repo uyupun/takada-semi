@@ -1,0 +1,154 @@
+---
+title: speech_to_text - Flutterで音声認識を実装する
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+- [speech_to_text](https://pub.dev/packages/speech_to_text) は音声認識を実装するためのパッケージ
+
+### 音声認識の仕組み
+
+- Android
+  - SpeechRecognizer: アプリ側の窓口となり、OSの音声認識サービスへの接続や命令（開始・停止）を管理
+  - RecognitionService: マイクからの音声入力とエンジンの解析処理を一括して実行
+- iOS
+  - AVAudioEngine: マイクから音声データをストリーミング入力
+  - SFSpeechRecognizer: 入力された音声を解析
+
+## 導入
+
+- `pubspec.yaml` に以下を追加
+
+```yaml
+dependencies:
+  speech_to_text: ^7.3.0
+```
+
+## 使用方法
+
+### Android の設定
+
+```android/app/src/main/AndroidManifest.xml
+<uses-permission android:name="android.permission.RECORD_AUDIO"/>
+<uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.BLUETOOTH"/>
+<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
+<uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+...
+<queries>
+    <intent>
+        <action android:name="android.speech.RecognitionService" />
+    </intent>
+</queries>
+```
+
+### iOS の設定
+
+```ios/Runner/Info.plist
+<key>NSSpeechRecognitionUsageDescription</key>
+<string>音声認識を使用して言葉をテキストに変換するために使用します。</string>
+<key>NSMicrophoneUsageDescription</key>
+<string>音声を入力して認識させるためにマイクを使用します。</string>
+```
+
+### コード例
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
+
+class MyHomePage extends StatefulWidget {...}
+
+class _MyHomePageState extends State<MyHomePage> {
+  final SpeechToText _speechToText = SpeechToText();
+  bool _speechEnabled = false;
+  String _lastWords = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _initSpeech();
+  }
+
+  void _initSpeech() async {
+    _speechEnabled = await _speechToText.initialize();
+    setState(() {});
+  }
+
+  void _startListening() async {
+    await _speechToText.listen(onResult: _onSpeechResult, localeId: 'ja_JP');
+    setState(() {});
+  }
+
+  void _stopListening() async {
+    await _speechToText.stop();
+    setState(() {});
+  }
+
+  void _onSpeechResult(SpeechRecognitionResult result) {
+    setState(() {
+      _lastWords = result.recognizedWords;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(...),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Recognized words:',
+                style: TextStyle(fontSize: 20.0),
+              ),
+            ),
+            Expanded(
+              child: Container(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  _speechToText.isListening
+                      ? _lastWords
+                      : _speechEnabled
+                      ? 'Tap the microphone to start listening...'
+                      : 'Speech not available',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _speechToText.isNotListening ? _startListening : _stopListening,
+        tooltip: 'Listen',
+        child: Icon(_speechToText.isNotListening ? Icons.mic_off : Icons.mic),
+      ),
+    );
+  }
+}
+```
+
+### 各プロパティの説明
+
+- SpeechToText.initialize()
+  - 音声認識の初期化を行う
+- SpeechToText.listen()
+  - 音声認識を開始し、結果をコールバックで受け取る
+- SpeechToText.stop()
+  - 音声認識を停止する
+- SpeechRecognitionResult.recognizedWords
+  - 認識されたテキストを取得する
+
+## まとめ
+
+- 簡単に音声認識機能を実装でき、チャットや文字起こしなど様々な用途に活用可能
+- 音声入力を活用することで、ユーザー体験の向上に期待できる
