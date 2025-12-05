@@ -1,0 +1,196 @@
+---
+title: flutter_ble_peripheral / flutter_blue_plus - FlutterでBLE通信と距離推定を実装する
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+- [flutter_ble_peripheral](https://pub.dev/packages/flutter_ble_peripheral) は端末をBLEビーコン（Advertiser）として動作させるためのパッケージ
+- [flutter_blue_plus](https://pub.dev/packages/flutter_blue_plus) はBLEデバイスのスキャンや接続、データ取得など受信側（Scanner）として利用できるパッケージ
+
+### BLE通信の仕組み
+
+- **Advertiser（発信側）**: BLEビーコンとしてUUIDや任意データを広告
+- **Scanner（受信側）**: 周囲のBLEビーコンをスキャンし、RSSI（受信信号強度）や広告データを取得
+
+## 導入
+
+`spubspec.yaml` に以下を追加
+
+```yaml
+dependencies:
+  flutter_ble_peripheral: ^2.0.1
+  flutter_blue_plus: ^2.0.2
+```
+
+## 使用方法
+
+### Android の設定
+
+```android/app/src/main/AndroidManifest.xml
+<!-- Google Play Storeにアプリが Bluetooth LE を使用することを通知 -->
+<uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+
+<!-- Android 12 以降の端末用 -->
+<!-- BLEデバイスのスキャン権限（位置情報は使用しない設定） -->
+<uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+<!-- BLEデバイスへの接続権限 -->
+<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+<!-- Android 11 以前の端末用 -->
+<!-- 基本的なBluetooth機能の使用権限 -->
+<uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+<!-- Bluetoothの管理権限（デバイス検索、接続管理など） -->
+<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+<!-- 精密な位置情報アクセス権限（BLEスキャンに必要） -->
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30"/>
+
+<!-- Android 9 以前の端末用 -->
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="28" />
+```
+
+### iOS の設定
+
+```ios/Runner/Info.plist
+<key>NSBluetoothAlwaysUsageDescription</key>
+<string>このアプリは近距離通信のためにBluetoothを使用します。</string>
+```
+
+## コード例
+
+### Advertiser（発信側）
+
+```dart
+final _peripheral = FlutterBlePeripheral();
+bool _isAdvertising = false;
+
+Future<void> _toggle() async {
+  if (_isAdvertising) {
+    await _peripheral.stop();
+    setState(() => _isAdvertising = false);
+    return;
+  }
+  final manufacturerData = Int8List.fromList([measuredPowerDbm]).buffer.asUint8List();
+  final data = AdvertiseData(
+    includeDeviceName: true,
+    serviceUuid: serviceUuid,
+    manufacturerId: 0xFFFF,
+    manufacturerData: manufacturerData,
+  );
+  await _peripheral.start(advertiseData: data);
+  setState(() => _isAdvertising = true);
+}
+```
+
+- `FlutterBlePeripheral.start()` / `stop()`  
+  - BLE広告の開始・停止
+- `AdvertiseData`  
+  - 広告するUUIDやメーカー情報などを設定
+
+### Scanner（受信側）
+
+```dart
+static const pathLossN = 2.0;
+final Map<DeviceIdentifier, List<int>> _rssiHistory = {};
+final Map<DeviceIdentifier, int> _measuredPowerByDevice = {};
+bool _scanning = false;
+StreamSubscription<List<ScanResult>>? _scanSub;
+
+Future<void> _startScanInternal() async {
+  _rssiHistory.clear();
+  _measuredPowerByDevice.clear();
+  await _scanSub?.cancel();
+  await FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
+  _scanSub = FlutterBluePlus.scanResults.listen((results) {
+    for (final r in results) {
+      _onScanResult(r);
+    }
+  });
+}
+
+void _onScanResult(ScanResult r) {
+  final uuids = r.advertisementData.serviceUuids.map((e) => e.str).toList();
+  if (!uuids.contains(targetServiceUuid)) return;
+  final mdata = r.advertisementData.manufacturerData;
+  if (mdata.isNotEmpty) {
+    final first = mdata.entries.first.value;
+    if (first.isNotEmpty) {
+      final measuredPower = Int8List.fromList([first[0]]).buffer.asInt8List()[0];
+      _measuredPowerByDevice[r.device.id] = measuredPower;
+    }
+  }
+  final list = _rssiHistory.putIfAbsent(r.device.id, () => []);
+  list.add(r.rssi);
+  if (list.length > 5) list.removeAt(0);
+  _stopScanInternal();
+  setState(() => _scanning = false);
+}
+```
+
+- `FlutterBluePlus.startScan()` / `stopScan()`  
+  - BLEビーコンのスキャン開始・停止
+- `ScanResult.rssi`  
+  - 受信信号強度（距離推定に利用）
+- `ScanResult.advertisementData.manufacturerData`  
+  - 発信側が埋め込んだ任意データ（`measuredPower`など）
+
+#### 距離推定の計算
+
+```dart
+double? _estimateDistance(DeviceIdentifier id) {
+  final rssiList = _rssiHistory[id];
+  if (rssiList == null || rssiList.isEmpty) return null;
+
+  final rssiAvg = rssiList.reduce((a, b) => a + b) / rssiList.length.toDouble();
+  final tx = _measuredPowerByDevice[id] ?? -59;
+
+  final d = pow(10, (tx - rssiAvg) / (10 * pathLossN));
+  if (d is double) return d;
+  return d.toDouble();
+}
+```
+
+BLEビーコンからの距離は以下の計算式で推定できる：
+
+**`d = 10^((TxPower - RSSI) / (10 × n))`**
+
+**各パラメータの詳細説明：**
+
+- **`d`**: 推定距離（メートル）
+- **`TxPower`**: 送信電力（1m地点での基準RSSI値）
+  - 通常は -59dBm が使用される
+  - [`manufacturerData`](ScanResult.advertisementData.manufacturerData) から取得
+- **`RSSI`**: 受信信号強度（Received Signal Strength Indicator）
+  - 実際に測定された信号の強さ（dBm）
+  - 値が大きいほど（0に近いほど）信号が強い
+- **`n`**: 路損指数（Path Loss Exponent）
+  - 環境による電波の減衰率を表す
+  - **自由空間**: `n = 2.0`
+  - **屋内環境**: `n = 2.0 ~ 4.0`
+  - **障害物が多い環境**: `n = 4.0 ~ 6.0`
+
+**計算の仕組み：**
+1. TxPowerとRSSIの差分を計算（信号の減衰量）
+2. 減衰量を路損指数で正規化
+3. 10の累乗で距離に変換
+
+**実用例：**
+- TxPower = `-59dBm`、RSSI = `-65dBm`、n = `2.0` の場合
+- 差分: `-59 - (-65) = 6dBm`
+- 計算: `d = 10^(6/(10×2)) = 10^0.3 ≈ 2.0m`
+
+**注意点：**
+- 電波の減衰は環境に大きく依存するため、実際の距離との誤差が生じます
+- 壁や人体などの障害物により信号が弱くなることがあります
+- より正確な測定には複数回の測定値の平均化（上記コードの`_rssiHistory`）が有効です
+
+## まとめ
+
+- BLE通信を使うことで、端末同士の距離推定などが可能
+  - `flutter_ble_peripheral` で発信、`flutter_blue_plus` で受信
+- 距離推定を組み合わせることで、簡易的な近接検知や位置連動サービスの実装ができる
+  - 環境や端末によって精度は変動するため、目安として利用する
