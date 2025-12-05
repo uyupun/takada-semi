@@ -1,0 +1,82 @@
+---
+title: M5Stackのユニット検証
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- [終・ハッカソンの技術選定 [ハードウェア編]](https://uyupun.github.io/takada-semi/presentations/2025/10-22/kazukichi/) の続編のようなもの
+- M5Stack CoreS3で使用できるユニット(センサ/アクチュエータ)の中で気になったものを追加検証
+
+## 心拍センサ
+
+- 目玉その1
+- 心拍数と血中酸素飽和度(SpO2)が取得できる
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/YI4rzCl1GIU?si=42ZwHLy5jiiFVLeh" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## 重量センサ
+
+- 目玉その2
+- 最大5kgまでの重量を測れる
+- 指で押さえたりしても反応するため、圧力センサ的な使い方もできそう
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/xO8OT3dDimg?si=80KUkl3yS49r2kEQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## フラッシュライト
+
+- 目玉その3
+- 意外と眩しいレベルの光を出力することができる
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/WV2ep0QZjsk?si=-221FjDpCGupRySN" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## 非接触温度センサ
+
+- NCIR(非接触温度センサ)
+- すでに空間の温度を測定するセンサは持っていたが、体温のようなピンポイントで温度を測定したい場合に使用できるセンサを持っていなかった
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/T-5sNb56ric?si=n2JyAVdpMl9fPFlV" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## 照度センサ
+
+- 照度センサ自体はM5Stack CoreS3の内蔵センサとして実装はされている
+- しかし、センサの汎用性が高く、本体から独立してセンサのみ動かせた方が取り回しが楽なので検証
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/WcUqrCCLRZ0?si=NyMwN2mZNOCf5IOw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## 加速度センサ
+
+- 照度センサと同様
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/sPNz9igK2OY?si=Q-F_aAkgFTocSG8W" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## キースイッチ
+
+- ユースケースは限られそうだがオマケ的に検証
+- M5Stackでコントローラー的な使い方ができそう
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/76Ws7xLBTHY?si=usgQdXSBUunISqYk" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## NVS
+
+- NVS(Non-Volatile Storage)はフラッシュメモリ(つまり不揮発性)上にあるKVS
+- 永続化したい環境変数の保存等に使用できる
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/2cZwlHvtpwE?si=jq9ABd-G97Ecm_LL" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## ハブ
+
+- Port.A(I2C)を拡張するPaHub2.1を試した
+- I2Cアドレスは1つで、ハブ側のチャンネルを書き換えることで読み取るセンサを切り替える
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/8MQqOLcB-wA?si=W0wfRImEQa4jai_V" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## おわりに
+
+- 新たなユニットを迎え、作品制作の幅が広がったように思う
+- これらのユニットを活用して面白い作品を作っていきましょう
+- まだいくつか気になっているユニットがあるので、それは別途検証していきたい
