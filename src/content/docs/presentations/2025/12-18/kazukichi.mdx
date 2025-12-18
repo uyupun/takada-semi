@@ -1,0 +1,150 @@
+---
+title: 技術・モティーフ・思想から見る『真黒合体スパホルダー』
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+<ContentImage path="2025/12-18/kazukichi/07.png" width="700" />
+
+## はじめに
+
+- 我々が制作した作品『真黒合体スパホルダー』について、技術と思想、モティーフの観点から少し深堀りしてみる
+- これにより、作品の技術的な面白さを理解する足がかりとし、また、作品のモティーフと我々の持つ [思想性・哲学性](https://uyupun.github.io/takada-semi/presentations/2025/08-27/kazukichi/#%E6%A0%B9%E5%BA%95%E3%81%AB%E6%B5%81%E3%82%8C%E3%82%8B%E6%80%9D%E6%83%B3%E6%80%A7%E5%93%B2%E5%AD%A6%E6%80%A7) との関連付けからこの作品の位置付けを試みる
+
+## 『真黒合体スパホルダー』とは
+
+- 『真黒合体スパホルダー』は2日間のハッカソン [SPAJAM2025](https://spajam.jp/) の本選大会において、我々が制作・発表した作品
+- ハッカソンのテーマである「シンクロ」要素とイベント自体のコンセプトである「温泉」要素を取り入れた専用コントローラーで遊ぶ2Dゲーム
+- 当日の発表スライド
+
+<iframe class="speakerdeck-iframe" frameborder="0" src="https://speakerdeck.com/player/2e8089546158484db9173b1bae8af551" title="真黒合体スパホルダー" allowfullscreen="true" style="border: 0px; background: padding-box padding-box rgba(0, 0, 0, 0.1); margin: 0px; padding: 0px; border-radius: 6px; box-shadow: rgba(0, 0, 0, 0.2) 0px 5px 40px; width: 100%; height: auto; aspect-ratio: 560 / 315;" data-ratio="1.7777777777777777"></iframe>
+
+- 作品の紹介動画
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/NymZm22Yiqs?si=Uedg5Mhn53BFxyyf" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## 世界観
+
+> ─20XX年、温泉大国・日本の温泉は岩石魔王・アシンクロンの手によって次々と埋められていた。
+>
+> この危機に日本政府は動いた。
+>
+> 組織されたのは合体ロボ型ヒーロー『真黒合体スパホルダー』
+>
+> アシンクロンが生み出した岩石怪獣・ユガロックを倒し、我が国に温泉を取り戻すためである──
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/NymZm22Yiqs?si=ocoblFSzD8lcdsCU&amp;start=12" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## 操作感
+
+- 2人のプレイヤーがドリルスマッシャーをスマホアプリに接続する
+- ゲームを開始するとスパホルダーの腕が振り子のようにランダムに動き始める
+- プレイヤー同士でタイミングを合わせてドリルスマッシャーを突き出す(これをシンクロアタックと呼ぶ)
+- タイミングが上手く重なると(≒シンクロすると)、ユガロックに攻撃が炸裂する
+- (攻撃が炸裂すると粘土で作られたユガロックから温泉が吹き出す謎ギミック付き)
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/NymZm22Yiqs?si=4ayZ18wLlZIraFT8&amp;start=40" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## 技術的側面
+
+### ドリルスマッシャー
+
+<ContentImage path="2025/12-18/kazukichi/01.jpg" width="500" />
+
+- GitHubリポジトリ: https://github.com/uyupun/syncro-gattai-spaholder-drill
+- C++製でM5Stack CoreS3上で動作させる前提で作られている
+- CoreS3の内蔵の加速度センサからY軸の加速度を100ミリ秒毎に送信している
+- 1P側にはM5Stack公式ユニットのウォーターポンプである [Unit Watering](https://docs.m5stack.com/ja/unit/watering) も接続されている
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/NymZm22Yiqs?si=o8gdNJt6ymgEBM9U&amp;start=142" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+- 1P側の内部構造
+
+<ContentImage path="2025/12-18/kazukichi/04.jpg" width="500" />
+
+- ウォーターポンプと粘土で作られたユガロック
+
+<ContentImage path="2025/12-18/kazukichi/05.jpg" width="500" />
+
+- M5Stack CoreS3内蔵の加速度センサの検証動画
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/BU_l8gfE43Q?si=MDMHbWWTxemrCYG7" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+- ウォーターポンプの検証動画
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/SExoVe2K9wo?si=QIaCoN4-2wALfsFN" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### スマホアプリ
+
+<ContentImage path="2025/12-18/kazukichi/02.png" width="500" />
+
+<ContentImage path="2025/12-18/kazukichi/03.png" width="500" />
+
+- GitHubリポジトリ: https://github.com/uyupun/syncro_gattai_spaholder_app
+- Flutter製
+- ゲームの部分は [flame](https://pub.dev/packages/flame) と [flame_forge2d](https://pub.dev/packages/flame_forge2d) で実装されている
+- 振り子のようにランダムに動く腕の作動、攻撃の当たり判定、2対のドリルスマッシャーから得たY軸加速度からのシンクロ判定を主に行う
+
+### 通信
+
+- スマホアプリとドリルスマッシャーの間の通信はBLE(Bluetooth Low Energy)を利用している
+- スマホアプリ側はBLE制御に [flutter_blue_plus](https://pub.dev/packages/flutter_blue_plus) を利用
+- ドリルスマッシャー側はBLE制御に [NimBLE-Arduino](https://github.com/h2zero/NimBLE-Arduino) を利用
+- BLEの大まかな説明に関しては以下の記事を参照
+    - [終・ハッカソンの技術選定 [ハードウェア編] > BLE](https://uyupun.github.io/takada-semi/presentations/2025/10-22/kazukichi/#ble)
+
+## モティーフ
+
+### タイトルの由来
+
+- 真黒合体スパホルダー ... 全体として、合体ロボや戦隊モノっぽいフォーマットのタイトルにしたかった
+- 真黒 ... シンクロの当て字として使える厨二病っぽい漢字はこれぐらいしか思い浮かばなかった
+- スパホルダー ... スパ(温泉)を掘る者という意味と、スパをholdする者(≒holder)という意味のダブルミーニング
+
+### モティーフ
+
+- 作品全体として昭和的な世界観をモティーフにしたかったが、リファレンスは実に多様
+- その多様さが作品のキメラ感にも繋がっており、「懐かしい心地よさ」と「新しい刺々しさ」の同居の成立を可能にしている
+- 主にリファレンスにしたのは戦隊モノ全般、百獣王ゴライオン等の合体ロボアニメ、ウルトラQ、ゴジラ、1970年の大阪万博
+- つまり1950年代(昭和30年代)〜1980年代(昭和50年代)までの昭和的世界観のエッセンスを幅広く取り出し、現代的な表現や価値観の中に閉じ込めている
+
+## 思想と哲学観
+
+### 純粋な遊戯
+
+- 「2人でタイミングを合わせてドリルを突き出す」という行為は、一見すると無意味で非生産的だが、それこそが純粋な遊びの本質
+- 目的を持たないからこそ美しく、無駄だからこそ人間的である
+
+### 身体が語る
+
+- 質量を持つドリルスマッシャーを通じて表現される、デジタルとアナログの境界
+- テクノロジーを駆使しつつも、最終的な成否は人間の直感と身体動作に委ねられる身体性
+
+### 共鳴する魂
+
+- 2人のプレイヤーが呼吸を合わせ、瞬間を共有することで生まれる協調の美学
+- 一見滑稽な動作も、原始的なダンスの系譜として捉えれば、人類が太古から育んできた集団的なリズムと協調の表現である
+
+### 失われた何かへの郷愁
+
+- 「温泉を取り戻すために合体ロボで戦う」という荒唐無稽な設定は、表面的にはコメディだが、その裏には深い郷愁が込められている
+- 昭和の時代には確かに存在していた「みんなで力を合わせて困難に立ち向かう」という共同体的な価値観への憧憬
+- 温泉という日本古来の文化的象徴を「取り戻す」という設定に、現代人が置き忘れてきた「何か」を回復したいという願望を投影し、温泉の回復(ヒーリング)の効能と失われた文化の回復が重層的に結びつく
+
+### 善悪のグラデーション性
+
+- 温泉を埋める・掘り起こすという一見勧善懲悪に見える対立構造の中に、善と悪のグラデーション性と視点の相対性を内包している
+- 「岩石魔王・アシンクロン」と「真黒合体スパホルダー」という対立構造は、それぞれが何を守り何を破壊しているのかという問いを投げかけ、表層的な正義の裏にある現代社会の複雑な価値観を反映
+
+## おわりに
+
+- 今作はシンプルなゲームながらも多様なモティーフの統合、チームの持つ哲学観の内包ができた
+- チームとしてゲームという新たな領域へのチャレンジもできた
+- 安定したハードとアプリの連携、筐体の中に内包されたハード等、意識しないで良いテクノロジーとして提供できたのも良かった
+- 今後はCADや3Dプリンタを活用したより柔軟で堅牢な筐体制作、より多様なセンサやアクチュエータ、より大型化した迫力のあるハードウェア、AIとの意味のある統合、ユニークなストーリーとギミックにチャレンジし、洗練していきたい
+- また、今後はしばらく、ロングスパンでリサーチと制作をする方向にシフトし、より発酵した味わい深い作品を提供していきたい
+
+<ContentImage path="2025/12-18/kazukichi/06.png" width="700" />
