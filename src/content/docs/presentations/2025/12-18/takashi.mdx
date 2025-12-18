@@ -1,0 +1,76 @@
+---
+title: BLE通信で気をつけること
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+[flutter_blue_plus](https://pub.dev/packages/flutter_blue_plus)とマイコン（M5Stack）を用いたBLE通信において、いくつかのトラブルに直面した。
+その内容と対処法について記述する。
+
+## 1. スマホ側の仕様？
+
+以前接続したM5Stackと通信する際、以前とは異なるUUIDを設定して接続を試みた。だが、UUIDで絞っても一向にM5Stackを発見することができなかった。
+
+これは、スマホ側の仕様なのか以前接続したマイコンのUUIDをキャッシュしていたため、以前のUUIDでM5Stackが検索に引っかかった。そのため、M5Stackで設定した名前を元に絞り込むことでM5Stackと接続ができた。
+
+```dart
+_scanSub = FlutterBluePlus.scanResults.listen((results) async {
+  for (ScanResult r in results) {
+    final id = r.device.remoteId.str;
+    // 過去接続したことがある場合は、記憶している名前が入る
+    final name = r.device.platformName;
+    // 受信したパケット (アドバタイズデータ) そのものの名前が入る
+    final advertisementData = r.advertisementData.advName;
+
+    // 既に接続済みのデバイスは無視
+    if (_devices.containsKey(id)) {...}
+
+    // UUIDチェック
+    bool hasTargetUuid = r.advertisementData.serviceUuids.any((guid) {...});
+
+    // 名前チェック
+    bool isTargetName =
+        name == _targetDeviceName ||
+        name.startsWith(_targetDeviceName) ||
+        advertisementData == _targetDeviceName ||
+        advertisementData.startsWith(_targetDeviceName);
+
+    if (hasTargetUuid || isTargetName) {
+      // 接続前に必ずスキャンを止める！
+      await _scanSub?.cancel();
+      await FlutterBluePlus.stopScan();
+
+      // 接続処理
+      await _connectToDevice(r.device);
+
+      // 再度スキャンを開始するかどうかの判定などの処理が続く
+      ...
+    }
+  }
+});
+```
+
+## 2. 通信方法の違い
+
+通常BLEでデータを書き込む場合は、TCP通信のように「送りました」→「届きました（ACK）」という確認の往復が行われる。（`ATT_WRITE_REQ` → `ATT_WRITE_RSP`）
+
+今回、M5Stack側から一定間隔でデータを受け取っていたこともあり、レスポンスが返るまで処理がブロックされていた。そのため`withoutResponse: true`とすることで、UDP通信のようにレスポンスを待たずに後続の処理を続けることが可能になった。（`ATT_WRITE_CMD`）
+
+```dart
+// targetはBluetoothCharacteristic
+await target.write([value ? 1 : 0], withoutResponse: true);
+```
+
+## まとめ
+
+今回トラブルシューティングを通じて、以下の知見を得ることができた。
+
+- 接続できない時はキャッシュを疑う
+- 用途に合わせて送信モードを選ぶ
+
+今後BLE通信を行う場合にこれらを意識して開発に取り組みたい。
