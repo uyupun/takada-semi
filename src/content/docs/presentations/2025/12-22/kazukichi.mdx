@@ -1,0 +1,62 @@
+---
+title: 顔面コントローラー
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## 顔面コントローラーとは
+
+- 表情筋を動かすことでゲーム等を操作できるようなUIのことをそう呼んでいる
+- GitHubリポジトリ: https://github.com/tyokinuhata/face-controller
+- 今回はそのUIのデモと内部の構造について紹介する
+
+## デモ
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/eOnxuoWKY20?si=p5CMi-T_BCp7NZEJ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## 面白さ
+
+- 特別なハードウェアの必要なしに操作が可能(カメラのみ)
+- どうしても変顔になる
+- 顔面に困難な動作を要求するので当然、痛くなる
+- 表情筋をムキムキに鍛えたプロゲーマー同士の対戦とか見てみたい
+
+## 技術スタック
+
+### Vite
+
+- Viteのvanilla-tsテンプレート(Vite + TypeScriptのシンプルなテンプレ)
+- TypeScriptが書け、かつ、NPMの資産を利用できれば良い、みたいな温度感のときにオススメ
+
+### MediaPipe Tasks Vision
+
+- Googleが提供している
+- 画像や動画から人や物の状態を取得するのに便利なライブラリ群
+- 今回はそのうち、顔の状態を取得するFace Landmarkerを利用
+- ウインクや口の開け締めも簡単に取得できる
+
+### Canvas
+
+- 2Dゲームの実装に利用
+- プレイヤーの移動とジャンプを実装した
+- 簡単な動きの2Dゲームであれば生のCanvasでも十分であることが分かった
+
+## 流れ
+
+1. カメラから映像を取得
+2. 顔の表情を解析(そもそも顔が写っているか、ウインクや口の開け締めのスコアの取得)
+3. スコアが閾値を超えているかの判別
+4. 表情の動きに対応する動きをゲームに反映
+    - 左目を閉じる -> 左移動
+    - 右目を閉じる -> 右移動
+    - 口を開ける -> ジャンプ
+
+## 感想
+
+- 面白いUI部品の一つとして様々な場面(特にゲーム)で活用できそう
+- 今回はウインクと口の開け締めのみを実装したが、他の動きを実装することも可能
+- Flutter向けとしては [mediapipe_task_vision](https://pub.dev/packages/mediapipe_task_vision) が存在するが、全く実装が進んでいないため注意
+- Pose Landmarker等を使えばモーションキャプチャみたいなこともできるので、他の遊び方も試してみたい
