@@ -1,0 +1,88 @@
+---
+title: Flutterで実装するQRコードスキャナー
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+[mobile_scanner](https://pub.dev/packages/mobile_scanner) は、Flutter アプリ向けの高速かつ軽量なバーコード・QRコードスキャナーパッケージ。
+Android では CameraX/ML Kit、iOS では AVFoundation/Apple Vision を使用しており、各プラットフォームのネイティブ機能を活用した高性能なスキャンが可能。
+
+**主な特徴:**
+
+- 高速な検出: ネイティブAPIを利用し、リアルタイムでスムーズな読み取りを実現
+- 多機能: 複数のバーコード形式のサポート、画像の反転、オートズーム機能などを搭載
+- カスタマイズ性: スキャンウィンドウの設定や、カメラの解像度、検出速度の調整が可能
+- 画像からの解析: カメラ映像だけでなく、画像ファイル（analyzeImage）からの解析もサポート
+
+## 導入
+
+pubspec.yaml にパッケージを追加
+
+```yaml
+dependencies:
+  mobile_scanner: ^7.1.4
+```
+
+### Android
+
+Android では、バーコード読み取りに使用する ML Kit のライブラリを含める方法が2通りある。
+
+1. バンドル版（デフォルト）: アプリにライブラリを同梱。即座に使用可能だが、アプリサイズが約 3〜10 MB 増加する。特別な設定は不要
+2. 非バンドル版（推奨）: Google Play 開発者サービス経由でライブラリをダウンロード。アプリサイズへの影響は約 600KB と軽量だが、初回使用時にダウンロードが発生。これを使用するには、`android/gradle.properties` ファイルに以下の行を追加する必要がある
+
+```properties
+dev.steenbakker.mobile_scanner.useUnbundled=true
+```
+
+### iOS
+
+カメラを使用するため、`ios/Runner/Info.plist` にプライバシー設定を追加する必要がある。
+
+```xml
+<key>NSCameraUsageDescription</key>
+<string>QRコードをスキャンするためにカメラへのアクセスが必要です。</string>
+```
+
+もし、写真ライブラリから画像を選択してスキャンする（ `image_picker` などと併用）場合は以下も追加。
+
+```xml
+<key>NSPhotoLibraryUsageDescription</key>
+<string>QRコード画像を読み込むために写真ライブラリへのアクセスが必要です。</string>
+```
+
+## コードサンプル
+
+`MobileScanner` ウィジェットを配置し、`onDetect` コールバックで結果を受け取る。
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+
+class SimpleScanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('簡易スキャナー')),
+      body: MobileScanner(
+        onDetect: (capture) {
+          final List<Barcode> barcodes = capture.barcodes;
+          for (final barcode in barcodes) {
+            debugPrint('検出されたコード: ${barcode.rawValue}');
+          }
+        },
+      ),
+    );
+  }
+}
+```
+
+## まとめ
+
+- mobile_scanner は、導入が容易でありながら、ネイティブの最新技術を取り入れた強力なパッケージ
+- QRコード決済や商品管理アプリなど、スキャン機能が重要なアプリにおいて、第一候補となるライブラリ
+  - 実際他のパッケージはメンテナンスされていないものがほとんど
