@@ -1,0 +1,63 @@
+---
+title: Device Posture APIを使って、スマホの開閉に合わせて画面を変化させる
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+[Device Posture API](https://developer.mozilla.org/en-US/docs/Web/API/Device_Posture_API) は折りたたみデバイスにおいて、端末が「平ら（Flat）」な状態か「折れている（Folded）」状態かをリアルタイムに検知できるWeb標準の実験的機能である。
+このAPIを利用することで、端末の形状に最適化された新しいUI/UXの提供が可能になる。
+
+**主な特徴:**
+
+- リアルタイム検知: イベントリスナーを使用し、ユーザーが端末を開閉した瞬間にUIを更新できる
+- 状態判定:
+  - continuous: 完全に開いたフラットな状態（タブレットモード）
+  - folded: 画面が特定の角度で曲がっている状態（ブックモード/ラップトップモード）
+- メディアクエリ: `@media (device-posture: folded)` で折れた時のCSSを記述できる
+
+## コードサンプル
+
+```javascript
+// DOM要素の取得
+const text = document.getElementById('text');
+
+// 画面更新用の関数
+function updatePostureDisplay(postureType) {
+  // postureTypeは通常 'continuous' か 'folded' が返ります
+  if (postureType === 'folded') {
+    text.textContent = "パカっと折れてます！";
+  } else {
+    text.textContent = "平らな状態です";
+  }
+}
+
+// Device Posture API のサポート確認と実装
+if ('devicePosture' in navigator) {
+  const posture = navigator.devicePosture;
+
+  // 1. 初回ロード時の状態を取得して表示
+  updatePostureDisplay(posture.type);
+
+  // 2. 状態が変化した時のイベントリスナー
+  posture.addEventListener('change', (event) => {
+    // event.target.type ではなく navigator.devicePosture.type を参照する
+    updatePostureDisplay(navigator.devicePosture.type);
+  });
+} else {
+  // API非対応ブラウザの場合
+  text.textContent = "API未対応です";
+}
+```
+
+## デモ動画
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/tBTI373qc4M?si=uHwYNZQnqnbrE9UR" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## まとめ
+
+Device Posture API を使用することで、折りたたみデバイスの開閉の検知が可能になった。今後電子書籍などで最適化されたデザインが提供されるかもしれない。
