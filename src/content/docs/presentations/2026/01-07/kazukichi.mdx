@@ -1,0 +1,106 @@
+---
+title: ンヒ体験
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## ンヒ体験とは
+
+- プレイヤーは監視カメラから各施設を監視している監視員という設定
+- 表示されている映像に徐々に異変(怪異)が表れる
+- その怪異を時間内に発見し、報告するというゲーム
+- GitHubリポジトリ: https://github.com/tyokinuhata/nhi-moment
+
+## 着想
+
+### クイズに対する恐怖心
+
+- 幼少期からクイズに対してちょっとした不安や恐怖を感じることがあった
+- それを自己分析してみたところ、答えが視えない「未知」という人間の根源的な恐怖に依拠しているのではと思った
+- さらに未知であろうと既知であろうと、それが「例外」である場合にも、恐怖を感じるのではと思った
+- そのため、「未知」と「例外」を何かしらのモティーフに載せて恐怖体験を作ってみたくなった
+
+### 転じてアハ体験
+
+- 2000年代、茂木健一郎が『世界一受けたい授業』で、画像が少しずつ変わり、どこが変わったかを探すタイプの「アハ体験」を何度も紹介していた
+    - 本来、アハ体験とは、ある瞬間に「そういうことか！」と一気に理解できる体験のこと
+    - 20世紀初頭のヴォルフガング・ケーラーらによるゲシュタルト心理学の研究から生まれた
+- 番組のこのコーナーは何度も観たが、そのたびに先述した「クイズに対する恐怖心」を感じていた
+- 今回はその体験をホラーゲームに適用してみようと思った
+- 「∩(´；ヮ；｀)∩ンヒィ～～～～～～～～～～～～～～～～～～～～」となるので『ンヒ体験』
+
+## 体験設計
+
+- 画面中央に映像が表示される
+- 画面は拡大・縮小・移動が可能
+- 怪異を発見したらその部分をクリック(タップ)し、「報告」する
+- 報告した箇所が怪異でかつ、一定の時間内に報告できていれば、その報告が受理される(≒クリア)
+
+## デモ
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/4d-WQ1do3pU?si=w6wVtt7Nsw6Nu88P" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+- ここから体験可能: https://tyokinuhata.github.io/nhi-moment/
+
+## 技術スタック
+
+### Vite + Svelte + TS
+
+- 元々はVite + React + TSで実装する予定だったが、WebGLとReactのライフサイクルの相性が悪く断念(主にStrict Modeに起因)
+- ライフサイクルの考え方はReactに近い(Hooks相当)
+- コンポーネントの考え方はVueに近い(1ファイルにHTML/CSS/JSを記述 + ディレクティブ構文のサポート)
+- ストア(状態管理)もバンドルされている(ReactでいうJotaiやVueでいうPiniaのような位置付け)
+
+### PixiJS
+
+- https://pixijs.com/
+- WebGLやCanvas等を抽象化した高レベルな2D描画エンジン
+- 基本的にWebGLはGPU処理、CanvasはCPU処理
+- 今回は滑らかなトランジションと多様なフィルタの適用が必要だったため、WebGLを採用
+- 背景のみの画像と背景に怪異を埋め込んだ画像の2枚を滑らかにトランジションさせるイメージ
+
+### pixi-viewport
+
+- https://www.npmjs.com/package/pixi-viewport
+- 拡大・縮小・移動・クリック検出を容易にするために導入
+
+### pixi-filters
+
+- https://www.npmjs.com/package/pixi-filters
+- PixiJSのフィルタ集
+- PixiJS本体にも基本的なフィルタはバンドルされている
+- 今回、利用したフィルタ
+    - ColorMatrixFilter: 色補正。彩度、明度、コントラストを調整して全体の色味を調整できる
+    - RGBSplitFilter: RGB色分解。RGB各色をずらして表示し、古いブラウン管の色ずれを再現
+    - CRTFilter: ブラウン管エフェクト。走査線、ビネット効果、画面の湾曲を追加してレトロなモニタ感を演出
+    - NoiseFilter: ノイズ。画面全体に細かいノイズを追加してフィルム感を演出
+    - DisplacementFilter: 歪み。VHSテープ風のグリッチ効果を再現
+
+### howler.js
+
+- https://howlerjs.com/
+- BGMの再生・ミュート・音量調整
+
+## 素材作成
+
+### 画像
+
+- 基本的に [Midjourny](https://www.midjourney.com/) で生成
+- 背景はリミナルスペース感のある画像を各シチュエーション毎に生成
+- 怪異部分は別途、生成し、 [クリスタ](https://www.clipstudio.net/ja/) で合成(だいたいはソフトライト or オーバーレイ + エアブラシで溶け込ませる)
+
+### 音楽
+
+- 基本的に [Suno](https://suno.com/) で生成
+- ショッピングモール風の音楽や、調律が微妙に狂ったようなピアノ曲を生成してもらった
+
+## 感想
+
+- 2Dゲームっぽいものを初めて作ったし、WebGLも(間接的にではあるが)初めて触れた
+- PixiJSを利用すると、Web上でかなり凝った表現ができたので今後も活用していきたい
+- MidjounyやSunoといった生成AI系のサービスもけっこう使い込めた
+- 人間の不安や恐怖心の根源について改めて考えて言語化してみたい
+- 今後もグラフィカルな作品やアートに挑戦したい
