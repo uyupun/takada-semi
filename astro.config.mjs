@@ -30,6 +30,10 @@ export default defineConfig({
 					items: generatePresentationItems(),
 				}
 			],
+			// https://starlight.astro.build/ja/guides/css-and-tailwind/
+			customCss: [
+				'./src/styles/custom.css',
+			],
 			head: [
 				{
 					tag: 'link',
