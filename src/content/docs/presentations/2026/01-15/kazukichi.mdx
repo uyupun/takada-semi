@@ -1,0 +1,203 @@
+---
+title: exe.dev - AIネイティブなVPS
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## exe.devとは
+
+- AIエージェントがネイティブに統合されたVPS
+- AIエージェントとチャットベースでやり取りをすると、作成したVM内にコードが生成され、デプロイまで自動で済ませてくれる
+- Tailscaleの元CTO [David Crawshaw](https://x.com/davidcrawshaw) が開発しているということで期待度も高い
+
+## 何がすごいのか
+
+- これまで [Figma Make](https://www.figma.com/ja-jp/make/) や [v0](https://v0.app/) のように、フロントエンドの開発〜デプロイを一気通貫に行えるサービスは存在した
+- [exe.dev](https://exe.dev/) はそれをバックエンドまで広げたため、DBを利用するステートフルなアプリやバッチ処理等も射程に入ってきた
+- SSH可能なVMが割り当てられるのでやろうと思えばなんでもできる
+- スマホからアクセスすれば、出先からJust In Timeにほしいアプリを生成し、その場で活用できる
+
+## 主な機能
+
+- SSH可能なVM
+- シェルが統合されているコンパネ
+- exe.dev向けのAIエージェント
+- メールアドレス認証によるアプリのアクセス制御
+
+## 料金感
+
+- クレカの登録は必須だが、16日間無料で利用できる
+- 個人だと月$20で25VM、2CPU、8GB RAM、25GB以上のディスク、100GB以上の帯域なのでかなりお得感がある
+- 詳しくは [Pricing](https://exe.dev/docs/pricing) を参照
+
+## 使ってみた
+
+### 前提
+
+- アカウントは作成済みの状態
+- また、自分はヲタクなので手元のターミナルから操作しているが、基本的にコンパネのシェルやGUIでも操作可能
+
+### メール認証
+
+- おもむろに `ssh` するとメールを確認しろと言われる
+
+```bash
+$ ssh exe.dev
+
+EXE.DEV: get a VM over ssh
+To sign up, please verify your email.
+
+Please enter your email address: XXXXXXXXXX@gmail.com
+
+Verification email sent to: XXXXXXXXXX@gmail.com
+Waiting for email verification...
+```
+
+- 届いたメールに記載されているリンクを踏む
+
+<ContentImage path="2026/01-15/kazukichi/01.png" width="700" />
+
+- 「Authorize」を押下
+
+<ContentImage path="2026/01-15/kazukichi/02.png" width="600" />
+
+<ContentImage path="2026/01-15/kazukichi/03.png" width="500" />
+
+- ターミナルに戻ると認証に成功していた
+
+```bash
+$ ssh exe.dev
+
+EXE.DEV: get a VM over ssh
+To sign up, please verify your email.
+
+Please enter your email address: XXXXXXXXXX@gmail.com
+
+Verification email sent to: XXXXXXXXXX@gmail.com
+Waiting for email verification...
+✓ Email verified successfully!
+
+
+Registration complete!
+
+Your new ssh key has been added to your existing account.
+
+
+
+
+- new to create your first VM
+- help to see a list of commands
+
+exe.dev ▶
+```
+
+### VMの作成
+
+- 一旦、シェルから抜ける
+
+```bash
+exe.dev ▶ exit
+Goodbye!
+Connection to exe.dev closed.
+```
+
+- VMを作成しようとすると請求情報を登録しろと言われる
+
+```bash
+$ ssh exe.dev new --name=myserver
+Billing Required
+
+You need to add billing information before creating a VM.
+
+You will not be charged during the Developer Preview. The preview ends February 1, 2026.
+
+Visit: https://exe.dev/billing/subscribe?source=exemenu
+```
+
+- 案内されたリンクを踏むと [Link](https://link.com/jp) の支払画面が出てくる
+
+<ContentImage path="2026/01-15/kazukichi/04.png" width="700" />
+
+<ContentImage path="2026/01-15/kazukichi/05.png" width="500" />
+
+- VMの作成に成功した
+
+```bash
+$ ssh exe.dev new --name=myserver
+Creating myserver using image boldsoftware/exeuntu...
+
+Coding agent
+https://myserver.shelley.exe.xyz
+
+App (HTTPS proxy → :8000)
+https://myserver.exe.xyz
+
+SSH
+ssh myserver.exe.xyz
+```
+
+### アプリ開発
+
+- 案内された `https://myserver.shelley.exe.xyz` にアクセスするとAIエージェントの [Shelly](https://exe.dev/docs/shelley) が立ち上がる
+
+<ContentImage path="2026/01-15/kazukichi/06.png" width="700" />
+
+- モデルのバリエーションがかなり豊富
+- オープンウェイトモデルしか使えないぐらいの期待だったが、最新モデルが揃っている
+
+<ContentImage path="2026/01-15/kazukichi/07.png" width="400" />
+
+- 試しにLaravelとPostgreSQLを使ってTODOアプリを作るよう頼んでみた
+
+<ContentImage path="2026/01-15/kazukichi/08.png" width="700" />
+
+- 要所毎にアプリのスクショ(≒進捗)が提示される
+
+<ContentImage path="2026/01-15/kazukichi/09.png" width="700" />
+
+- 実際にアクセスすると動作していた
+
+<ContentImage path="2026/01-15/kazukichi/10.png" width="700" />
+
+- メールアドレス認証をしていないブラウザからアクセスすると↓のような画面にリダイレクトされる
+- パブリックにアクセスできるよう変更することもできる
+
+<ContentImage path="2026/01-15/kazukichi/11.png" width="700" />
+
+## コードを確認する
+
+- 基本的にコードを確認せずともアプリを開発〜デプロイできるような作りにはなっている
+- 細かい調整やトラブルシューティングを行いたい場合には有効かもしれない
+
+```bash
+$ ssh myserver.exe.xyz
+
+$ ls
+todo-app
+
+$ cd todo-app/
+
+$ ls
+README.md  artisan    composer.json  config    package.json  public     routes   tests   vite.config.js
+app        bootstrap  composer.lock  database  phpunit.xml   resources  storage  vendor
+```
+
+## 内部構成
+
+- 以前は基盤に [Kata Containers](https://katacontainers.io/) を使っていたらしいが現在は不明
+- VMのイメージは [boldsoftware/exeuntu](https://github.com/boldsoftware/exeuntu) という、exe.dev向けにカスタマイズされたUbuntu
+
+## 感想
+
+- 本格的なVPSやIaaSとしてはまだ機能不足感は否めない
+- しかしローンチされて間もないので今後の進化に期待
+- ともあれ、VPS開発者としては、AIがステートフルなWebアプリを開発〜デプロイまでほぼ自動でやってくれるのにはワクワクした
+- まずはプロトタイピングやハッカソン等の文脈で活用していきたい
+
+## 参考
+
+- [exe.dev - AI時代のVM Hostingサービス](https://www.deeeet.com/writing/exe-dev)
+- [exe.devを使って気づいた最高の開発体験](https://blog.haramishio.xyz/posts/2026/01/11/post-12/)
