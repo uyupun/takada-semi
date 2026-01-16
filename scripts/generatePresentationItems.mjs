@@ -199,11 +199,12 @@ export function generatePresentationItems() {
   const rootPath = path.resolve(PRESENTATIONS_ROOT_DIR);
   const yearData = collectPresentationYearData(rootPath);
   const latestPath = getLatestPresentationPath(yearData);
+  const latestYear = latestPath?.split('/')[0] || null;
 
   return Object.entries(yearData).map(([year, dates]) => {
     return {
       label: year,
-      collapsed: false,
+      collapsed: year !== latestYear,
       items: dates.map(date => createDateGroup(rootPath, year, date, latestPath)),
     };
   });
