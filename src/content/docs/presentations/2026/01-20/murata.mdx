@@ -62,7 +62,7 @@ GitHub Actions → Webhook → CF Workers → Claude API → Discord
 ## Cloudflare Workers固有の工夫
 
 | 制約 | 対応 |
-|------|------|
+| ------ | ------ |
 | Node.js crypto不可 | Web Crypto API (`crypto.subtle`) |
 | 即座レスポンス必要 | `ctx.waitUntil()`で非同期処理 |
 | 状態管理 | Workers KV |
