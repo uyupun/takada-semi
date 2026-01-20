@@ -1,0 +1,72 @@
+---
+title: Holo CI Workers - CI結果をホロの口調でDiscord通知
+author: Murata
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## なんで作ったか
+
+- 自作ルーターのISOを作成するのに**1時間**くらい待つ
+- なんか暇だし、失敗したときにメールくるのカスだなぁ
+	- じゃあDiscordBotつくるかぁ
+
+## 概要
+
+- GitHub Actions CIの結果を「狼と香辛料」のホロの口調でDiscordに通知するBot
+- Cloudflare Workers上で動作するサーバーレスアプリケーション
+- Claude API (claude-sonnet-4) でホロ口調に変換
+
+## 技術スタック
+
+| 分類 | 技術 |
+|------|------|
+| Runtime | Cloudflare Workers |
+| 言語 | TypeScript (ES2024) |
+| Package Manager | bun |
+| テスト | Vitest + @cloudflare/vitest-pool-workers |
+| AI | Anthropic Claude API |
+| ストレージ | Cloudflare Workers KV |
+
+## アーキテクチャ
+
+```
+GitHub Actions → Webhook → CF Workers → Claude API → Discord
+                    ↓
+              署名検証 (Web Crypto API)
+                    ↓
+              履歴管理 (KV)
+```
+
+## 処理フロー
+
+1. GitHub Webhookでworkflow_run completedを受信
+2. HMAC-SHA256署名検証 (Web Crypto API)
+3. ペイロード解析 (success/failure判定)
+4. Claude APIでホロ口調に変換
+5. Discord Webhookで通知送信
+6. KVに履歴保存
+
+## ホロ口調変換の仕組み
+
+### 8パターンの口調バリエーション
+- 心配そうに / 茶化し気味に / 励まし調で / 淡々と
+- 呆れ気味に / 分析的に / 驚いた様子で / 同情的に
+
+### 履歴管理で重複回避
+- 直近5件の口調を記録
+- 同じ口調が連続しないよう制御
+
+## Cloudflare Workers固有の工夫
+
+| 制約 | 対応 |
+|------|------|
+| Node.js crypto不可 | Web Crypto API (`crypto.subtle`) |
+| 即座レスポンス必要 | `ctx.waitUntil()`で非同期処理 |
+| 状態管理 | Workers KV |
+
+## リポジトリ
+
+https://github.com/murata-lab/holo-ci-workers
