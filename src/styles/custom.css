@@ -1,4 +1,4 @@
-/* iframeのheight属性の値が反映されないため、高さを上書きする */
-iframe {
+/* YouTubeのiframeのheight属性の値が反映されないため、高さを上書きする */
+iframe[src*="youtube.com"] {
   height: 315px;
 }
