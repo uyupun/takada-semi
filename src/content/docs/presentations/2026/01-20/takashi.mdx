@@ -1,0 +1,53 @@
+---
+title: Cloudflare PagesでpnpmとNode.jsのバージョンを指定する
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## 背景
+
+パッケージマネージャーを npm から pnpm へ移行し、あわせて Node.js のバージョンも最新版（v24.13.0）を使用するように更新した。また、nodenv から mise を使用してバージョンを管理するようにした。これらの対応後に、Cloudflare Pages の CI がコケた。
+
+## 問題点
+
+Cloudflare Pages のビルドログを見ると、プロジェクトで使用したいバージョンと異なるバージョンを使用しようとしていることが分かる。
+
+```text
+ERR_PNPM_UNSUPPORTED_ENGINE  Unsupported environment (bad pnpm and/or Node.js version)
+Your pnpm version is incompatible with "/opt/buildhome/repo".
+Expected version: 10.28.1
+Got: 10.11.1
+...
+ERR_PNPM_UNSUPPORTED_ENGINE Unsupported environment (bad pnpm and/or Node.js version)
+Your Node version is incompatible with "/opt/buildhome/repo".
+Expected version: 24.13.0
+Got: v22.16.0
+```
+
+これは Cloudflare がサポートしているバージョンが使用されている。
+[Build image | Cloudflare Docs](https://developers.cloudflare.com/pages/configuration/build-image/)
+
+## 解決策
+
+1. Cloudflare Pages のダッシュボードへ移動
+2. 設定 > 変数とシークレットにある追加ボタンをタップ
+3. `PNPM_VERSION`と`NODE_VERSION`を追加し、値をプロジェクトのバージョンにする
+4. 再度 CI を実行する
+
+### 引っ掛かりポイント
+
+- プロダクション・プレビューで環境変数が共有されるわけではないため、2つの環境で同じ変数・値を追加する必要がある
+  - ただし、ビルドの設定は共通
+
+### 補足
+
+- 今までは `.node-version` が存在したため Cloudflare 側がよしなに Node.js のバージョンを変更してくれていた
+- `pnpm-lock.yaml` が存在すると、Cloudflare 側がよしなに pnpm を使用してパッケージをインストールしてくれる
+  - ビルドコマンドはユーザーが設定する必要はある
+
+## まとめ
+
+Cloudflare がそのうち `mise.toml` ファイルを見てくれる日がくることを願う。

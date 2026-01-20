@@ -10,15 +10,15 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/starlight": "0.37.1",
-    "astro": "5.16.6"
+    "@astrojs/starlight": "0.37.3",
+    "astro": "5.16.11"
   },
   "devDependencies": {
     "gray-matter": "4.0.3",
     "sharp": "0.34.5"
   },
   "engines": {
-    "node": ">=22.14.0 <22.15.0"
-  },
-  "packageManager": "pnpm@10.10.0"
+    "node": "24.13.0",
+    "pnpm": "10.28.1"
+  }
 }
