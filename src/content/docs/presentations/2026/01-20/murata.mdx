@@ -22,7 +22,7 @@ import ContentImage from '@components/ContentImage.astro';
 ## 技術スタック
 
 | 分類 | 技術 |
-|------|------|
+| ------ | ------ |
 | Runtime | Cloudflare Workers |
 | 言語 | TypeScript (ES2024) |
 | Package Manager | bun |
@@ -32,7 +32,7 @@ import ContentImage from '@components/ContentImage.astro';
 
 ## アーキテクチャ
 
-```
+```text
 GitHub Actions → Webhook → CF Workers → Claude API → Discord
                     ↓
               署名検証 (Web Crypto API)
