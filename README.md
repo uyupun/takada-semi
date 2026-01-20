@@ -17,12 +17,13 @@
 ### 環境構築
 
 - 本リポジトリの機能改修をしたい場合や発表をしたい場合は環境構築を行う必要がある
-- Node.js v22.14.0、PNPMが必要(インストール方法は各自、自分の環境に合わせて行う)
+- [mise](https://mise.jdx.dev/) を使用して環境を構築する
+- miseをインストールしていない場合は [公式ドキュメント](https://mise.jdx.dev/getting-started.html) を参照してインストールする
 
 ```bash
+$ mise install
 $ pnpm install
 $ pnpm dev
-$ open http://localhost:4321/takada-semi
 ```
 
 ### 事前準備
