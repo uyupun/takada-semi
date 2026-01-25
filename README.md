@@ -21,6 +21,7 @@
 - miseをインストールしていない場合は [公式ドキュメント](https://mise.jdx.dev/getting-started.html) を参照してインストールする
 
 ```bash
+$ mise trust
 $ mise install
 $ pnpm install
 $ pnpm dev
