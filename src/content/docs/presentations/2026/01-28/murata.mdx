@@ -1,0 +1,94 @@
+---
+title: Vibe Codingで10Gbpsルーターを自作した
+author: Murata
+---
+
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## 作った目的
+
+- なんとなく10G回線を契約した
+- 某社の10Gルーターを使用していたが、あまり速度が出ない
+    - WANのみ10G、LANは全て1G
+- 10Gbps出るルーターを探すもあまりピンと来ず。
+- ぼく「自作すればよいのでは？」
+    - ALL BAKA
+    - AHO
+    - でもルーターなんて作ったことないよ・・・
+        - AIとバイブコーディングすればいいんだ！
+            - ALL BAKA
+            - AHO
+
+## 概要
+
+- VyOS
+    - 色々魔改造した
+        - ビルドにはGitHub Actionsを使用し、寝る前にビルドして朝確認が日課だった
+            - Holo Watcherができた理由はこれ
+- IPv6: 10Gbpsダイレクト接続
+- IPv4: MAP-Eトンネル経由
+- WireGuard VPNで外部からのリモート管理
+
+## ハードウェア構成
+
+| 分類 | 機器 |
+| ------ | ------ |
+| ルーター本体 | ヤフオクで1.5万で買った中古PC + Intel X540-T2 10GbE NIC |
+| OS | VyOS rolling |
+| L2スイッチ | BUFFALO LXW-10G5 (10GbE 5ポート) |
+| 無線AP | xxx(大人の事情で書きません) (APモード) |
+| 管理用 | PiKVM (Raspberry Pi KVM-over-IP) |
+
+## アーキテクチャ
+
+```text
+[ONU] ── [自作ルーター] ── 10G ── [L2スイッチ] ── [LAN]
+                │　　　　　　　　　　　　　　↓
+                │                MAP-Eトンネル(IPv4 over IPv6)
+                │
+                │
+                └─ 10G ── [無線AP]
+```
+
+## トラフィックフロー
+
+| プロトコル | 経路 | 速度 |
+| ------------ | ------ | ------ |
+| IPv6 | LAN → ルーター → ONU → NGN | 10Gbps |
+| IPv4 | LAN → ルーター → MAP-E → BR → Internet | MAP-E制限あり |
+
+## 工夫した点
+
+| 課題 | 対応 |
+| ------ | ------ |
+| DHCPv6-PD取得失敗 | DUID-LL形式を調査・設定 |
+| リモート管理 | PiKVM + WireGuard VPN |
+| 設定復旧 | Python復元スクリプト作成 |
+| DDNS | Cloudflare API連携 |
+
+## 結果
+
+- 無線6GHz: **1.9Gbps** (upload)
+- 有線10GbE: **7Gbps** (upload)
+
+## まとめ
+
+- **金があれば普通にルーター買った方がいい**
+    - ⭕️それ**めっちゃ正解**
+        - **楽しみたいやつ**は作った方がいい
+- 無知すぎて何から始めていいかわからん
+    - Deep Research、めっちゃ厳しいテストでなんとかする
+    - 一番効果があったのが、「あなたならどう攻撃しますか？」とか「お前のシステム穴だらけじゃねーか、$100返すかマシなコード書けや」
+        - 人間でないのでパワハラするのが最高なんですよ
+            - AI vs 人間があれば、真っ先に殺されるタイプ
+- Claude CodeのSkillsがめっちゃ増えた
+    - 普段使いも良くなった
+        - CLAUDE.mdより、**hooks**で対応した方が厳しいルールで挙動の固定ができる
+- NICがめちゃくちゃ熱を持つ
+    - 一度、OSがハングした
+        - 外部から監視する体制（Discord Bot）＆やばくなったら速度制限を入れるなど対応
+            - PiKVM構築中
+    - 金あるやつは発熱が比較的抑えられていて、速度ももう少し出るNIC使おう
