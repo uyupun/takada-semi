@@ -1,0 +1,129 @@
+---
+title: cagent - YAMLでつくるAIエージェント
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## cagentとは
+
+- Docker社が開発しているAIエージェント開発のフレームワーク
+- YAMLを使用し、AIエージェントの振る舞いや役割等を宣言的に記述できる
+- 2025年の春頃に開発が開始した模様
+- cagent = Container Agentなのかは不明
+- GitHubリポジトリ: https://github.com/docker/cagent
+
+## 使ってみた
+
+### 環境構築
+
+- Docker Desktopの4.49.0以降が必要
+	- Homebrew等から独立して `cagent` をインストールすることも可能
+
+<ContentImage path="2026/02-04/kazukichi/01.png" width="700" />
+
+- `cagent` コマンドのパスを通す
+
+```bash
+# cagentがインストールされていることを確認
+$ /Applications/Docker.app/Contents/Resources/bin/cagent version
+cagent version v1.19.0
+Commit: 7005dc1a5ab968929440d4098a716897d8003eba
+
+# パスを通す
+$ echo 'export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"' >> ~/.zshrc
+
+# .zshrcの設定を再読み込みして反映
+$ source ~/.zshrc
+
+# 想定したパスを参照していることを確認
+$ which cagent
+/Applications/Docker.app/Contents/Resources/bin/cagent
+
+# パスを明示しなくても使えるようになった
+$ cagent version
+cagent version v1.19.0
+Commit: 7005dc1a5ab968929440d4098a716897d8003eba
+```
+
+- APIキーの設定
+	- 今回はClaudeを使用するが、OpenAI等の他のプロバイダも選択可能
+
+```bash
+$ export ANTHROPIC_API_KEY=<your-anthropic-api-key>
+```
+
+### AIエージェントの設定
+
+- `agent.yaml`
+	- MCPサーバのDuckDuckGoで検索
+	- 検索内容を要約し、組み込みツールの `filesystem` でファイルの書き込み
+	- を行うシンプルなAIエージェントを動かしてみる
+
+```yaml
+agents:
+  root:
+    model: anthropic/claude-sonnet-4-5
+    description: "search and write agent"
+    instruction: |
+      あなたは調査と作業を行うAIエージェントです。
+
+      手順:
+      1) 必要に応じて検索ツールで調べる
+      2) 得た情報を整理する
+      3) filesystem を使って結果をファイルに保存する
+    toolsets:
+      - type: filesystem
+      - type: mcp
+        ref: docker:duckduckgo
+```
+
+### MCPサーバの追加
+
+- 「Browse MCP servers」を押下
+
+<ContentImage path="2026/02-04/kazukichi/02.png" width="700" />
+
+- 今回は「DuckDuckGo」を追加
+
+<ContentImage path="2026/02-04/kazukichi/03.png" width="700" />
+
+<ContentImage path="2026/02-04/kazukichi/04.png" width="700" />
+
+<ContentImage path="2026/02-04/kazukichi/05.png" width="700" />
+
+### AIエージェントの実行
+
+```bash
+$ cagent run agent.yaml
+```
+
+- TUIが立ち上がる
+
+<ContentImage path="2026/02-04/kazukichi/06.png" width="700" />
+
+- ツールを使用するときはモーダルが出る
+
+<ContentImage path="2026/02-04/kazukichi/07.png" width="700" />
+
+- カレントディレクトリにマークダウンファイルが生成された
+
+<ContentImage path="2026/02-04/kazukichi/08.png" width="400" />
+
+## その他の機能
+
+- サブエージェントを複数生成し、1つのエージェントチームとして扱う機能
+- Dockerイメージとして固めてDocker Hubに公開・共有できる機能
+
+## 感想
+
+- プログラマブルで高度なAIエージェントを作るためのものではない
+- 設定ファイルで宣言的に定義できるというの点が面白い
+- Docker DesktopからMCPサーバをインストールできたり、Dockerイメージとして共有できる機能はDocker社ならではの機能、といった感じで面白い
+- 一方、単純なロジックであればプログラムをAIに組んでもらったり、既存のAIエージェントで実現可能なため、cagentをどのように活用できるか、という点で疑問が残る
+
+## 参考
+
+- [YAML ファイルで AI エージェントを構築する cagent](https://azukiazusa.dev/blog/yaml-file-defined-ai-agent-cagent/)
