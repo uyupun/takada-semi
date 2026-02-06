@@ -1,0 +1,11 @@
+pre-commit:
+  parallel: false
+  commands:
+    lint-fix:
+      glob: "*.{ts,mjs,astro}"
+      run: pnpm lint:fix {staged_files}
+      stage_fixed: true
+    format-fix:
+      glob: "*.{ts,mjs,astro}"
+      run: pnpm format:fix {staged_files}
+      stage_fixed: true

@@ -7,7 +7,11 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint . --write",
+    "format": "biome format . --check",
+    "format:fix": "biome format . --write"
   },
   "dependencies": {
     "@astrojs/starlight": "0.37.6",
