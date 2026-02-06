@@ -1,0 +1,145 @@
+---
+title: WebLLM - ブラウザで動くLLM
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## WebLLMとは
+
+- mlc-aiが開発しているWebブラウザ上でLLMを実行するためのライブラリ
+- WebGPUやWebAssemblyを用いることで、ブラウザ上でも比較的快適に実行できるように高速化している
+- 公式サイト: https://webllm.mlc.ai/
+
+## 補足: MLCとは
+
+- MLC(Machine Learning Compilation)
+- MLCは組織名ではなく、技術思想・研究分野の名称
+- 機械学習モデルを、特定のデバイス・実行環境に最適化された実行コードへコンパイルするという考え方
+- 従来の「汎用ランタイムでモデルを実行する」発想とは異なり、コンパイル時最適化を中心に据える点が特徴
+
+## 補足: mlc-aiとは
+
+- MLCをLLMに適用することを目的としたプロジェクト
+- Webだけでなく、デスクトップ・サーバ・モバイル・エッジ等、多様な実行環境に対応
+- 公式サイト: https://mlc.ai/
+
+## 補足: MLC形式とは
+
+- mlc-aiが定義・運用している、実装主導の事実上のフォーマット(パッケージ)
+- 重みやカーネル、メタデータ、実行可能なバイナリ等の成果物一式が含まれている
+
+## 補足: Qwenとは
+
+- Qwenはクウェンと読む
+- QwenはAlibaba Cloudが開発・公開しているLLMシリーズ
+- 基本的にオープンウェイトモデル
+- 英語・中国語を中心に多言語を扱える
+- 今回の動作検証に利用する
+- 公式サイト: https://qwen.ai/
+
+## 使ってみた
+
+### 検証環境
+
+- Viteの `vanilla-ts` テンプレート上で検証
+
+### インストール
+
+```bash
+$ npm install @mlc-ai/web-llm
+```
+
+## プロンプト
+
+- 検証には以下のプロンプトを使用する
+
+```
+あなたは日本語で、簡潔かつ自然に答えるアシスタントです。
+```
+
+```
+WebLLMとは何ですか？技術に詳しくない人にも分かるように、3文以内で説明してください。
+```
+
+### 実装
+
+- モデルにはQwen2.5-1.5B-Instructを利用
+	- ブラウザという制約の多い環境で、日本語がギリギリ会話として成立するライン
+
+```ts
+import { CreateMLCEngine, type InitProgressReport } from '@mlc-ai/web-llm'
+
+async function main() {
+  console.log('Initializing WebLLM engine...')
+
+  // モデルの読み込み
+  const engine = await CreateMLCEngine('Qwen2.5-1.5B-Instruct-q4f16_1-MLC', {
+    initProgressCallback: (progress: InitProgressReport) => {
+      console.log(`Loading: ${progress.text}`)
+    },
+  })
+
+  console.log('Engine initialized successfully!')
+
+  // プロンプトを送信
+  const response = await engine.chat.completions.create({
+    messages: [
+      {
+        role: "system",
+        content: "あなたは日本語で、簡潔かつ自然に答えるアシスタントです。"
+      },
+      {
+        role: "user",
+        content: "WebLLMとは何ですか？技術に詳しくない人にも分かるように、3文以内で説明してください。"
+      }
+    ],
+  })
+
+  console.log('Response:', response.choices[0].message.content)
+}
+
+main().catch(console.error)
+```
+
+### 実行
+
+- 以下、ブラウザのコンソール
+- 初回ロードは体感1〜2分(PCのスペック、通信状況にも左右される)
+	- 初回以降はブラウザにキャッシュされるので速い
+
+```bash
+Initializing WebLLM engine...
+main.ts:8 Loading: Start to fetch params
+main.ts:8 Loading: Fetching param cache[1/30]: 26MB fetched. 3% completed, 21 secs elapsed. It can take a while when we first visit this page to populate the cache. Later refreshes will become faster.
+...
+main.ts:8 Loading: Fetching param cache[30/30]: 829MB fetched. 100% completed, 167 secs elapsed. It can take a while when we first visit this page to populate the cache. Later refreshes will become faster.
+main.ts:8 Loading: Loading model from cache[1/30]: 112MB loaded. 13% completed, 168 secs elapsed.
+...
+main.ts:8 Loading: Loading model from cache[30/30]: 829MB loaded. 100% completed, 169 secs elapsed.
+main.ts:8 Loading: Loading GPU shader modules[73/89]: 82% completed, 2 secs elapsed.
+main.ts:8 Loading: Loading GPU shader modules[89/89]: 100% completed, 2 secs elapsed.
+main.ts:8 Loading: Finish loading on WebGPU - apple
+main.ts:12 Engine initialized successfully!
+```
+
+- レスポンスも返ってきた
+	- 精度は微妙だが、日本語としては破綻していない、それらしい回答が返ってきた
+
+```bash
+main.ts:18 Response: WebLLMは、人工知能で生成されるテキストデータを効率よく管理し、更新、加工、分析するためのツールです。
+```
+
+## 感想
+
+- 2025年7月に [Webブラウザから内蔵LLMが使えるようになった](https://uyupun.github.io/takada-semi/presentations/2025/07-24/kazukichi/) でブラウザ標準のLLM関連のAPIについて検証した
+- そこから進化している可能性はあるが、こちらは翻訳・言語判別・要約ぐらいしかできなかったし、日本語も扱えないケースが多かった
+- そう考えると、WebLLMはかなり本格的にブラウザ上でLLMが扱えているように感じる
+- 一方で、ブラウザ上に閉じてLLMを動かしたいケースというのも現時点ではあまり思い浮かばない
+- 今後、モバイル等のエッジ端末のスペックがさらに向上し、品質の高いモデルが小規模に実現できるようになれば、このような方式が主流になる可能性もある
+
+## 参考
+
+- [ブラウザで動作するLLM：WebLLMの解説と入門ガイド](https://press.monaca.io/atsushi/35012)
