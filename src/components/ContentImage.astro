@@ -4,7 +4,8 @@ interface Props {
   width?: number;
 }
 
-const { path, width } = Astro.props;
+// biome-ignore lint/correctness/noUnusedVariables: used in template
+const { path, width } = Astro.props as Props;
 ---
 
 <img
