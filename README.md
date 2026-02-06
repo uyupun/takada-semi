@@ -24,6 +24,7 @@
 $ mise trust
 $ mise install
 $ pnpm install
+$ pnpm exec lefthook install
 $ pnpm dev
 ```
 
