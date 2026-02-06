@@ -1,7 +1,7 @@
 // @ts-check
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
+import fs from "fs";
+import path from "path";
+import matter from "gray-matter";
 
 /**
  * @typedef {Object} PresentationItem
@@ -36,11 +36,11 @@ import matter from 'gray-matter';
  */
 
 /** @type {string} */
-const PRESENTATIONS_ROOT_DIR = './src/content/docs/presentations';
+const PRESENTATIONS_ROOT_DIR = "./src/content/docs/presentations";
 /** @type {string[]} */
-const MARKDOWN_EXTENSIONS = ['.md', '.mdx'];
+const MARKDOWN_EXTENSIONS = [".md", ".mdx"];
 /** @type {string} */
-const PRESENTATION_PATH_PREFIX = 'presentations';
+const PRESENTATION_PATH_PREFIX = "presentations";
 
 /**
  * 指定されたディレクトリ内のサブディレクトリを取得する
@@ -49,11 +49,10 @@ const PRESENTATION_PATH_PREFIX = 'presentations';
  */
 function getDirectories(dirPath) {
   try {
-    return fs.readdirSync(dirPath)
-      .filter(item => {
-        const fullPath = path.join(dirPath, item);
-        return fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory();
-      });
+    return fs.readdirSync(dirPath).filter((item) => {
+      const fullPath = path.join(dirPath, item);
+      return fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory();
+    });
   } catch (/** @type {any} */ error) {
     console.warn(`⚠️ Failed to read directories from ${dirPath}: ${error}`);
     return [];
@@ -67,8 +66,9 @@ function getDirectories(dirPath) {
  */
 function getMarkdownFiles(dirPath) {
   try {
-    return fs.readdirSync(dirPath)
-      .filter(file => MARKDOWN_EXTENSIONS.some(ext => file.endsWith(ext)));
+    return fs
+      .readdirSync(dirPath)
+      .filter((file) => MARKDOWN_EXTENSIONS.some((ext) => file.endsWith(ext)));
   } catch (/** @type {any} */ error) {
     console.warn(`⚠️ Failed to read markdown files from ${dirPath}: ${error}`);
     return [];
@@ -83,7 +83,7 @@ function getMarkdownFiles(dirPath) {
  */
 function parseDate(year, dateStr) {
   try {
-    return new Date(`${year}-${dateStr.replace('-', '/')}`);
+    return new Date(`${year}-${dateStr.replace("-", "/")}`);
   } catch (/** @type {any} */ error) {
     console.warn(`⚠️ Failed to parse date ${year}-${dateStr}: ${error}`);
     return null;
@@ -98,11 +98,13 @@ function parseDate(year, dateStr) {
  */
 function extractPresentationTitle(filePath, defaultTitle) {
   try {
-    const fileContents = fs.readFileSync(filePath, 'utf8');
+    const fileContents = fs.readFileSync(filePath, "utf8");
     const { data } = matter(fileContents);
     return data.title || defaultTitle;
   } catch (/** @type {any} */ error) {
-    console.warn(`⚠️ Failed to read frontmatter title from ${filePath}: ${error}`);
+    console.warn(
+      `⚠️ Failed to read frontmatter title from ${filePath}: ${error}`,
+    );
     return defaultTitle;
   }
 }
@@ -118,7 +120,7 @@ function extractPresentationTitle(filePath, defaultTitle) {
 function createPresentationItem(rootPath, year, date, file) {
   const dateDirPath = path.join(rootPath, year, date);
   const filePath = path.join(dateDirPath, file);
-  const name = file.replace(/\.mdx?$/, '');
+  const name = file.replace(/\.mdx?$/, "");
   const title = extractPresentationTitle(filePath, name);
 
   return {
@@ -142,7 +144,9 @@ function createDateGroup(rootPath, year, date, latestPath) {
   return {
     label: date,
     collapsed: `${year}/${date}` !== latestPath,
-    items: files.map(file => createPresentationItem(rootPath, year, date, file)),
+    items: files.map((file) =>
+      createPresentationItem(rootPath, year, date, file),
+    ),
   };
 }
 
@@ -199,13 +203,15 @@ export function generatePresentationItems() {
   const rootPath = path.resolve(PRESENTATIONS_ROOT_DIR);
   const yearData = collectPresentationYearData(rootPath);
   const latestPath = getLatestPresentationPath(yearData);
-  const latestYear = latestPath?.split('/')[0] || null;
+  const latestYear = latestPath?.split("/")[0] || null;
 
   return Object.entries(yearData).map(([year, dates]) => {
     return {
       label: year,
       collapsed: year !== latestYear,
-      items: dates.map(date => createDateGroup(rootPath, year, date, latestPath)),
+      items: dates.map((date) =>
+        createDateGroup(rootPath, year, date, latestPath),
+      ),
     };
   });
 }
