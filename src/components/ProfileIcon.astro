@@ -7,7 +7,9 @@ if (!name) return null;
 const member = members[name as keyof typeof members];
 if (!member) return null;
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const { displayName, link = null, image = null } = member;
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const firstChar = displayName.charAt(0).toUpperCase();
 ---
 
