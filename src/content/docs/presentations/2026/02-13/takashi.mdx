@@ -1,0 +1,166 @@
+---
+title: ハートをふわりと表示するアプリ~バレンタインスペシャル~
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## アプリの概要
+
+- ボタンタップでハートがふわりと表示される
+- ハートはランダムな位置に配置される
+- リポジトリ: https://github.com/takashi0602/heart_animation
+
+## コード
+
+```dart
+class HeartAnimationScreen extends StatelessWidget {
+  const HeartAnimationScreen({super.key});
+
+  // ハートを表示する関数
+  void _showHeart(BuildContext context) {
+    final overlayState = Overlay.of(context);
+    final random = Random();
+    final startX = random.nextDouble() * MediaQuery.of(context).size.width;
+    final startY = random.nextDouble() * MediaQuery.of(context).size.height;
+
+    late OverlayEntry overlayEntry;
+    overlayEntry = OverlayEntry(
+      builder: (context) {
+        return _FloatingHeart(
+          startX: startX,
+          startY: startY,
+          onFinished: () {
+            overlayEntry.remove();
+          },
+        );
+      },
+    );
+
+    overlayState.insert(overlayEntry);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Color(0xFFF9CAC7),
+      body: Center(
+        child: Text("画面をタップしてハートを飛ばそう！", style: TextStyle(color: Colors.white)),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.pinkAccent,
+        onPressed: () => _showHeart(context),
+        child: const Icon(Icons.favorite, color: Colors.white),
+      ),
+    );
+  }
+}
+
+class _FloatingHeart extends StatefulWidget {
+  final double startX;
+  final double startY;
+  final VoidCallback onFinished;
+
+  const _FloatingHeart({
+    required this.startX,
+    required this.startY,
+    required this.onFinished,
+  });
+
+  @override
+  State<_FloatingHeart> createState() => _FloatingHeartState();
+}
+
+class _FloatingHeartState extends State<_FloatingHeart>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacity;
+  late Animation<double> _movement;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
+    // 透明度の変化
+    _opacity = TweenSequence([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 30),
+    ]).animate(_controller);
+
+    // 上に昇る動き
+    _movement = Tween<double>(
+      begin: 0,
+      end: -200,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+    _controller.forward().then((_) => widget.onFinished());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Positioned(
+          left: widget.startX,
+          top: widget.startY + _movement.value,
+          child: Opacity(
+            opacity: _opacity.value,
+            child: const Icon(
+              Icons.favorite,
+              color: Colors.pinkAccent,
+              size: 40,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+```
+
+## コードの説明
+
+### 1. Overlay と OverlayEntry
+
+- 画面の最前面に別レイヤーを重ねるための仕組み
+- 役割: 通常のウィジェットツリーの外側に描画するため、ボタンや背景の位置に影響を与えずにハートを浮かび上がらせることできる
+- overlayState.insert: 作成したハート（OverlayEntry）を画面に投入
+- overlayEntry.remove: アニメーションが終わったタイミングで呼び出し、画面から消す
+
+### 2. SingleTickerProviderStateMixin
+
+- アニメーションを滑らかに動かすための「心臓の鼓動（Ticker）」を提供する
+- 役割: 画面のリフレッシュレート（通常 60fps など）に合わせて、アニメーションの数値を更新し続ける
+
+### 3. TweenSequence（透明度の制御）
+
+- 単一の開始・終了ではなく、複数のフェーズに分けたアニメーションを実現する
+- 0.0 → 1.0: パッと現れる（フェードイン）
+- 1.0 維持: 少しの間、はっきり見える状態をキープ
+- 1.0 → 0.0: ふわっと消える（フェードアウト）
+- これをひとまとめにすることで、自然な「浮き出て消える」演出になる
+
+### 4. AnimatedBuilder と Positioned
+
+- 計算されたアニメーション数値を、実際の座標に変換する
+- _movement.value: 0 から -200 へ変化する値を、top（上からの位置）に加算することで、上方向への移動を表現する
+- AnimatedBuilder: アニメーションの値が変わるたびに、ハートの部分だけを効率よく再描画する
+
+## まとめ
+
+**アニメーションはいいぞ**
