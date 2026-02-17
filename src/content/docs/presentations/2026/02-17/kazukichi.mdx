@@ -1,0 +1,208 @@
+---
+title: PR-Agent - AIでらくらくPRレビュー♪
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## PR-Agentとは
+
+- CIと組み合わせてPRのレビューをAIで自動化するOSS
+- 基本的にGitHub Actions上から利用する前提となっている
+- Qodoが開発
+- プロプライエタリなら [CodeRabbit](https://www.coderabbit.ai/ja) のような選択肢もある
+- OSSならPR-Agentがデファクトであると言っても差し支えない
+- PRレビューにAIが入り込むという考えはGitHubの提唱する継続的AIの概念とも近い
+- 継続的AIに関しては以前、 [Agentic Workflows - 自然言語でCI/CD](https://uyupun.github.io/takada-semi/presentations/2026/01-28/kazukichi/#%E8%A3%9C%E8%B6%B3-%E7%B6%99%E7%B6%9A%E7%9A%84aicontinuous-ai%E3%81%A8%E3%81%AF) でも触れた
+- GitHubリポジトリ: https://github.com/qodo-ai/pr-agent
+
+## 補足: LiteLLMとは
+
+- 今回の話に出てくるので先んじて説明
+- 複数のLLMプロバイダをOpenAIのAPI互換のインターフェースとして統一的に扱うための薄いプロキシ/SDK
+- PR-AgentはLiteLLMを内部的に使用している
+- それにより、PR-Agentでは複数のLLMプロバイダを扱うことができる
+- 公式ページ: https://docs.litellm.ai/
+
+## 使ってみた
+
+### モデルの選定
+
+- Qwen3-Coder-30B-A3B-Instructを選定
+- コーディング用途のモデル
+- 1PR = 数百行〜多くても数千行を扱うのに十分
+- コスパが良い
+
+### APIキーの設定
+
+- あらかじめ任意のLLMプロバイダでAPIキーを発行しておく
+- 対象のリポジトリから Settings > Secrets and variables > Actions を開いて "New repository secret" を押下
+
+<ContentImage path="2026/02-17/kazukichi/01.png" width="700" />
+
+- 任意の名称とAPIキーを入力して "Add secret" を押下
+
+<ContentImage path="2026/02-17/kazukichi/02.png" width="700" />
+
+### PR-Agentの設定
+
+- GitHub Actionsのワークフローとして定義する
+- 全体像
+
+```yaml
+name: PR Agent
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  pr-agent:
+    runs-on:
+      - self-hosted
+      - linux
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Run PR Agent
+        uses: qodo-ai/pr-agent@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_KEY: ${{ secrets.LLM_PROBIDER_API_KEY }}
+          OPENAI_API_BASE: "https://example.com"
+
+          config.model: "openai/Qwen3-Coder-30B-A3B-Instruct"
+          config.custom_model_max_tokens: "32000"
+
+          github_action_config.auto_review: "true"
+          github_action_config.auto_describe: "false"
+          github_action_config.auto_improve: "false"
+
+          pr_reviewer.extra_instructions: >-
+            必ず日本語で回答してください。英語はコード識別子・ファイル名・引用に限ってください。
+          pr_commands: "[]"
+```
+
+- 発火条件
+	- PRの作成時またはPRのDraftを外したとき
+
+```yaml
+...
+　on:
+    pull_request:
+      types: [opened, ready_for_review]
+...
+    if: github.event.pull_request.draft == false
+```
+
+- APIキーとモデル名の指定
+	- モデル名のプレフィックスに無関係な `openai` が付いているのはLiteLLMの影響
+
+```yaml
+...
+          OPENAI_KEY: ${{ secrets.LLM_PROBIDER_API_KEY }}
+...
+          config.model: "openai/Qwen3-Coder-30B-A3B-Instruct"
+...
+```
+
+- 最大トークンの設定
+	- 指定していないとCIが落ちるため注意
+
+```yaml
+...
+          config.custom_model_max_tokens: "32000"
+...
+```
+
+- PRレビューにおける設定
+	- PRのレビューはしてほしい
+	- PRの説明は自分で書きたい
+	- PRの細かい指摘はしてほしくない(上手く扱わないとノイズになるので)
+	- というケース
+
+```yaml
+...
+          github_action_config.auto_review: "true"
+          github_action_config.auto_describe: "false"
+          github_action_config.auto_improve: "false"
+...
+```
+
+- レビューの言語を日本語にする設定
+
+```yaml
+...
+          pr_reviewer.extra_instructions: >-
+            必ず日本語で回答してください。英語はコード識別子・ファイル名・引用に限ってください。
+...
+```
+
+### レビュー対象の準備
+
+- Django + DRFベース
+- 問題のあるコード(主にセキュリティ、可読性、パフォーマンスの観点)をAIに意図的に生成してもらった
+- 吐き気を催しかねないコード
+
+```python
+class UserSearch(APIView):
+    def get(self, request):
+        x = request.query_params.get("q", "")
+        t = request.query_params.get("type", "name")
+        l = request.query_params.get("limit", "100")
+
+        if t == "name":
+            q = f"SELECT * FROM auth_user WHERE username LIKE '%{x}%'"
+        elif t == "email":
+            q = f"SELECT * FROM auth_user WHERE email LIKE '%{x}%'"
+        elif t == "id":
+            q = f"SELECT * FROM auth_user WHERE id = {x}"
+        else:
+            q = f"SELECT * FROM auth_user WHERE username LIKE '%{x}%' OR email LIKE '%{x}%'"
+
+        with connection.cursor() as c:
+            c.execute(q)
+            r = c.fetchall()
+
+        d = []
+        for i in r:
+            u = {}
+            u["id"] = i[0]
+            u["password"] = i[1]
+            u["username"] = i[4]
+            u["email"] = i[6]
+            u["hash"] = hashlib.md5(str(i[0]).encode()).hexdigest()
+            with connection.cursor() as c2:
+                c2.execute(f"SELECT * FROM auth_user_groups WHERE user_id = {i[0]}")
+                g = c2.fetchall()
+                u["groups"] = []
+                for gi in g:
+                    with connection.cursor() as c3:
+                        c3.execute(f"SELECT * FROM auth_group WHERE id = {gi[2]}")
+                        gd = c3.fetchone()
+                        if gd:
+                            u["groups"].append(gd[1])
+            d.append(u)
+
+        time.sleep(0.1)
+
+        return Response({"data": d, "count": len(d)})
+```
+
+### レビューの実行
+
+<ContentImage path="2026/02-17/kazukichi/03.png" width="700" />
+
+- 結構、的を射た指摘がされている
+
+<ContentImage path="2026/02-17/kazukichi/04.png" width="700" />
+
+## 感想
+
+- かなり実用的でレビューの負担軽減やレビュー漏れの軽減に繋がりそう
+- 細かい指摘やpush毎のレビューもノイズにならない範囲で導入していきたい
