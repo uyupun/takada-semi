@@ -1,11 +1,6 @@
 pre-commit:
-  parallel: false
   commands:
-    lint-fix:
+    check-fix:
       glob: "*.{ts,mjs,astro,css}"
-      run: pnpm lint:fix -- {staged_files}
-      stage_fixed: true
-    format-fix:
-      glob: "*.{ts,mjs,astro,css}"
-      run: pnpm format:fix -- {staged_files}
+      run: pnpm check:fix -- {staged_files}
       stage_fixed: true

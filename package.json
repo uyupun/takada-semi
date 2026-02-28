@@ -8,10 +8,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "lint": "biome lint",
-    "lint:fix": "biome lint --write --unsafe --error-on-warnings",
-    "format": "biome format --check",
-    "format:fix": "biome format --write"
+    "check:fix": "biome check --write --unsafe --error-on-warnings"
   },
   "dependencies": {
     "@astrojs/starlight": "0.37.6",
