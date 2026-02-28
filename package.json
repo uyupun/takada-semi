@@ -8,6 +8,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
+    "check": "biome check",
     "check:fix": "biome check --write --unsafe --error-on-warnings"
   },
   "dependencies": {
