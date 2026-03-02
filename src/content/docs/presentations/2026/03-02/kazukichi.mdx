@@ -1,0 +1,155 @@
+---
+title: DSPy - 宣言的で自己改善的な推論フレームワーク
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## DSPyとは
+
+- Declarative Self-improving Pythonの略で、宣言的かつ自己改善的にLLMの推論処理を記述できるフレームワーク
+- プロンプトエンジニアリングを行わなくても、プロンプトの入出力さえ定義すれば、自動的に最適化を繰り返して内部でプロンプトがチューニングされていくというユニークな代物
+- プロンプトの入出力の宣言的記述 -> 推論実行 -> 評価 -> 最適化 -> 推論再実行 -> 再評価 -> ... というフィードバックループが特徴
+- 他のAIエージェントフレームワークとの連携も可能
+- 2023年春頃〜開発開始
+- 公式ページ: https://dspy.ai/
+
+## プロンプトエンジニアリング(従来型)
+
+- 命令的な表現方法
+- 「どう書けば良い応答が出るか」を人間が人力で設計し続ける必要がある
+- モデルの違いに依存し、挙動が不安定
+- 推論の良否を説明・検証・評価しにくい
+- 推論のロジックを再利用・共有しにくい
+
+```python
+prompt = f"""
+あなたは慎重なアシスタントです。
+質問に対して簡潔に答え、短い根拠を示してください。
+
+質問: {q}
+回答:
+根拠:
+"""
+
+# LLMにプロンプトを投げる
+```
+
+## Declarative(宣言的)とは
+
+- 開発者は入出力の意味と、満たすべき制約を定義する
+- 何を達成したいか(What)と、どのように推論させるか(How)を分離する
+- 推論の実装方法はフレームワーク側に委ね、関数仕様に近い抽象度で振る舞いを記述
+- 具体的な自然言語構造を設計するプロンプトエンジニアリングを前提としない
+- docstringもプロンプトに影響を与える点に留意
+- 検証コード
+
+```python
+import dspy
+
+lm = dspy.LM(
+    provider="anthropic",
+    model="claude-sonnet-4-5",
+)
+dspy.settings.configure(lm=lm)
+
+class Hello(dspy.Signature):
+    """Return a short greeting."""
+    name: str = dspy.InputField()
+    greeting: str = dspy.OutputField()
+
+predict = dspy.Predict(Hello)
+out = predict(name="Takashi")
+
+print(out.greeting)
+```
+
+- 実行結果
+
+```bash
+Hello Takashi! Nice to meet you.
+```
+
+## Self-improving(自己改善)
+
+- 実行結果を点数化
+- 評価器と実行結果を基にチューニング
+- 再度、実行結果を点数化
+- 推論のロジックを自動的にチューニングするフィードバックループ
+- 今回の例ではオプティマイザにBootstrapFewShotという基本的な手法を用いているが、他にも様々なアルゴリズムが用意されている
+- 評価器に関しても同様
+- 検証コード
+
+```python
+import dspy
+from dspy.teleprompt import BootstrapFewShot
+
+lm = dspy.LM(
+    provider="anthropic",
+    model="claude-sonnet-4-5",
+)
+dspy.settings.configure(lm=lm)
+
+class OneWordJPQA(dspy.Signature):
+    question: str = dspy.InputField()
+    answer: str = dspy.OutputField()
+
+qa = dspy.Predict(OneWordJPQA)
+
+trainset = [
+    dspy.Example(question="アメリカの通貨は?", answer="ドル").with_inputs("question"),
+    dspy.Example(question="フランスの首都は?", answer="パリ").with_inputs("question"),
+]
+
+def exact_match(ex, pred) -> float:
+    return float(pred.answer.strip() == ex.answer)
+
+def score(program) -> float:
+    total = 0.0
+
+    for example in trainset:
+        prediction = program(question=example.question)
+        total += exact_match(example, prediction)
+
+    return total / len(trainset)
+
+# before
+print("Baseline score:", score(qa))
+print("Baseline ex1:", qa(question=trainset[0].question).answer)
+print("Baseline ex2:", qa(question=trainset[1].question).answer)
+
+# 自己改善
+opt = BootstrapFewShot(metric=exact_match, max_bootstrapped_demos=2, max_labeled_demos=2)
+qa2 = opt.compile(qa, trainset=trainset)
+
+# after
+print("After score:", score(qa2))
+print("After ex1:", qa2(question=trainset[0].question).answer)
+print("After ex2:", qa2(question=trainset[1].question).answer)
+```
+
+- 実行結果
+
+```bash
+Baseline score: 0.5
+Baseline ex1: アメリカの通貨は、米ドル（United States Dollar、USD）です。記号は「$」で表されます。
+Baseline ex2: パリ
+  0%|                                                                                                                                                                                                | 0/2 [00:00<?, ?it/s]2026/01/29 01:06:51 ERROR dspy.teleprompt.bootstrap: Failed to run or to evaluate example Example({'question': 'アメリカの通貨は?', 'answer': 'ドル'}) (input_keys={'question'}) with <function exact_match at 0x104ebb8a0> due to exact_match() takes 2 positional arguments but 3 were given.
+ 50%|████████████████████████████████████████████████████████████████████████████████████████████                                                                                            | 1/2 [00:02<00:02,  2.26s/it]2026/01/29 01:06:53 ERROR dspy.teleprompt.bootstrap: Failed to run or to evaluate example Example({'question': 'フランスの首都は?', 'answer': 'パリ'}) (input_keys={'question'}) with <function exact_match at 0x104ebb8a0> due to exact_match() takes 2 positional arguments but 3 were given.
+100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:04<00:00,  2.14s/it]
+Bootstrapped 0 full traces after 1 examples for up to 1 rounds, amounting to 2 attempts.
+After score: 1.0
+After ex1: ドル
+After ex2: パリ
+```
+
+## 感想
+
+- プロンプトエンジニアリングがフレームワークの内部に内包されているというアーキテクチャがユニークで面白い
+- 本格的なAIエージェントを作ったことがないこともあり、このフレームワークをAIエージェント開発で活かしていけるかと言われると難しい
+
+## 参考
+
+- [LLM用宣言的プログラミング言語 DSPy](https://zenn.dev/cybernetics/articles/f879e10b53c2db)
