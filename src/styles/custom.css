@@ -4,6 +4,8 @@ iframe[src*="youtube.com"] {
 }
 
 /* ウルトラワイドディスプレイでコンテンツ幅が極端に狭くなる問題に対応 */
-:root {
-  --sl-content-width: clamp(45rem, 70vw, 100rem);
+@media (min-width: 1920px) {
+  :root {
+    --sl-content-width: 80rem;
+  }
 }
