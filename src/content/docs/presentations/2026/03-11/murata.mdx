@@ -1,0 +1,148 @@
+---
+title: むらた流Claude Code活用術
+author: murata
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## え、てかClaudeCode使ってる？笑
+
+- ごめん、使ってない人はここまで、お疲れ様でした！笑
+	- これから使ってくれるなら、話を聞いて損はないと思うよ！
+- ProもMaxも、両方で使えるので是非
+
+
+## 筆者の環境
+
+- Claude Code Max（$200の方）を使用
+- [GitHub](https://github.com/TakumiOkayasu/dotfile-work/tree/main/claude)に色々詰まってます
+
+### 紹介
+
+### Hooks
+
+##### セキュリティ系 (7件)
+
+| 名前 | 何をするか | メリット | トークン | アピールポイント |
+| ------ | ----------- | --------- | --------- | ---------------- |
+| git-commit-push-block | git commit/pushをClaudeに実行させない | 意図しないコミット・プッシュを完全防止 | ~0 tok | PreToolUse[Bash]で発火。パターンマッチで検査 |
+| local-command-block | python/node/php直接実行+難読化・間接実行も検出 | ローカル環境汚染防止。Docker経由を強制 | ~0 tok | 221行の最大Hook。base64/hex/octal等の迂回も検出 |
+| admin-command-block | sudo等の管理者権限コマンドをブロック | 権限昇格事故を完全防止 | ~0 tok | シンプルだが確実なガードレール |
+| env-file-protect | .envの読取/編集/Bash操作をすべてブロック | 秘密情報の漏洩・改変を防止 | ~0 tok | Bash/Read/Editの3ツール横断で保護 |
+| secret-leak-check | コマンド内のハードコード秘密情報を検出 | 平文パスワードが履歴に残ることを防止 | ~0 tok | 環境変数経由を推奨するメッセージ付き |
+| docker-build-check | ビルド/インストールをDocker外で実行させない | ローカル依存関係汚染を防止 | ~0 tok | npm/pip/cargo install等を検知 |
+| main-branch-code-warning | main/masterブランチでのコード編集を警告 | 直接mainへの変更事故を防止 | ~0 tok | Edit/Write両方で発火 |
+
+##### ワークフロー系 (3件)
+
+| 名前 | 何をするか | メリット | トークン | アピールポイント |
+| ------ | ----------- | --------- | --------- | ---------------- |
+| branch-from-main-check | 新規ブランチがmain最新から分岐しているか検証 | 古いコミットからのブランチ作成を防止 | ~0 tok | git checkout -b / git switch -c を検知して自動検証 |
+| git-post-command-reminder | マージ済みブランチ自動削除、mainチェックアウト後リマインド | ブランチの散らかりを自動防止 | ~100 tok | 134行。git操作後の後処理を自動化 |
+| language-version-check | Dockerfileで固定バージョン指定を警告(最新LTS推奨) | 古いバージョンの固定化を防止 | ~0 tok | FROM句のバージョンタグを検査 |
+
+##### コンテキスト/状態管理系 (4件)
+
+| 名前 | 何をするか | メリット | トークン | アピールポイント |
+| ------ | ----------- | --------- | --------- | ---------------- |
+| context-monitor | トークン使用量追跡。70%/85%閾値で警告 | コンテキスト枯渇前に状態保存を促す | ~200 tok | UserPromptSubmitでも発火する唯一のHook |
+| commit-checkpoint | コミット後に.claude/checkpoints/へスナップショット保存 | セッション中断時の復元ポイントを自動作成 | ~0 tok | バックグラウンドで静かに動作 |
+| pre-compact-backup | auto-compact前にPROGRESS.mdと変更をバックアップ | コンテキスト圧縮で失われる情報を事前退避 | ~0 tok | PreCompactイベント対応。非同期実行 |
+| session-resume | セッション開始時にPROGRESS.mdとチェックポイント注入 | セッション跨ぎの作業継続がスムーズ | ~500 tok | context-monitor+checkpoint+backupと連携 |
+
+##### 品質保証/UX系 (4件)
+
+| 名前 | 何をするか | メリット | トークン | アピールポイント |
+| ------ | ----------- | --------- | --------- | ---------------- |
+| doc-consistency-reminder | .md/.rst編集時にドキュメント整合性チェックをリマインド | コード変更とドキュメントの乖離を防止 | ~100 tok | PostToolUse[Write]で発火 |
+| hierarchical-architecture-naming-check | コード内の命名違反を自動検出 | アーキテクチャ規約違反をリアルタイム検出 | ~100 tok | 同名Skillと連動 |
+| session-start-reminder | 起動時にリマインダー、スキル一覧、環境チェック表示 | 毎セッション冒頭でルール再確認 | ~300 tok | 人間の朝会的な役割 |
+| project-environment-check | Docker/Git状態と適用中Hookルールを診断表示 | 環境の健全性をセッション開始時に自動確認 | ~200 tok | 問題があれば即座に警告 |
+
+
+### Commands
+
+| 名前 | 何をするか | メリット | トークン | アピールポイント | 
+|------|-----------|---------|---------|----------------|
+| /code-review | 5ステップのコードレビュー自動化。正確性・設計・性能・セキュリティ・テストの5カテゴリ | 全指摘にseverity(Critical/Warning/Suggestion)と修正コード付き | ~3,400 tok/呼出 (170行) | 検証ステップ付き。指摘だけでなく修正案を必ず提示 | 
+| /commit | Conventional Commits形式のコミットメッセージ生成+事前チェックリスト | 日本語メッセージ、型分類(feat/fix/docs等)を自動判定 | ~800 tok/呼出 (39行) | pre-commitチェックリストで漏れを防止 |
+| /implement | TDDワークフローに沿った機能実装ガイド。5フェーズ(理解→テスト設計→実装→リファクタ→報告) | RED-GREEN-REFACTORを強制、エッジケース処理も手順化 | ~700 tok/呼出 (34行) | Skillのtest-driven-developmentと連携して動作 |
+
+### Skills
+
+| 名前 | 何をするか | メリット | トークン | アピールポイント | 
+| ------ | ----------- | --------- | --------- | ---------------- |
+| test-driven-development | RED-GREEN-REFACTORサイクルを強制。Testing Trophy手法でテスト粒度を制御 | 実装前テストをAIに強制、品質担保が自動化 | ~1,500 tok/呼出 | 三角測量テクニック、AI生成テストの妥当性検証ステップ付き |
+| systematic-debugging | 4フェーズ根本原因分析を強制 (再現→境界追跡→原因特定→TDD修正) | 「とりあえず直す」を防ぎ根本原因から修正 | ~1,600 tok/呼出 | バグ記録テンプレート付き。回帰防止まで手順化 |
+| hallucination-prevention | AI生成コード・情報の自己検証。パッケージ/API存在確認 | 存在しないAPI/パッケージの幻覚を事前検出 | ~1,500 tok/呼出 | 不確実性の明示的開示を強制。「自信がない」と正直に言わせる |
+| consultation | 技術判断時に構造化された相談テンプレートを強制 | 曖昧な質問を防ぎ、判断ポイント・制約を明示 | ~1,500 tok/呼出 | 単一案での実装を禁止。必ず複数案を比較検討 |
+| failure-logging | 失敗アプローチをDB(failures.jsonl)に記録・参照 | 同じ失敗を二度と繰り返さない。セッション跨ぎで蓄積 | ~1,200 tok/呼出 | 100エントリ自動ローテーション。実装前に過去の失敗を自動参照 |
+| hierarchical-architecture | ピラミッド依存構造・レイヤー分離・命名規則の設計/レビュー | 依存逆転やレイヤー違反をスキルレベルで防止 | ~1,500 tok/呼出 | 命名規則チェックはHookと連動しWrite/Edit時にも自動検出 |
+
+
+## 意識して何を使うか
+
+- `/code-review`
+	- けっこう厳しい視点で見てくれる
+	- 修正提案・修正をしてくれる
+	- 「第三者視点で厳しく」と追撃することがある
+	- 以前は 'Good Point'も出力していたが、別にいらんな、で廃止
+
+- `/commit`
+	- コミットメッセージを考えてくれる
+	- 「いや、修正したのお前なんだから普通に決められるやろw」という指摘
+		- それを短くまとめてくれるので楽
+
+- `local-command-block`
+	- ローカルで環境を勝手に作るのを防止する
+	- たとえば、 `uv` すら使いたくない状況下で、「じゃあDockerで対応するか」を強制的に指定する
+		-　コンテナは基本的に実行後勝手に `rm` するのでゴミが残らない
+	- 「意識して」使ってはないけど、ClaudeCodeが勝手に **ローカル** にプログラム書き出すとかを防げる
+
+- `env-file-protect`
+	- これ、**マジでおすすめ**
+	- ClaudeCodeって、いろんな手法で `.env` を読み取ろうとするし、なんならコンソールに出力する
+		- **カス**
+			- なので、仕方なくこれを作るという
+			- 標準で読むなガチで
+
+- `secret-leak-check`
+	- これも同上
+	- なんのための `.env` だよ
+	- パスワードとか普通にコマンドと一緒に出力する
+		- **カス**
+
+## 今の構成になったのはなぜ？
+
+- もっと大量のSkillsとかCommandsがあった
+	- デッドコードならぬデッドスキル・デッドコマンドが結構あった
+	- 管理が大変
+		- リファクタリングやるかぁ
+			- これが先月末くらいからやってること
+
+- 結局、AIの性能が上がっても嘘ついたりサボったりするわけ
+- 基本、AIは**何か追加することをやる**
+	- それを**AIに止めさせる**
+
+### 紹介（手前味噌）
+
+- [Velocity-DB](https://github.com/TakumiOkayasu/Velocity-DB)
+	- **ALL Claue Code製**
+	- Windowsでしか動きませんw
+	- 設計からテストまで、一切わたしは**関わってません**
+		- 「ダメ」、「OK」しか言わない
+			- あと「お前この実装で許されるわけねーだろ金返せや」
+	- Windowsとかいう産廃が開発マシン
+		- まともに使えるDBクライアントが欲しい
+			- Vibe Coding
+				- なお、設計崩壊のため、イチからリファクタしまくった
+					- **ALL AI FIXED**
+
+## まとめ
+
+- ClaudeCodeはめっちゃ使える
+	- ただ、暴走する
+		- 止める、ただそれだけ
+- 関係ないけどClaudeCodeとCodexでレビューと実装の殴り合い楽しそうだぞ！
