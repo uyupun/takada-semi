@@ -10,5 +10,5 @@ pre-commit:
       run: pnpm format:fix -- {staged_files}
       stage_fixed: true
     actionlint:
-      glob: ".github/workflows/*.yml"
+      glob: ".github/workflows/*.{yml,yaml}"
       run: actionlint {staged_files}
