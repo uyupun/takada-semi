@@ -5,8 +5,7 @@ import { generatePresentationItems } from "./scripts/generatePresentationItems.m
 
 // https://astro.build/config
 export default defineConfig({
-  site: "https://uyupun.github.io",
-  base: "/takada-semi",
+  site: "https://semi.uyupun.tech",
   integrations: [
     starlight({
       title: "高田ゼミ",
@@ -44,7 +43,7 @@ export default defineConfig({
           tag: "link",
           attrs: {
             rel: "icon",
-            href: "/takada-semi/logo_takada_semi.jpeg",
+            href: "/logo_takada_semi.jpeg",
             type: "image/jpeg",
           },
         },
@@ -74,8 +73,7 @@ export default defineConfig({
           tag: "meta",
           attrs: {
             property: "og:image",
-            content:
-              "https://uyupun.github.io/takada-semi/logo_takada_semi.jpeg",
+            content: "https://semi.uyupun.tech/logo_takada_semi.jpeg",
           },
         },
         {
