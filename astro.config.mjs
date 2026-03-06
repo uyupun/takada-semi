@@ -12,6 +12,7 @@ export default defineConfig({
       title: "高田ゼミ",
       description:
         "──生き残るのは、最も強い者でも、最も賢い者でもなく、変化に最もよく適応した者である。",
+      favicon: "/logo_takada_semi.jpeg",
       defaultLocale: "ja",
       locales: {
         root: {
