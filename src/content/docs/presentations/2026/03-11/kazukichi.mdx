@@ -1,0 +1,87 @@
+---
+title: コンフルをマークダウンに変換するMCPサーバを作った
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- これまでもMCPに関しては度々、触れてきた
+	- [Middle Dive MCP](https://uyupun.github.io/takada-semi/presentations/2025/04-30/kazukichi/)
+	- [MCPサーバの活用と構築](https://uyupun.github.io/takada-semi/presentations/2025/05-07/kazukichi/)
+	- [最近話題のMCPサーバーについてのまとめ](https://uyupun.github.io/takada-semi/presentations/2025/04-09/murata/)
+- いずれも概念の説明や使用方法、検証レベルでの構築方法にとどまるものだった
+- 今回、はじめて実用的なMCPサーバを構築したので話そうと思う
+
+## 課題
+
+- 仕事では日頃からConfluence(以下コンフル)上でドキュメントを管理している
+- ※ コンフルはいわゆるNotionの少しレガシーなサービスだと思ってくれれば良い
+- コンフルは簡単にマークダウンを取得することができない
+- Web APIから取得できるHTMLにも独自タグが埋め込まれている(これをストレージ形式というらしい)
+- AIエージェントのコンテキストにドキュメントの内容を載せる際にはマークダウンとの相性が良いので、AIエージェントと高い統合度でストレージ形式からマークダウンへの変換が行えるようにしたい
+
+## 解決策
+
+- MCPサーバとしてストレージ形式からマークダウンへの変換を提供する
+- コンフルのドキュメント毎に割り当てられるページIDをMCPサーバに渡すようなインタフェース
+
+## 技術選定
+
+- 使い慣れている他、今回作りたいものとエコシステムがマッチするのでPythonを採用
+- MCPサーバにはFastAPIと近い書き味の [modelcontextprotocol/python-sdk](https://github.com/modelcontextprotocol/python-sdk) を採用
+- コンフルへのアクセスはPATを発行し、 [Requests](https://github.com/psf/requests) というHTTPクライアントに載せる
+- [BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/) で取得したストレージ形式からHTMLに変換
+- [markdownify](https://github.com/matthewwithanm/python-markdownify) でHTMLをマークダウンに変換
+
+## MCPの方式
+
+- SDK自体はstdio/SSE/Streamable HTTP全てに対応している
+- AIエージェントはStreamable HTTPに完全に対応できていないケースが多い
+- AIエージェントからの設定がstdioよりも簡便になりがちなSSEを採用
+- MCPサーバはローカルで起動する
+
+## 動作確認
+
+- 動作確認は [modelcontextprotocol/inspector](https://github.com/modelcontextprotocol/inspector) が便利
+- `npx` でインストールなしに使える
+
+<ContentImage path="2026/03-11/kazukichi/01.png" width="700" />
+
+<ContentImage path="2026/03-11/kazukichi/02.png" width="700" />
+
+## 利用例
+
+- OpenCodeの設定
+
+```bash
+$ cat ~/.config/opencode/opencode.json
+{
+  ...
+  "mcp": {
+    "confl2md-mcp": {
+      "type": "remote",
+      "url": "http://127.0.0.1:18080/sse",
+      "enabled": true,
+      "oauth": false,
+      "timeout": 10000
+    }
+  }
+}
+```
+
+- OpenCodeから呼び出した場合
+
+<ContentImage path="2026/03-11/kazukichi/03.png" width="700" />
+
+## 感想
+
+- AIエージェントの能力を拡張する方法として、MCPサーバには可能性を感じた
+- ただし、コンテキストのかなりの部分を消費してしまう点や、特にローカルではサーバの起動管理が面倒という問題がつきまとう
+- モデルの進化によって、ローカルではMCPサーバではなくCLIを利用するのが一般的になるかもしれない
+- MCPサーバはどんどんクラウド経由で提供されるようになっていく気がする
+- 個人的にはCLIのラッパーとして存在するClaude Codeのskillsを標準化してほしい
+- 今後もAIエージェントを使う中で小さな不便を見つけ、一つずつMCPサーバやCLIとして切り出していきたい
