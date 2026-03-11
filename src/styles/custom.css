@@ -2,3 +2,10 @@
 iframe[src*="youtube.com"] {
   height: 315px;
 }
+
+/* ウルトラワイドディスプレイでコンテンツ幅が極端に狭くなる問題に対応 */
+@media (min-width: 1920px) {
+  :root {
+    --sl-content-width: 80rem;
+  }
+}
