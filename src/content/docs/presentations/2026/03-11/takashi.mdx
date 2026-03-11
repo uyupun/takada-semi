@@ -1,0 +1,61 @@
+---
+title: Code to Canvas
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+Code to Canvas( [Claude Code to Figma](https://www.figma.com/release-notes/?title=claude-code-to-figma) / [Codex to Figma](https://www.figma.com/release-notes/?title=codex-to-figma) )はFigma MCPを使用して、コードからデザインを作成する。`generate_figma_design`ツールを利用する。
+
+## generate_figma_design
+
+WebサイトのUIをデザインレイヤーとしてFigmaに送信できる。
+
+### サポート状況（2026/03/11時点）
+
+- MCP Server: Remote Figma MCP Serverのみ
+- クライアント: Claude Code、Codex by OpenAI、VS Code
+- サービス: Figma Design
+
+### 送信先の選択肢
+
+- 新規Figma Designファイル
+  - 新規ファイルはチームまたは組織のドラフトに作成される
+- 既存のFigma Designファイル（編集権限が必要）
+- クリップボード
+
+### 使い方
+
+1. リモートFigma MCPサーバーをセットアップする
+2. クライアントにUIのキャプチャを指示する（公開されたWebサイトの場合はPlaywrightなどを使用する）
+3. クライアントがサーバーを起動し、スクリプトを注入してブラウザウィンドウを開く
+4. ブラウザのキャプチャツールバーで送信範囲を選択する
+   - 現在の画面全体をキャプチャ
+   - 特定の要素をキャプチャ
+5. キャプチャ完了後、Figmaファイルを開く（クリップボードの場合はFigmaファイルにペースト）
+
+### デモ画像
+
+**キャプチャのツールバー**
+
+<ContentImage path="2026/03-11/takashi/01.png" width="700" />
+
+**実際に送信されたFigma Design**
+
+<ContentImage path="2026/03-11/takashi/02.png" width="700" />
+
+## 感想
+
+**Figmaを利用したエンジニアとデザイナーのコミュニケーションが増える**
+
+- デザイナーが編集可能なデザインとして出力されるため、細かなUIの相談がしやすくなる
+- ライブラリに依存するUI（グラフなど）は、実装を元にデザインに起こすことが可能になる
+
+## 参照
+
+- [Tools and prompts - generate_figma_design](https://developers.figma.com/docs/figma-mcp-server/tools-and-prompts/#generate_figma_design)
