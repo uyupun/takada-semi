@@ -29,7 +29,7 @@ import Author from '@components/Author.astro';
 
 - [Knowledge Graph Memory Server](https://github.com/modelcontextprotocol/servers/tree/main/src/memory) を使ってみる
     - コンテキストを超えて記憶を引き継ぐためのMCPサーバ
-    - [Middle Dive MCP](https://uyupun.github.io/takada-semi/presentations/2025/04-30/kazukichi/) でも少し触れた
+    - [Middle Dive MCP](https://semi.uyupun.tech/presentations/2025/04-30/kazukichi/) でも少し触れた
     - マスタの情報はローカルのJSONファイルに保存し、それをベクトル化したものをさらにChromaDBに保存し、適宜ベクトル検索するという仕組みらしい
 - `mcp_settings.json`
   - Roo Codeの場合はこんな感じの設定
@@ -55,7 +55,7 @@ import Author from '@components/Author.astro';
   - また、これはMCPサーバ全般に言えることだが、現状はまだローカルでMCPサーバを起動して標準入出力で接続するというのが一般的
     - Node.jsだと `npx` が使えるのでまだ良いが、基本的にインストールが手間
     - 今後はOAuth 2.1 + Streamable HTTPでクラウドにあるMCPサーバに接続する、というのが一般的になってくるはず
-    - この辺の仕様に関しては [Middle Dive MCP](https://uyupun.github.io/takada-semi/presentations/2025/04-30/kazukichi/) でも触れた
+    - この辺の仕様に関しては [Middle Dive MCP](https://semi.uyupun.tech/presentations/2025/04-30/kazukichi/) でも触れた
   - [GitHub MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/github) は設定はしたけどまだ使えていない
 
 ## MCPサーバを作ってみる

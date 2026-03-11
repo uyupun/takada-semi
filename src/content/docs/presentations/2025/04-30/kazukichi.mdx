@@ -9,7 +9,7 @@ import Author from '@components/Author.astro';
 ## はじめに
 
 - MCPについては以前、むらたさんから紹介があった
-    - [最近話題のMCPサーバーについてのまとめ](https://uyupun.github.io/takada-semi/presentations/2025/04-09/murata/)
+    - [最近話題のMCPサーバーについてのまとめ](https://semi.uyupun.tech/presentations/2025/04-09/murata/)
 - 今回はそこからもう少し踏み込んだ内容まで触れてみる
 - MCPサーバの活用や構築に関しては間に合わなかったので次回以降触れていきたい
 
@@ -26,7 +26,7 @@ import Author from '@components/Author.astro';
 - 元々はツールの操作というよりも、LLMに対してドメイン知識を渡すような標準的な枠組みの用意のために策定された
 - CursorやClineといったAIエージェントの普及したこともあり、2025年に入ってからは特にAIエージェントから様々なツールを操作するためにも利活用されている
     - 基本的なところだと、ファイル作成、コマンド実行、ブラウジング等
-    - これに関しては [AIエージェントに入門した](https://uyupun.github.io/takada-semi/presentations/2025/04-02/kazukichi/) でも触れた
+    - これに関しては [AIエージェントに入門した](https://semi.uyupun.tech/presentations/2025/04-02/kazukichi/) でも触れた
     - 元々、AIエージェントは従来のチャットベースの生成AIと異なり、様々なツールを利用できるという強みがあった
     - MCPができる以前も各ベンダが「Function Calling」という名前で同機能を提供していたが、ベンダ毎に規格が異なっていた
     - そのため、インタフェースが統一されておらず、サードパーティのツールを作成し、様々なAIエージェントから共通利用することが難しかった
@@ -130,7 +130,7 @@ import Author from '@components/Author.astro';
     - LLMやMCPサーバに単一責任原則(SRP)が適用されたようなかんじ
     - 現在もSakanaAIやDeepSeekが中心にやっているような、MoEや蒸留等によって軽量のモデルを扱う、という試みがまた一歩進むのでは
 - AIを育てる、という視点
-    - [これからのAIの在り方を想像する](https://uyupun.github.io/takada-semi/presentations/2025/04-09/kazukichi/) でも触れた
+    - [これからのAIの在り方を想像する](https://semi.uyupun.tech/presentations/2025/04-09/kazukichi/) でも触れた
     - AIを自分でパーソナライズして育て上げていくのでは、という予想
     - Anthoropicが提供しているMCPサーバであるMemory Serverとして部分的に実現されている
     - 過去のやり取りや知識を保存し、検索できるような作りになっている
