@@ -14,8 +14,10 @@
     "format:fix": "biome format --write"
   },
   "dependencies": {
-    "@astrojs/starlight": "0.37.6",
-    "astro": "5.18.0"
+    "@astrojs/check": "0.9.7",
+    "@astrojs/starlight": "0.37.7",
+    "astro": "5.18.0",
+    "typescript": "5.9.3"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.6",
