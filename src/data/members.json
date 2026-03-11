@@ -28,5 +28,10 @@
 		"displayName": "Shibaki",
 		"link": null,
 		"image": null
+	},
+	"nakamu": {
+		"displayName": "Nakamu",
+		"link": "https://github.com/naka6ryo",
+		"image": "/members/nakamu.jpeg"
 	}
 }
