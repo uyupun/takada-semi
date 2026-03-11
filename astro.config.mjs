@@ -1,6 +1,7 @@
 // @ts-check
-import { defineConfig } from "astro/config";
+
 import starlight from "@astrojs/starlight";
+import { defineConfig } from "astro/config";
 import { generatePresentationItems } from "./scripts/generatePresentationItems.mjs";
 
 // https://astro.build/config
