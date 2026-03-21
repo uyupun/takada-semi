@@ -1,0 +1,1320 @@
+---
+title: iPadからマイコンに書き込みたい！
+author: nakamu
+
+hero:
+  tagline: ──ノートパソコンが壊れてもハッカソンには出たい
+  image:
+    file: https://semi.uyupun.tech/content/images/2026/03-11/nakamu/01.jpg
+---
+
+import Author from "@components/Author.astro";
+import ContentImage from "@components/ContentImage.astro";
+
+<Author frontmatter={frontmatter} />
+
+> iPadを“閲覧端末”じゃなくて“開発端末”として使いたい。
+> でも最後の最後、マイコン書き込みだけ有線必須で詰む。
+> じゃあそこを壊そう、という話です。
+
+---
+
+## 目次
+
+0. [このプロジェクトは何か (0章)](#0-このプロジェクトは何か-0章)
+1. [システム全体の概要](#1-システム全体の概要)
+2. [platformio.ini — ビルド設定とメモリ最適化](#2-platformioini--ビルド設定とメモリ最適化)
+3. [パーティションテーブル — フラッシュメモリの間取り](#3-パーティションテーブル--フラッシュメモリの間取り)
+4. [main.cpp — インクルードと定数](#4-maincpp--インクルードと定数)
+5. [グローバル変数と状態管理](#5-グローバル変数と状態管理)
+6. [ユーティリティ関数](#6-ユーティリティ関数)
+7. [Wi-Fi 管理](#7-wi-fi-管理)
+8. [BLE コールバック — デバッグ・コマンド受信](#8-ble-コールバック--デバッグコマンド受信)
+9. [BLE コールバック — Wi-Fi プロビジョニング](#9-ble-コールバック--wi-fi-プロビジョニング)
+10. [OTA の仕組みと実装](#10-ota-の仕組みと実装)
+11. [BLE サービスのセットアップ](#11-ble-サービスのセットアップ)
+12. [NVS によるデータ永続化とファクトリーリセット](#12-nvs-によるデータ永続化とファクトリーリセット)
+13. [Wi-Fi イベントハンドラ](#13-wi-fi-イベントハンドラ)
+14. [setup() 関数 — 起動シーケンス](#14-setup-関数--起動シーケンス)
+15. [loop() 関数 — メインループ詳細](#15-loop-関数--メインループ詳細)
+
+---
+
+## 0. このプロジェクトは何か (0章)
+
+---
+
+## 概要
+
+今回作ったのは、**iPad (Bluefy) から ESP32-S3 Super Mini に対して、BLE経由でOTA書き込みできる Webアプリ + マイコン側ファームウェア**の統合システムです。
+
+単にOTAするだけではなく、以下をまとめて扱えるようにしています。
+
+- **BLE Wi-Fiプロビジョニング**（SSID/パスワード送信）
+- **BLE OTA**（.bin ファイルの転送と更新）
+- **BLEデバッグモニタ**（ログ受信 / コマンド送信）
+
+ポイントはここです。
+
+- **OTAは完全にBLE経由**
+- **Wi-Fiはプロビジョニング確認用途のみ**
+- **iOS/iPadでも Bluefy + Web Bluetooth で実用的に操作可能**
+
+つまり、
+**「iPadをメイン端末にして現地開発したい」**
+に対して、最後の障壁だった「書き込み」をかなり現実的にした構成です。
+
+### [デモ動画](https://youtube.com/shorts/7lHR-25K3bE?si=tS1xtN13zz6b0Ps7)
+
+大きく以下の 2 つで構成されています。
+
+- `WebAppSide/`: ブラウザで動く UI。Web Bluetooth API を使って BLE 通信を行う
+- `MiconSide/`: ESP32-S3 で動くファームウェア。BLE サービス提供、Wi-Fi 設定保存、OTA 書き換えを担当
+
+GitHub リポジトリ:
+
+- `https://github.com/naka6ryo/RemoteCompilerToMicon`
+
+## 使い方
+
+### ざっくり利用フロー
+
+1. ESP32-S3 Super Mini を起動（最初のみUSBで初期書き込み済みファームが必要）
+2. iPadで Bluefy を開いて WebApp にアクセス
+3. BLEでESP32に接続
+4. （任意）Wi-Fiプロビジョニング
+5. `.bin` ファイルを選択して OTA 実行
+6. 進捗を確認 → 更新完了後に自動再起動
+
+### WebApp側でできること
+
+- **BLE接続パネル**: デバイス接続/切断
+- **Wi-Fi設定パネル**: SSID/パスワード送信
+- **ファームウェア更新パネル**: `.bin`選択 → OTAアップロード
+- **BLEデバッグモニタ**: ログ購読 / コマンド送信
+
+### 使うときの注意点（実運用で大事）
+
+- OTA前に **BLE接続が安定していること**を確認する
+- OTA中は **iPadとデバイスを近距離**に置く
+- `.bin` サイズは **2MB以下**（この実装の制限）
+- 中断時の再開は未対応なので、**失敗したら最初から再送**
+
+---
+
+## 序盤の背景的説明（なぜ iPad だけで書き込みたいのか）
+
+ここ、個人的にはかなり大事です。
+
+「iPadで開発したい」は一見すると変なこだわりに見えるんですが、実際にはかなり合理的です。
+
+### 1. まず単純に、iPad + PCの2台持ちが重い
+
+ハッカソンや現地開発、出先での検証って、ただでさえ荷物が増えます。
+
+- PC本体
+- 充電器
+- ケーブル類
+- iPad（メモ、図、資料閲覧、設計用）
+
+…と持っていくより、できれば**メイン端末をiPadに寄せたい**。
+
+### 2. iPadは「PCっぽいこと」がかなりできる
+
+特に最近は、リモートデスクトップやブラウザベースの開発環境で、iPadでもかなり戦えます。
+Chrome Remote Desktopのような構成を使えば、低遅延でPC作業にアクセスできる場面もあります（参考: Google公式ヘルプ）。
+
+つまり、
+
+- コーディング
+- ログ確認
+- 軽い修正
+- デバッグ補助
+
+みたいなことは、工夫すれば iPad 側にかなり寄せられる。
+
+### 3. 逆にPCは、手描き・メモ・図解が弱い
+
+これは開発している人ほど刺さるやつですが、
+
+- 回路図のラフ
+- 状態遷移のメモ
+- UIラフ
+- アイデアの殴り書き
+
+みたいな作業、**iPad + Pencil が強すぎる**んですよね。
+
+なので発想としては自然で、
+
+**「じゃあ iPad をメイン開発端末にしよう」**
+
+になります。
+
+### 4. でも最後に残るのが「書き込み」
+
+ここで詰まる。
+
+マイコン開発では、最終的にプログラムを動かすには、
+
+- ビルド（機械語への変換）
+- マイコンへの転送（書き込み）
+- 実行
+
+が必要です。
+
+この「書き込み」は多くの場合、**USB/UARTなどの有線接続**が前提です。
+
+つまり、iPadだけで頑張っても最後に
+
+- PCを出す
+- 変換器を出す
+- ケーブルを挿す
+
+が必要になり、急に世界観が壊れる。
+
+### 5. 現地開発だと、さらに現実的につらい
+
+ハッカソンや展示会場、検証現場だと、こんな問題が起きがちです。
+
+- 机が狭い
+- 配線スペースがない
+- すでに筐体に組み込まれていて書き込み端子に触りにくい
+- 変換器やピン変換を持ち歩くのが面倒
+
+要するに、
+
+**「コードは書けるのに、書き込めない」**
+
+がめちゃくちゃストレスなんです。
+
+だから今回のテーマはシンプルです。
+
+**iPadだけで開発したい。なら、iPadから書き込めるようにする。**
+
+---
+
+## メイン技術: OTA（ESP32系）を使う
+
+今回の中核は **OTA (Over-The-Air)** です。
+
+### そもそも書き込みとは？
+
+組み込み系でいう「書き込み」は、マイコンにプログラムを入れて動かすための処理です。
+
+- ソースコードをビルドして `.bin`（機械語のファームウェア）を作る
+- それをマイコンに転送する
+- マイコンがFlashから実行する
+
+ESP32のプログラムはPCみたいにHDDに置くわけではなく、**Flash（不揮発メモリ）**に格納されます。
+
+### OTAって何？
+
+OTAは、ざっくり言うと
+
+**「USBケーブルの代わりに通信でFlashへ書き込む方法」**
+
+です。
+
+- USB書き込み: PC → USB/UART → Flashへ書き込み
+- OTA書き込み: スマホ/PC → (Wi-Fi / BLE など) → Flashへ書き込み
+
+### 前提: ESP32とは？
+
+ESP32はマイコンの一種で、特に以下が強いです。
+
+- BLE / Bluetooth / Wi-Fi を扱える
+- モデルによっては Lipo充電系も載っている
+- 派生ボードが多く、汎用性が高い
+
+有名どころだと **M5Stackシリーズ** など。今回は筆者がよく使う **ESP32-S3 Super Mini** を前提にしています。
+
+### なぜWi-Fi OTAじゃなくてBLE OTA？
+
+一般的には OTA は **Wi-Fi経由**が多いです。
+
+ただ、今回の狙いは **iPad（特にiOS環境）からの実用運用** なので、そこで制約に当たります。
+
+- ESP32がローカルホストして配布する構成は扱いやすい
+- でも iOS / ブラウザ側の制約で、ローカルホスト経由アクセスが扱いにくいケースがある
+- 一方で **Bluefy** を使うと、iOSでも Webアプリから BLE を扱える
+
+ということで今回は **BLE OTA** を採用しています。
+
+ここがこの実装の肝です。
+
+---
+
+## BLE OTAについて
+
+### 1) 登場人物
+
+BLE OTAでは、やり取りするのはこの2者です。
+
+- **送る側（クライアント）**: iPad / スマホ / PC のアプリ（今回は Bluefy 上のWebアプリ）
+- **受け取る側（デバイス）**: ESP32（受信してFlashへ書き込む）
+
+重要ポイントは1つ。
+
+**ESP32側に最初から「受信してFlashへ書くためのOTAロジック」が入っている必要がある** こと。
+
+これが無いと、受け取れても書き込めません。
+
+### 2) データの流れ（超ざっくり）
+
+```text
+[iPad / Webアプリ]
+  ① ファーム(.bin)を選ぶ
+  ② BLEでESP32へ小分け送信
+              ↓
+[ESP32]
+  ③ 受け取った順にFlash(OTA領域)へ書く
+  ④ 受信完了後に整合性チェック
+  ⑤ 次回起動先を新ファームへ切替
+  ⑥ 再起動 → 新ファームで起動
+```
+
+### 3) BLEなので「小分け送信」が必須
+
+BLEはWi-Fiより帯域が小さく、1回に送れるサイズ（MTUの制約）も小さいです。
+
+だから、数百KB〜数MBあるファームウェアをそのまま送るのではなく、
+
+- 小さなチャンクに分割
+- 順番に送信
+- ESP32側で順次Flashに追記
+
+という形にします。
+
+今回の実装では、iOS / Bluefy 寄りの安定性を見て **180バイト程度のチャンク**を推奨にしています。
+
+### 4) BLEのGATTって何をしてるの？（初心者向け）
+
+BLEでは「サービス」「キャラクタリスティック」という箱を使って通信を整理します。
+
+OTAでは典型的に以下の役割分担になります。
+
+- **Control**: 開始 / 終了 / 中止などの命令
+- **Data**: ファーム本体のバイナリ断片
+- **Status**: 進捗 / 成功 / エラー通知
+
+今回の実装もほぼこの構成です。
+
+### 5) ESP32側で何が起きてるの？（内部手順）
+
+#### (A) OTA書き込み先を用意する
+
+ESP32のFlashはパーティションに分かれています。
+OTA対応では典型的に次のような構成を使います。
+
+- `factory`
+- `ota_0`
+- `ota_1`
+- `nvs`
+
+更新時は、**今動いている領域とは別のOTA領域**に書きます。
+これにより、動作中のファームを直接壊さないので安全性が上がります。
+
+#### (B) 受信しながらFlashへ書く
+
+BLEで届いた断片を順に受けて、`Update.write()` のような処理でFlashへ書き込みます。
+
+ここで設計上の論点になるのは、
+
+- 中断時に再開可能にするか
+- 再開なしで最初からやり直しにするか
+
+です。
+
+このプロジェクトでは、仕様をシンプルに保つため **途中再開は未対応** にしています。
+
+#### (C) 完了後に整合性チェック
+
+最後まで受け取ったら、少なくとも以下を確認します。
+
+- サイズ一致
+- ハッシュ / CRC一致（将来拡張含む）
+- 書き込み完了判定
+
+不一致なら新ファームは採用せず、旧ファームのまま動作します。
+
+#### (D) ブート先切り替え → 再起動
+
+検証OKなら、次回起動時に新ファーム領域を使うように切り替えます。
+再起動後、ブートローダがその情報を見て新ファームを起動します。
+
+ここまでできて、初めて「OTAで更新できた」と言えます。
+
+---
+
+### 0-1. マイコン側 (`MiconSide`) スクリプト構成
+
+```
+MiconSide/
+├─ src/
+│  └─ main.cpp                ← メインファームウェア本体
+├─ platformio.ini             ← ビルド設定・ボード設定・最適化フラグ
+├─ partitions_ota_2m.csv      ← 現在使用中の OTA 対応パーティション
+├─ partitions.csv             ← 比較用の別パーティション定義
+├─ logs/                      ← 実行時ログ保管用ディレクトリ
+└─ README.md                  ← MiconSide の簡易説明
+```
+
+各ファイルの役割:
+
+- `src/main.cpp`
+  BLE デバッグ、Wi-Fi プロビジョニング、BLE OTA、NVS 保存、起動/再起動制御など、実行ロジックの中心です。
+- `platformio.ini`
+  `board = lolin_s3_mini`、`framework = arduino`、`build_flags`、`board_build.partitions` などを定義します。
+- `partitions_ota_2m.csv`
+  `app0/app1` の 2 スロット OTA を可能にするフラッシュ間取りです。現在このテーブルが有効です。
+- `partitions.csv`
+  別レイアウト例。検証や比較に使える定義です。
+- `logs/`
+  開発中に取得したログを保存する場所です。
+
+このドキュメントは、上記のうち特に `src/main.cpp` と周辺設定 (`platformio.ini` / パーティション) を読み解くための資料です。
+
+---
+
+## 1. システム全体の概要
+
+このファームウェアは **ESP32-S3 Super Mini** というマイコンボード上で動作します。
+
+```
+[Web ブラウザ]
+   │  Web Bluetooth API (BLE)
+   ▼
+[ESP32-S3]
+   ├─ BLE Debug Service  … ログ送受信・コマンド実行
+   ├─ BLE Provisioning Service … Wi-Fi の SSID/パスワードを受信
+   ├─ BLE OTA Service  … ファームウェアバイナリをチャンクで受信
+   └─ Wi-Fi STA … ネットワーク接続 (プロビジョニング後)
+```
+
+**主な機能**:
+
+| 機能                   | 説明                                                     |
+| ---------------------- | -------------------------------------------------------- |
+| BLE デバッグモニタ     | シリアルログを BLE 経由でブラウザに転送する              |
+| Wi-Fi プロビジョニング | BLE 経由で Wi-Fi 認証情報を受け取り NVS に保存する       |
+| OTA (BLE)              | BLE 経由でファームウェアバイナリを受信し自己書き換えする |
+| 省電力タイムアウト     | 起動後 60 秒で OTA/プロビジョニングを無効化する          |
+
+---
+
+## 2. platformio.ini — ビルド設定とメモリ最適化
+
+```ini
+[env:esp32-s3-devkitc-1]
+platform = espressif32
+board = lolin_s3_mini
+framework = arduino
+```
+
+**`platform`** : Espressif 社の ESP32 シリーズ向けビルドツールチェーンを使う、という宣言。  
+**`board`** : ボードのピン配置・フラッシュサイズなどの定義ファイルを `lolin_s3_mini` として選ぶ。  
+**`framework = arduino`** : Arduino の API (`setup()`/`loop()` 関数、`digitalWrite` など) を使う。
+
+---
+
+### 2-1. `build_flags` — コンパイル時定数の注入
+
+```ini
+build_flags =
+  -DCORE_DEBUG_LEVEL=0
+  -DLOG_SERIAL_ENABLED=1
+  -DBOARD_HAS_PSRAM
+  -DARDUINO_USB_CDC_ON_BOOT=1
+  -DCONFIG_BT_NIMBLE_MEM_ALLOC_MODE_EXTERNAL=1
+```
+
+| フラグ                                         | 意味                                                     | 効果                                                    |
+| ---------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------- |
+| `-DCORE_DEBUG_LEVEL=0`                         | ESP-IDF 内部デバッグログのレベルを 0 (無効) にする       | シリアル出力が減り、実行速度・メモリが節約できる        |
+| `-DLOG_SERIAL_ENABLED=1`                       | アプリ独自のシリアルログを有効化                         | `main.cpp` の `#ifndef LOG_SERIAL_ENABLED` が反応する   |
+| `-DBOARD_HAS_PSRAM`                            | このボードには外付け PSRAM (仮想 RAM) があると宣言       | ESP-IDF がスタートアップ時に PSRAM を初期化・マップする |
+| `-DARDUINO_USB_CDC_ON_BOOT=1`                  | USB-CDC ポートをブート直後から有効化                     | PC に繋いだ USB から `Serial.println` が届くようになる  |
+| `-DCONFIG_BT_NIMBLE_MEM_ALLOC_MODE_EXTERNAL=1` | BLE スタック (NimBLE) のバッファを **PSRAM に確保** する | 内蔵 SRAM の逼迫を防ぎ、BLE と他の処理が共存できる      |
+
+> **仕組みメモ — PSRAM とは**  
+> ESP32-S3 は内蔵 SRAM が 約 512 KB あります。BLE スタックだけで 100〜200 KB 使うため、残りが少なくなります。  
+> 外付けの PSRAM (最大 8 MB) を有効にすると、BLE バッファなどをそちらに置けるようになります。  
+> `BOARD_HAS_PSRAM` を宣言しないと PSRAM は初期化されません。
+
+---
+
+### 2-2. `board_build.partitions`
+
+```ini
+board_build.partitions = partitions_ota_2m.csv
+```
+
+OTA (自己書き換え) 用のカスタムパーティションテーブルを使うと指定しています。  
+詳細は次節で解説します。
+
+---
+
+### 2-3. `upload_speed`
+
+```ini
+upload_speed = 921600
+```
+
+書き込み時のシリアル速度。デフォルト (115200 bps = 約 14 KB/s) より約 8 倍速い 921600 bps を指定しています。
+
+---
+
+## 3. パーティションテーブル — フラッシュメモリの間取り
+
+ESP32 のフラッシュメモリは固定の「間取り」に従って区画分けされています。  
+この間取り表が **パーティションテーブル** です。
+
+### 3-1. `partitions_ota_2m.csv` (実際に使用するテーブル)
+
+```
+# Name,   Type, SubType, Offset,   Size,     Flags
+nvs,      data, nvs,     0x9000,   0x5000,
+otadata,  data, ota,     0xE000,   0x2000,
+app0,     app,  ota_0,   0x10000,  0x180000,
+app1,     app,  ota_1,   0x190000, 0x180000,
+spiffs,   data, spiffs,  0x310000, 0xF0000,
+```
+
+```
+フラッシュ先頭 (0x0000)
+┌─────────────────────────────────────┐
+│ ブートローダー (0x0000 ~ 0x8FFF)   │ ← Espressif 固定領域
+├─────────────────────────────────────┤ 0x9000
+│ NVS  (20 KB)                        │ ← 設定値の不揮発保存
+├─────────────────────────────────────┤ 0xE000
+│ otadata (8 KB)                      │ ← 「次に起動するアプリ」の管理
+├─────────────────────────────────────┤ 0x10000
+│ app0 / ota_0  (1536 KB = 1.5 MB)   │ ← 現在動いているファームウェア
+├─────────────────────────────────────┤ 0x190000
+│ app1 / ota_1  (1536 KB = 1.5 MB)   │ ← OTA 受信先 (書き込みバッファ)
+├─────────────────────────────────────┤ 0x310000
+│ SPIFFS  (960 KB)                    │ ← ファイルシステム (HTML等)
+└─────────────────────────────────────┘
+```
+
+### 3-2. `partitions.csv` (比較用・別レイアウト)
+
+```
+# Name,   Type, SubType, Offset,  Size, Flags
+nvs,      data, nvs,     0x30000,  0xC000,
+otadata,  data, ota,     0x3C000,  0x2000,
+app0,     app,  ota_0,   0x40000, 0x150000,
+app1,     app,  ota_1,   0x1A0000, 0x150000,
+```
+
+NVS が `0x30000` から始まっていて、ブートローダー後の先頭領域に別の用途が割り当てられている別レイアウト。SPIFFS がないのでファイルシステムは使わない構成です。
+
+---
+
+### 3-3. OTA 二重バッファの仕組み
+
+> **ESP-IDF 公式ドキュメント より**  
+> [ESP-IDF OTA Upgrades — ota_data partition](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/ota.html)
+>
+> _"OTA data partition stores information to select which OTA app partition to boot at next reset.  
+> It is initialized (on the first boot) to boot from factory app. Each successful OTA update writes data to the OTA data partition ... The bootloader uses the OTA data to select which app partition to load."_
+
+つまり:
+
+```
+[OTA 更新前]
+otadata → app0 を起動するよう指示
+           ↑ 現在稼働中
+
+[OTA 更新中]
+app1 に新ファームウェアを書き込む (app0 は無傷のまま)
+
+[Update.end() 成功後]
+otadata → app1 を起動するよう更新
+
+[再起動後]
+app1 として新ファームウェアが起動
+```
+
+**万が一 app1 の新ファームウェアが起動に失敗した場合、ブートローダーは自動的に app0 に戻ります。** これがロールバック機能です。
+
+---
+
+### 3-4. `otadata` パーティションの役割
+
+`otadata` (8 KB) は ESP-IDF のブートローダーが読み書きする小さな管理テーブルです。  
+`Update.end()` が成功すると、ここに「次は app1 から起動せよ」というフラグが書き込まれます。  
+このファイルがなければ OTA は機能しません。
+
+---
+
+## 4. main.cpp — インクルードと定数
+
+```cpp
+#include <WiFi.h>
+#include <Update.h>
+#include <Preferences.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+#include <esp32-hal-rgb-led.h>
+```
+
+| ヘッダ                | 役割                                                                                                           |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `WiFi.h`              | ESP32 の Wi-Fi STA/AP 機能                                                                                     |
+| `Update.h`            | OTA 書き込み API (`Update.begin()` / `Update.write()` / `Update.end()`)                                        |
+| `Preferences.h`       | NVS (不揮発ストレージ) の読み書き                                                                              |
+| `BLEDevice.h` 他      | ESP32 Arduino の BLE スタック全般                                                                              |
+| `BLE2902.h`           | **CCCD** (Client Characteristic Configuration Descriptor) — Notify を有効化するために必要な BLE ディスクリプタ |
+| `esp32-hal-rgb-led.h` | ESP32-S3 Super Mini 搭載の NeoPixel (WS2812) RGB LED 制御                                                      |
+
+---
+
+### 4-1. BLE UUID の定義
+
+```cpp
+#define DEBUG_SERVICE_UUID     "7f3f0001-..."
+#define OTA_SERVICE_UUID       "9f5f0001-..."
+#define PROV_SERVICE_UUID      "8f4f0001-..."
+```
+
+BLE では「どんなサービスか」を 128 ビットの UUID で識別します。  
+この UUID は **開発者が自由に決めた独自 UUID** です (Bluetooth SIG の公式 UUID ではありません)。  
+Web アプリ側 (`constants.js`) にも全く同じ UUID が書かれており、これで対となります。
+
+```
+マイコン側 (main.cpp)            Web アプリ側 (constants.js)
+#define OTA_SERVICE_UUID          OTA_SERVICE_UUID:
+  "9f5f0001-8d9e-..."    ←→      '9f5f0001-8d9e-...'
+```
+
+---
+
+## 5. グローバル変数と状態管理
+
+### 5-1. 状態列挙型
+
+```cpp
+typedef enum {
+    STATE_FACTORY_RESET_DETECT,
+    STATE_PROVISIONING,
+    STATE_APP_RUNNING,
+} system_state_t;
+
+typedef enum {
+    WIFI_IDLE = 0,
+    WIFI_CONNECTING,
+    WIFI_CONNECTED,
+    WIFI_FAILED,
+} wifi_state_t;
+```
+
+`system_state_t` はシステム全体の状態機械 (ステートマシン) です。
+
+```
+起動
+ │
+ ▼
+STATE_FACTORY_RESET_DETECT ─── リセットフラグあり → NVS 消去 → 再起動
+ │
+ ▼
+STATE_PROVISIONING ─── BLE で Wi-Fi 認証情報受信 → NVS 保存 → 再起動
+ │  (NVS に Wi-Fi 設定済みなら最初からここをスキップして下へ)
+ ▼
+STATE_APP_RUNNING  ─── Wi-Fi 接続 + BLE 全サービス稼働
+```
+
+---
+
+### 5-2. OTA 関連グローバル変数
+
+```cpp
+bool   ota_mode_active        = false;  // OTA モードが有効かどうか
+size_t ota_expected_size      = 0;      // START コマンドで受け取ったファイルサイズ
+size_t ota_received_size      = 0;      // 現在までに受信したバイト数
+bool   ota_in_progress        = false;  // Update.begin() 済みかどうか
+bool   ota_finalize_requested = false;  // END コマンドを受け取ったフラグ
+bool   ota_abort_requested    = false;  // ABORT コマンドを受け取ったフラグ
+```
+
+`ota_finalize_requested` は BLE コールバック内で立てるフラグで、実際の `Update.end()` は **メインループ** で実行します。  
+これは BLE コールバックが割り込み的に短く処理されるべきであり、フラッシュ書き込み完了待ちをコールバック内でやるとスタックオーバーフローや BLE タイムアウトが起きるためです。
+
+---
+
+### 5-3. 省電力タイムアウト変数
+
+```cpp
+unsigned long boot_timestamp          = 0;
+const unsigned long WIFI_OTA_TIMEOUT_MS = 60000; // 1分
+bool wifi_ota_timeout_passed          = false;
+```
+
+起動から 60 秒後に OTA とプロビジョニング機能を無効化します。  
+これにより、通常運用中に誤って OTA が開始されるリスクを減らしています。  
+Wi-Fi 接続自体は維持されます。
+
+---
+
+## 6. ユーティリティ関数
+
+### 6-1. `log_println()` — デュアル出力ログ
+
+```cpp
+void log_println(const char *msg)
+{
+    if (LOG_SERIAL_ENABLED) {
+        Serial.println(msg);
+        Serial.flush();
+    }
+
+    if (ble_device_connected && pDebugLogTx && !ota_in_progress && !provisioning_in_progress) {
+        size_t len = strlen(msg);
+        if (len > 200) len = 200;
+        pDebugLogTx->setValue((uint8_t *)msg, len);
+        pDebugLogTx->notify();
+        delay(10);
+    }
+}
+```
+
+**ポイント**:
+
+- シリアル (USB) と BLE の両方に同時出力
+- OTA 中・プロビジョニング中は BLE ログを送らない (BLE スタックへの負荷軽減)
+- 200 バイトでクランプ (BLE の MTU 制限対策)
+- `delay(10)` は BLE スタックに処理時間を与えるための短い待機
+
+### 6-2. `status_led_*` — LED 制御
+
+```cpp
+#define STATUS_LED_GPIO_PIN 47   // 通常 GPIO LED
+#define STATUS_LED_RGB_PIN  48   // NeoPixel RGB LED
+```
+
+ESP32-S3 Super Mini には GPIO47 の単色 LED と GPIO48 の RGB NeoPixel が搭載されています。
+
+```cpp
+void status_led_blink_aws() {
+    digitalWrite(STATUS_LED_GPIO_PIN, LOW);         // 白色 LED 点灯
+    neopixelWrite(STATUS_LED_RGB_PIN, 0, 24, 0);   // RGB = 緑 (G=24)
+    delay(120);
+    digitalWrite(STATUS_LED_GPIO_PIN, HIGH);        // 消灯
+    neopixelWrite(STATUS_LED_RGB_PIN, 0, 0, 0);    // RGB = 消灯
+}
+```
+
+BLE メッセージ送信時に緑色で 120 ms 点滅します。
+
+---
+
+## 7. Wi-Fi 管理
+
+### 7-1. `wifi_mgr_init()` — 初期化
+
+```cpp
+void wifi_mgr_init(void) {
+    WiFi.mode(WIFI_STA);        // ステーション (クライアント) モード
+    g_state.wifi_state = WIFI_IDLE;
+}
+```
+
+`WIFI_STA` は「Wi-Fi アクセスポイントに接続するクライアントモード」です。  
+`WIFI_AP` にするとアクセスポイント自体になりますが、このシステムでは使いません。
+
+### 7-2. `wifi_mgr_connect()` — NVS から認証情報を読んで接続
+
+```cpp
+nvs_wifi.begin(NVS_WIFI_NS, true);  // true = 読み取り専用
+nvs_wifi.getString("ssid", ssid, sizeof(ssid));
+nvs_wifi.getString("pass", pass, sizeof(pass));
+nvs_wifi.end();
+
+WiFi.begin(ssid, pass);
+```
+
+接続処理自体は **非同期** です。`WiFi.begin()` は接続開始を指示するだけで、完了を待ちません。  
+実際に IP アドレスを取得したかどうかは `wifi_event_handler()` の `ARDUINO_EVENT_WIFI_STA_GOT_IP` イベントで検知します。
+
+---
+
+## 8. BLE コールバック — デバッグ・コマンド受信
+
+### 8-1. `MyServerCallbacks` — 接続/切断イベント
+
+```cpp
+class MyServerCallbacks : public BLEServerCallbacks {
+    void onConnect(BLEServer *pServer) {
+        ble_device_connected = true;
+        // ...ステータス送信...
+    }
+    void onDisconnect(BLEServer *pServer) {
+        ble_device_connected = false;
+    }
+};
+```
+
+BLEServer の接続状態を `ble_device_connected` フラグに反映します。  
+このフラグは `log_println()` の中で BLE 送信の可否判定に使われます。
+
+### 8-2. `MyCharacteristicCallbacks` — テキストコマンド受信
+
+BLE Characteristic (`DEBUG_CMD_RX_UUID`) に書き込まれた文字列を解析します。
+
+| コマンド                           | 動作                                                  |
+| ---------------------------------- | ----------------------------------------------------- |
+| `RESET_NVS` または `FACTORY_RESET` | NVS 全消去 → 2秒後再起動                              |
+| `STATUS`                           | 現在の状態 (Wi-Fi 状態, OTA モードなど) を BLE で返信 |
+| `OTA_MODE`                         | OTA モードを有効化 (60 秒タイムアウト前のみ)          |
+
+```cpp
+reboot_requested = true;
+reboot_timestamp = millis();
+```
+
+「2秒後に再起動する」フラグを立てるだけで、実際の `ESP.restart()` は `loop()` で実行します。  
+これはコールバック内で直接再起動すると BLE の応答が返せないためです。
+
+---
+
+## 9. BLE コールバック — Wi-Fi プロビジョニング
+
+### `ProvisioningCallbacks` — SSID/パスワード受信
+
+```cpp
+// 受信データの形式: "SSID\nPassword"
+int separatorIndex = data.indexOf('\n');
+String ssid     = data.substring(0, separatorIndex);
+String password = data.substring(separatorIndex + 1);
+```
+
+**データ形式**: SSID と Password が `\n` (改行文字) で区切られた UTF-8 テキスト。
+
+```
+Web アプリが送信するデータ例:
+"MyHomeWiFi\nMySecretPass123"
+  ↑────────  ↑──────────────
+  SSID       パスワード
+```
+
+受信後:
+
+1. 長さバリデーション (SSID ≤ 32 文字、パスワード ≤ 64 文字)
+2. NVS に保存 (`nvs_wifi.putString("ssid", ...)`)
+3. `prov` フラグを 1 に設定
+4. 2秒後に再起動をスケジュール
+
+---
+
+## 10. OTA の仕組みと実装
+
+### 10-1. OTA とは
+
+**OTA (Over The Air)** とは、マイコンを PC に直接繋がずに無線でファームウェアを書き換える技術です。  
+このプロジェクトでは「無線」として **BLE (Bluetooth Low Energy)** を使います。
+
+> **ESP-IDF 公式の Update ライブラリについて**  
+> [Arduino-ESP32 OTA documentation](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/otadrive.html)  
+> [ESP-IDF OTA API Reference](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/ota.html)
+>
+> _"`Update.begin(size)` reserves the necessary flash space and prepares the OTA partition to receive data.  
+> `Update.write(buffer, length)` writes the binary data to flash.  
+> `Update.end(true)` finalizes the write and validates the MD5 checksum. On success the OTA data partition is updated so that the new firmware boots on next reset."_
+
+つまり `Update` ライブラリが以下を自動管理します:
+
+- 空いている OTA パーティション (app0 か app1) の選択
+- フラッシュへの書き込み
+- MD5 チェックサムによる整合性検証
+- `otadata` パーティションへの「次に app1 を起動せよ」フラグ書き込み
+
+---
+
+### 10-2. OTA の全体フロー
+
+```
+[Web ブラウザ (ota-client.js)]          [ESP32-S3 (main.cpp)]
+        │                                       │
+        │  ① OTA_CONTROL に "START:450000"     │
+        │ ─────────────────────────────────►   │
+        │                                       │ Update.begin(450000)
+        │  ② OTA_STATUS から "READY" 通知      │
+        │ ◄─────────────────────────────────   │
+        │                                       │
+        │  ③ OTA_DATA に 400 バイト chunks ×N  │
+        │ ─────────────────────────────────►   │ Update.write(chunk)
+        │ ─────────────────────────────────►   │ ... × N 回
+        │                                       │
+        │  ④ OTA_STATUS から "PROGRESS:..." 通知│
+        │ ◄─────────────────────────────────   │
+        │                                       │
+        │  ⑤ 300ms 待機後、OTA_CONTROL に "END" │
+        │ ─────────────────────────────────►   │
+        │                                       │ ota_finalize_requested = true
+        │                                       │ (loop() で Update.end() を実行)
+        │  ⑥ OTA_STATUS から "SUCCESS" 通知    │
+        │ ◄─────────────────────────────────   │
+        │                                       │ ESP.restart()
+        │  ⑦ BLE 切断 (再起動)                │
+        │ ◄─────────────────────────────────   │
+```
+
+---
+
+### 10-3. OTA コントロールコマンドの詳細
+
+#### `OtaControlCallbacks` — START / END / ABORT
+
+**START コマンド**:
+
+```cpp
+// 受信形式: "START:450000"  (コロン区切りでバイト数)
+if (command.startsWith("START:")) {
+    size_t size = command.substring(6).toInt();
+    // ...
+    Update.begin(size, U_FLASH);
+```
+
+`U_FLASH` は「アプリパーティションに書き込む」という意味の定数です。  
+(`U_SPIFFS` にするとファイルシステムパーティションへの書き込みになります)
+
+**END コマンド**:
+
+```cpp
+} else if (command == "END") {
+    if (ota_received_size != ota_expected_size) {
+        // エラー: 受信バイト数が期待値と一致しない
+        return;
+    }
+    ota_finalize_requested = true;  // loop() に委譲
+}
+```
+
+**ABORT コマンド**:
+
+```cpp
+} else if (command == "ABORT") {
+    ota_abort_requested = true;  // loop() で Update.abort() を呼ぶ
+}
+```
+
+---
+
+### 10-4. OTA データ受信の詳細
+
+#### `OtaDataCallbacks` — チャンク書き込み
+
+```cpp
+size_t written = Update.write((uint8_t *)rxValue.data(), len);
+if (written != len) {
+    Update.abort();
+    ota_in_progress = false;
+    // エラーステータスを BLE で通知
+}
+ota_received_size += written;
+```
+
+BLE の 1 パケットで送れるデータ量は **MTU (Maximum Transmission Unit)** に依存します。  
+このコードでは `BLEDevice::setMTU(517)` で最大 517 バイトの MTU を要求しています。  
+Web アプリ側は `CHUNK_SIZE = 400` バイトのチャンクに分割して送信します (MTU より小さく安全マージンを確保)。
+
+**進捗通知は 100 KB ごと**:
+
+```cpp
+if (ota_received_size - ota_last_reported_size >= 102400 || ...) {
+    // BLE 負荷軽減のため進捗は 200 KB ごとに通知
+}
+```
+
+BLE スタックへの通知が多すぎるとバッファが溢れるため、頻度を意図的に下げています。
+
+---
+
+### 10-5. OTA の確定処理 (loop() での実行)
+
+```cpp
+if (ota_finalize_requested) {
+    ota_finalize_requested = false;
+
+    if (Update.end(true)) {  // true = MD5 チェックサム検証を行う
+        // 成功 → SUCCESS を通知 → 再起動
+        pOtaStatus->setValue("SUCCESS");
+        pOtaStatus->notify();
+        delay(1000);
+        ESP.restart();
+    } else {
+        Update.printError(Serial);
+        // 失敗 → ERROR:END_FAILED を通知
+    }
+}
+```
+
+`Update.end(true)` の `true` は「チェックサムを検証せよ」という引数です。  
+内部的に書き込んだデータの MD5 を計算し、.bin ファイルの MD5 ヘッダと照合します。  
+この検証が通れば `otadata` パーティションが更新され、次回起動時に新ファームウェアが選ばれます。
+
+---
+
+### 10-6. Web → ESP32 の OTA データ形式まとめ
+
+| ステップ       | Characteristic | データ形式                       | 方向                 |
+| -------------- | -------------- | -------------------------------- | -------------------- |
+| ① 開始宣言     | `OTA_CONTROL`  | `"START:<ファイルサイズ(10進)>"` | Web → ESP32          |
+| ② 準備完了通知 | `OTA_STATUS`   | `"READY"`                        | ESP32 → Web (Notify) |
+| ③ データ転送   | `OTA_DATA`     | 生バイナリ (最大 400 B/パケット) | Web → ESP32          |
+| ④ 進捗通知     | `OTA_STATUS`   | `"PROGRESS:<受信済>/<合計>"`     | ESP32 → Web (Notify) |
+| ⑤ 終了指示     | `OTA_CONTROL`  | `"END"`                          | Web → ESP32          |
+| ⑥ 成功通知     | `OTA_STATUS`   | `"SUCCESS"`                      | ESP32 → Web (Notify) |
+| (エラー時)     | `OTA_STATUS`   | `"ERROR:<CODE>"`                 | ESP32 → Web (Notify) |
+
+**OTA_DATA のデータ構造**:
+
+```
+.bin ファイル (ファームウェアバイナリ) を先頭から順番に 400 バイトずつ分割して送るだけ。
+特別なヘッダやフレーム構造は無い。純粋なバイナリの分割転送。
+
+例: 450000 バイトのファームウェアの場合
+  パケット 0:    バイト    0 〜  399 (400 B)
+  パケット 1:    バイト  400 〜  799 (400 B)
+  ...
+  パケット 1124: バイト 449600 〜 449999 (400 B)
+  合計 1125 チャンク
+```
+
+**Web アプリ (ota-client.js) での分割処理**:
+
+```javascript
+const CHUNK_SIZE = 400;
+for (let i = 0; i < totalChunks; i++) {
+  const start = i * CHUNK_SIZE;
+  const end = Math.min(start + CHUNK_SIZE, firmwareSize);
+  const chunk = firmwareData.slice(start, end); // ArrayBuffer のスライス
+  await this.otaDataChar.writeValueWithoutResponse(chunk); // 高速送信
+}
+```
+
+`writeValueWithoutResponse` は ACK を待たずに連続送信する高速モードです。  
+20 チャンクおきに `writeValue` (ACK あり) を挟んで通信の信頼性を確保しています。
+
+---
+
+### 10-7. OTA タイムアウト保護
+
+```cpp
+const unsigned long WIFI_OTA_TIMEOUT_MS = 60000; // 60 秒
+
+// OTA が進行中ならタイムアウトを延期する
+if (ota_in_progress) {
+    // タイムアウトの適用を保留
+} else {
+    wifi_ota_timeout_passed = true;  // OTA/プロビジョニングを無効化
+}
+```
+
+OTA が実際に書き込み中であれば、60 秒を過ぎてもタイムアウトを適用しません。  
+これにより「転送中に突然 OTA が止まる」という事故を防いでいます。
+
+---
+
+## 11. BLE サービスのセットアップ
+
+### GATT 構造の概要
+
+BLE の通信構造は以下の階層で表されます:
+
+```
+BLE Server (ESP32)
+└─ Service (DEBUG_SERVICE_UUID)
+   ├─ Characteristic: DebugLogTx  [NOTIFY]     ← ログをスマホ/ブラウザに push
+   ├─ Characteristic: DebugCmdRx [WRITE]       ← コマンドを受け取る
+   └─ Characteristic: DebugStat  [READ/NOTIFY] ← 状態を読み出せる / push もできる
+
+└─ Service (OTA_SERVICE_UUID)
+   ├─ Characteristic: OtaControl [WRITE]       ← START/END/ABORT コマンド
+   ├─ Characteristic: OtaData    [WRITE]       ← バイナリデータ受信
+   └─ Characteristic: OtaStatus  [READ/NOTIFY] ← READY/PROGRESS/SUCCESS/ERROR
+
+└─ Service (PROV_SERVICE_UUID)
+   └─ Characteristic: ProvWifiConfig [WRITE]   ← "SSID\nPassword" を受け取る
+```
+
+### `BLE2902` の役割
+
+```cpp
+pDebugLogTx->addDescriptor(new BLE2902());
+```
+
+`BLE2902` は **CCCD (Client Characteristic Configuration Descriptor)** を追加するヘルパーです。  
+CCCD とは「このキャラクタリスティックの Notify を有効にするかどうか」をクライアント側が制御する仕組みです。  
+これを追加しないと `pDebugLogTx->notify()` を呼んでも相手に届きません。
+
+---
+
+### MTU の設定
+
+```cpp
+BLEDevice::setMTU(517);
+```
+
+MTU (Maximum Transmission Unit) は 1 パケットで送受信できる最大バイト数です。  
+BLE 4.2 以降の最大値は **517 バイト** (オーバーヘッドを引くと実データは最大 512 バイト)。  
+デフォルト (23 バイト) から引き上げることで OTA の転送速度が大幅に向上します。
+
+---
+
+### アドバタイジング
+
+```cpp
+BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+pAdvertising->addServiceUUID(DEBUG_SERVICE_UUID);
+pAdvertising->addServiceUUID(OTA_SERVICE_UUID);
+pAdvertising->addServiceUUID(PROV_SERVICE_UUID);
+pAdvertising->setMinPreferred(0x06);
+pAdvertising->setMaxPreferred(0x12);
+BLEDevice::startAdvertising();
+```
+
+アドバタイジングは「私はここにいます」という BLE の報知信号です。  
+`setMinPreferred(0x06)` / `setMaxPreferred(0x12)` はアドバタイジング間隔の設定です (単位は 0.625 ms)。  
+0x06 = 3.75 ms (最短), 0x12 = 11.25 ms — 接続要求に素早く応答できる設定になっています。
+
+---
+
+## 12. NVS によるデータ永続化とファクトリーリセット
+
+### NVS とは
+
+**NVS (Non-Volatile Storage)** は ESP32 のフラッシュメモリ上にある Key-Value ストアです。  
+電源を切っても消えない設定値の保存に使います (PC でいえば Windows レジストリや EEPROM に相当)。
+
+```cpp
+Preferences nvs_wifi;    // "wifi" 名前空間   → SSID, パスワード
+Preferences nvs_syscfg;  // "syscfg" 名前空間 → プロビジョニングフラグ, ファクトリーリセットフラグ
+```
+
+**読み取り**:
+
+```cpp
+nvs_wifi.begin(NVS_WIFI_NS, true);  // true = 読み取り専用で開く
+nvs_wifi.getString("ssid", ssid, sizeof(ssid));
+nvs_wifi.end();
+```
+
+**書き込み**:
+
+```cpp
+nvs_wifi.begin(NVS_WIFI_NS, false); // false = 読み書きで開く
+nvs_wifi.putString("ssid", ssid.c_str());
+nvs_wifi.end();
+```
+
+必ず `begin()` で開き、`end()` で閉じる。閉じないとフラッシュへのコミットが保証されません。
+
+### ファクトリーリセット
+
+```cpp
+void factory_reset_check(void) {
+    uint8_t factory_reset_flag = nvs_syscfg.getUChar("factory_reset", 0);
+    if (factory_reset_flag) {
+        nvs_wifi.clear();  // Wi-Fi 設定を全消去
+        // ...
+        ESP.restart();
+    }
+}
+```
+
+起動時に毎回チェックします。`factory_reset` フラグが立っていたら NVS を全消去して再起動します。  
+このフラグは BLE コマンド `RESET_NVS` からも立てられます。
+
+---
+
+## 13. Wi-Fi イベントハンドラ
+
+```cpp
+WiFi.onEvent(wifi_event_handler);
+```
+
+Wi-Fi スタックからのイベントを受け取るコールバックです。
+
+| イベント                              | 処理                                                            |
+| ------------------------------------- | --------------------------------------------------------------- |
+| `ARDUINO_EVENT_WIFI_STA_CONNECTED`    | 接続開始ログを出力                                              |
+| `ARDUINO_EVENT_WIFI_STA_GOT_IP`       | IP アドレスを `g_state.wifi_ip` に保存、`WIFI_CONNECTED` に遷移 |
+| `ARDUINO_EVENT_WIFI_STA_DISCONNECTED` | `WIFI_FAILED` に遷移、理由コードをログに出力                    |
+
+`ARDUINO_EVENT_WIFI_STA_GOT_IP` がイベントで来るまで IP アドレスは「まだ取れていない」状態です。  
+この設計により `loop()` がポーリングせずに済みます。
+
+---
+
+## 14. setup() 関数 — 起動シーケンス
+
+```cpp
+void setup() {
+    boot_timestamp = millis();   // 60秒タイムアウトの起点を記録
+
+    Serial.begin(SERIAL_BAUD);   // 115200 bps でシリアル開始
+    delay(500);
+    // USB モニタが繋がるまで 5 秒待つ
+    for (int i = 5; i > 0; i--) { ... delay(1000); }
+
+    config_store_init();          // NVS の名前空間を開く
+    factory_reset_check();        // ファクトリーリセットフラグを確認
+    config_store_check_provisioned(); // Wi-Fi 設定済みか確認 → STATE を決定
+
+    wifi_mgr_init();              // Wi-Fi を STA モードに設定
+    status_led_init();            // LED GPIO 初期化
+
+    init_ble();                   // BLE デバイス初期化 → サービス登録 → アドバタイズ開始
+
+    WiFi.onEvent(wifi_event_handler); // Wi-Fi イベントハンドラ登録
+}
+```
+
+**起動後 5 秒待つ理由**:  
+USB-CDC (シリアル) は USB ホスト (PC) が認識してから通信開始します。  
+書き込み直後に USB が再接続される時間差があるため、5 秒間ログを繰り返し出力して「USB 接続のタイミングに合わせる」設計になっています。
+
+---
+
+## 15. loop() 関数 — メインループ詳細
+
+`loop()` は Arduino フレームワークが繰り返し呼び出す関数です。  
+状態に応じて以下の処理をノンブロッキングで行います。
+
+### 15-1. 再起動タイマー
+
+```cpp
+if (reboot_requested) {
+    if (millis() - reboot_timestamp >= REBOOT_DELAY_MS) {
+        ESP.restart();
+    }
+    return;  // 再起動待ち中は他の処理をしない
+}
+```
+
+`reboot_requested = true` がセットされてから 2000 ms 後に再起動します。  
+`return` で以降の処理をスキップするため、再起動待ち中は安全な待機状態になります。
+
+### 15-2. OTA 確定処理
+
+```cpp
+if (ota_finalize_requested) {
+    ota_finalize_requested = false;
+    if (Update.end(true)) {
+        // 成功 → BLE 通知 → 再起動
+    }
+}
+```
+
+`ota_finalize_requested` フラグは BLE コールバック (別スレッド的な実行コンテキスト) で立てられ、  
+メインループで消費されます。これにより BLE コールバックを短く保てます。
+
+### 15-3. OTA アボート処理
+
+```cpp
+if (ota_abort_requested) {
+    Update.abort();
+    ota_mode_active = false;
+    pOtaStatus->setValue("ABORTED");
+    pOtaStatus->notify();
+}
+```
+
+アボート時は `Update.abort()` でフラッシュへの書き込みをキャンセルします。  
+`otadata` は変更されていないため、次回起動時は元のファームウェアが使われます。
+
+### 15-4. タイムアウト監視
+
+```cpp
+if (!wifi_ota_timeout_passed && (millis() - boot_timestamp >= WIFI_OTA_TIMEOUT_MS)) {
+    if (ota_in_progress) {
+        // OTA 書き込み中はタイムアウトを延期
+    } else {
+        wifi_ota_timeout_passed = true;
+        // OTA モードを無効化
+    }
+}
+```
+
+### 15-5. OTA モード中の早期リターン
+
+```cpp
+if (ota_mode_active) {
+    delay(10);
+    return;  // OTA 中は以降の処理 (Wi-Fi チェック等) をスキップ
+}
+```
+
+OTA 中は CPU を BLE 処理に集中させます。  
+Wi-Fi 再接続チェック等の余計な処理を入れると BLE 送信が遅れる可能性があるためです。
+
+### 15-6. Wi-Fi 自動再接続 (30 秒間隔)
+
+```cpp
+if ((g_state.wifi_state == WIFI_IDLE || g_state.wifi_state == WIFI_FAILED) &&
+    (millis() - last_wifi_reconnect_try > 30000)) {
+    wifi_mgr_connect();
+}
+```
+
+5 秒ごとに Wi-Fi の状態を確認し、未接続かつ設定が存在すれば 30 秒間隔で再接続を試みます。
+
+### 15-7. BLE ハートビート (1 秒ごと)
+
+```cpp
+if (ble_device_connected && millis() - last_ble_output >= BLE_OUTPUT_INTERVAL_MS) {
+    pDebugLogTx->setValue((uint8_t *)"Hello World via BLE", ...);
+    pDebugLogTx->notify();
+    status_led_blink_aws();  // 緑色 LED 点滅
+}
+```
+
+BLE 接続中は毎秒 "Hello World via BLE" を送信します。  
+これは接続が維持されているかの目視確認と、BLE 接続維持 (Keep-Alive 的な効果) を兼ねています。
+
+### 15-8. BLE ステータス更新 (10 秒ごと)
+
+```cpp
+if (millis() - last_stat_update > 10000) {
+    snprintf(stat_str, ..., "STATE:BLE=%d,WIFI=%d,OTA_MODE=%d,IP=%s", ...);
+    pDebugStat->setValue(...);
+    pDebugStat->notify();
+}
+```
+
+デバッグ Stat キャラクタリスティックに現在の状態文字列を定期送信します。
+
+---
+
+## 補足: 処理の優先順位まとめ
+
+`loop()` 内の処理はフラグベースの疑似優先キューになっています:
+
+```
+1. 再起動待ち        (reboot_requested)      → 最優先, 他を全停止
+2. OTA 確定処理      (ota_finalize_requested) → フラッシュ書き込み
+3. OTA アボート      (ota_abort_requested)    → フラッシュキャンセル
+4. タイムアウト監視   (wifi_ota_timeout_passed)→ 60 秒チェック
+5. OTA モード中停止  (ota_mode_active)        → OTA 専念, return で抜ける
+6. Wi-Fi 監視/再接続                          → 5 秒/30 秒インターバル
+7. BLE ハートビート                           → 1 秒インターバル
+8. BLE ステータス送信                         → 10 秒インターバル
+```
+
+---
+
+## 付録: エラーコード一覧
+
+| コード               | 内容                                             |
+| -------------------- | ------------------------------------------------ |
+| `ERROR:TIMEOUT`      | OTA タイムアウト (60 秒) 後に操作しようとした    |
+| `ERROR:INVALID_SIZE` | サイズが 0 または 2MB 超                         |
+| `ERROR:BEGIN_FAILED` | `Update.begin()` 失敗 (フラッシュ領域不足など)   |
+| `ERROR:INCOMPLETE`   | END コマンド受信時に受信バイト数が期待値と不一致 |
+| `ERROR:OVERFLOW`     | 受信データが期待サイズを超過                     |
+| `ERROR:WRITE_FAILED` | フラッシュへの書き込み失敗                       |
+| `ERROR:NOT_STARTED`  | OTA 未開始なのに END コマンドが来た              |
+| `ERROR:END_FAILED`   | `Update.end()` 失敗 (MD5 不一致など)             |

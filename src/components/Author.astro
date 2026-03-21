@@ -5,7 +5,10 @@ const { frontmatter } = Astro.props;
 const name = frontmatter?.author;
 if (!name) return null;
 
-const author = members[name as keyof typeof members];
+const normalizedName = String(name).trim().toLowerCase();
+if (!normalizedName) return null;
+
+const author = members[normalizedName as keyof typeof members];
 if (!author) return null;
 
 // biome-ignore lint/correctness/noUnusedVariables: used in template
