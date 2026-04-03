@@ -1,0 +1,119 @@
+---
+title: Pavlok x Web APIで人体に電流を流してみた
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## Pavlokとは
+
+- パブロクと読むらしい
+- アメリカのPavlok社が開発した習慣改善ウェアラブルデバイス
+- 「パブロフの犬」の原理に基づき、悪習慣をトリガにザップ(電気刺激)を与えることで行動を矯正
+- ザップ以外にもバイブ・ビープといったフィードバックも可能
+- 公式サイト: https://shop.pavlok.com/
+- 日本正規代理店のサイト(怪しくて好き): https://www.pavlok-japan-official.com/
+
+## 主要モデル
+
+- 正直ラインナップがめっちゃ分かりにくい
+
+|モデル|発売年|特徴|
+|:--|:--|:--|
+|Pavlok 2|2017|リストバンド型。防水なし。Micro-USB充電|
+|Pavlok 3|2020|Pavlok 2の後継。防水(IP67)。歩数・睡眠計測。USB-C充電|
+|Pavlok 3 Pro|2021|Pavlok 3の上位版。バンドがシリコンまたはメタルから選択可能|
+|Shock Clock 3|2022|リストバンド型。目覚まし特化|
+|Shock Clock MAX|2023|リストバンド型。ディスプレイ搭載|
+|Pavlok Ring|2025|指輪型。目立ちにくい|
+
+## 購入モデル
+
+- ビープ、バイブ、ザップのいずれもWeb API経由で発火可能なモデルならなんでも良かった
+- Pavlok 3を買うはずが間違えてShock Clock 3を購入
+- お値段・約35,000円
+
+<ContentImage path="2026/03-21/01.jpg" width="700" />
+
+## 検討した他製品
+
+- UNAGI
+- https://unagi.sinfonia.biz/
+- 電気刺激を与えられるデバイス
+- 教育向けの製品で、Unityを用いたXR環境を主眼としている
+- 88,000円(税別)と高価で、シンプルな構成にも不向きなため落選
+
+## アプリ設定
+
+- Android: https://play.google.com/store/apps/details?id=com.pavlok3.core
+- iPhone: https://apps.apple.com/jp/app/pavlok/id1537943606
+- アプリを起動したら、アカウント作成 -> Bluetoothでペアリングの流れ
+
+<ContentImage path="2026/03-21/02.png" width="300" />
+<ContentImage path="2026/03-21/03.png" width="300" />
+
+## 設定上の注意
+
+- アプリからバックグラウンドサービスを有効にしないと、アプリがフォアグラウンドにないときにアプリ-Pavlok間の通信ができない
+
+<ContentImage path="2026/03-21/04.png" width="300" />
+
+- アプリを完全に終了するとバックグラウンドサービスを有効にしていても通信不可
+- アプリがフォアグラウンドにない状態でWeb APIを叩くとプッシュ通知が届く
+
+## Web API
+
+- Web APIが提供されており、外部サービスからデバイスを操作可能
+- ちなみにIFTTTにも対応している
+- API仕様書: https://pavlok.readme.io/reference/intro/getting-started
+- API仕様書はメンテされておらず、Examplesのままでは動かない
+- 内部の配信フロー: クライアント -(Web API)-> Pavlokのクラウド環境 -(Firebase Cloud Messaging)-> アプリ -(Bluetooth)-> Pavlok
+- APIキーのローテート機能がないため、漏洩してもJWTの有効期限が切れるまで無効化できない(この有効期限も極端に長い)
+
+## 実際にやってみた
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/9lRjIlzmkmY?si=bhctyxV1MmB_5Vmf" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## ソースコード
+
+- GitHubリポジトリ: https://github.com/tyokinuhata/pavlok-zap-test
+
+```python
+import os
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+
+url = "https://api.pavlok.com/api/v5/stimulus/send"
+
+headers = {
+    "accept": "application/json",
+    "content-type": "application/json",
+    "Authorization": f"Bearer {os.environ['PAVLOK_API_KEY']}"
+}
+
+payload = {
+    "stimulus": {
+        "stimulusType": "zap",
+        "stimulusValue": 50
+    }
+}
+
+response = requests.post(url, headers=headers, json=payload)
+
+print(response.text)
+```
+
+## 痛みについて
+
+- アラーム・バイブ、ザップの強さはそれぞれ個別に1-100のレンジで設定可能
+- 肌との密着度や当たる場所、個人差にも影響を受けるが、100にすると結構びっくりする痛み
+
+## 感想
+
+- 安全かつ手軽に人体に電流を流せる選択肢は限られており、その中でPavlokは割と良い選択肢
+- 一方、価格はいうほど安くなく、APIドキュメントのメンテが放置されていたり、APIも機能不足といわざるを得ない
+- 今後、同社の他のデバイスや他社の電流を扱うデバイスにも期待したい
