@@ -17,7 +17,7 @@
     "astro": "5.18.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.9",
+    "@biomejs/biome": "2.4.10",
     "gray-matter": "4.0.3",
     "lefthook": "2.1.4",
     "sharp": "0.34.5"
