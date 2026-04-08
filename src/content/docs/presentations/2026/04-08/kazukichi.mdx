@@ -1,0 +1,55 @@
+---
+title: CloudflareのPagesとZero Trustで認証付きWebサイト構築
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- CloudflareのPagesとZero Trustを使用し、認証付きのWebサイトを無料で構築した
+- Pages自体の感想は [Astro + Cloudflare Pages構成を試してみた感想とか](https://uyupun.github.io/takada-semi/presentations/2025/09-16/kazukichi/) を参照
+
+## Zero Trust
+
+- Cloudflareでゼロトラストセキュリティを実現するための機能群
+- 本格的なゼロトラストセキュリティを実現するための機能が取り揃えられているが、今回は単純に認証基盤として使用
+- より具体的にはZero Trustの一部であるAccessコントロールという機能を使用
+
+## 認証方式
+
+- OIDCやSAMLを使用した外部IdP連携、OTP(One-time PIN)、mTLS(相互TLS)等、複数の認証方式が用意されている
+- 外部IdP連携ではMS Entra ID、Okta、Google、その他ソーシャル系等、多様なプロバイダが利用可能
+- OTPでは認証画面にメールアドレスを入力し、それが事前に定義された許可リストと一致する場合には認証コードがそのメールアドレス宛てに送信されるという認証方式
+- 今回は最も手軽に導入できるOTPを採用した
+
+## Accessコントロール
+
+- 主にアプリケーションとポリシーによって構成される
+- アプリケーションは保護対象を指定するリソースで、保護対象のドメイン等を指定する
+- ポリシーは誰をどの条件で通すかを定義するルールで、アプリケーションから参照される
+- 今回はアプリケーションにはPagesのドメインを指定し、ポリシーにはメンバー数人のメールアドレスを指定した
+
+## 実際にアクセス
+
+- メールアドレスの入力画面
+
+<ContentImage path="2026/04-08/kazukichi/01.png" />
+
+- 認証コードの入力画面
+
+<ContentImage path="2026/04-08/kazukichi/02.png" />
+
+- 当たり前だが、許可されていないメールアドレスを入力しても認証コードは届かない
+
+## 無料枠
+
+- Pagesではアカウント全体で月間500ビルドまで無料
+- Zero TrustのAccessコントロールではアカウント全体で50ユーザまで無料
+
+## 感想
+
+- 簡単かつ無料でWebサイトに認証機能をつけることができて、かなり開発者体験が良かった
+- Cloudflareはハイパースケーラと比べて、ユニークな隙間家具的なサービスや痒いところに手が届く体験設計を構築するのが上手いなと感じる
