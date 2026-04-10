@@ -1,0 +1,48 @@
+---
+title: use_figma - Figma MCP
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+Figma MCPが提供する`use_figma`ツールを使うと、AIエージェントがFigmaファイルのオブジェクトを直接作成・編集・削除・検査できる。
+
+## use_figma
+
+Figma Plugin APIを通じてJavaScriptを実行することで、FigmaファイルのオブジェクトをAIエージェントが直接作成・編集・削除・検査できる汎用ツール。`figma-use`スキルと組み合わせて使用すると良い。
+
+### サポート状況（2026/04/08時点）
+
+- MCP Server: Remote Figma MCP Server、Desktop Figma MCP Server
+- サービス: Figma Design、FigJam
+- 料金: ベータ期間中は無料（今後は従量課金制になる予定）
+
+### 主な用途
+
+- フレームの追加・既存コンポーネントのスタイル更新
+- カラーやスペーシングなどバリアブルの生成
+- コンポーネントのバリアント生成・コードとの同期
+- レイアウトの修正・タイポグラフィスタイルの更新
+
+### 使い方
+
+1. Figma MCPのセットアップする
+2. `figma-use`スキルをClaude Codeが利用できるようにセットアップする
+3. AIエージェントに指示を出す（ex: `use_figma`ツールを利用してFigmaにダッシュボードのデザインを生成して）
+
+## 感想
+
+- 今までのMCPツールを凌駕するほど便利なツール
+  - `use_figma`でデザインの情報を取得するときJSONのデータとして取得するため、`get_design_context`のよりも簡素に扱えるのではという期待
+    - Code Connectしたときは`get_design_context`に軍配が上がりそう
+  - `generate_figma_design`だけだと、コンポーネント化などしてくれず、オートレイアウトもしていないこともあるが、`use_figma`で作成した場合、コンポーネント化やオートレイアウトも可能
+    - `generate_figma_design`でキャプチャし、それを元に`use_figma`でデザイン化するとコンポーネント化やオートレイアウトも可能なので、組み合わせることで無限大の可能性を感じる
+
+## 参照
+
+- [Tools and prompts - use_figma](https://developers.figma.com/docs/figma-mcp-server/tools-and-prompts/#use_figma)
+- [figma-use SKILL.md](https://github.com/figma/mcp-server-guide/blob/main/skills/figma-use/SKILL.md)
