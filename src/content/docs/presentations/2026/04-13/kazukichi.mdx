@@ -1,0 +1,82 @@
+---
+title: コードとドキュメントの品質を上げる技術
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- ここ最近、[takada-semi](https://github.com/uyupun/takada-semi) や [tmp-official](https://github.com/uyupun/tmp-official) 、そしていくつかのプライベートリポジトリにおいて、なるべく機械的にコード(Web領域)やドキュメントの品質を上げるための活動をしてきた
+- 主にPRのレビューコスト低減と、日頃のメンテコストの削減がねらい
+
+## コードのリンター・フォーマッタ
+
+- リンターはコードの静的解析ツール
+  - e.g. 未使用変数の検出、null参照の可能性の警告
+- フォーマッタはコードのスタイルを自動的に統一するツール
+  - e.g. インデントの統一、クォートのスタイル統一
+- 基本的には [Biome](https://biomejs.dev/) を利用している
+- ESLintやPrettierよりも導入が容易で、細かいこだわりがない場合には良い選択肢
+- Astroユーザとしては、Astro対応がまだ不完全な点が惜しい
+- 最近はリンターは [Oxlint](https://oxc.rs/)、フォーマッタは [dprint](https://dprint.dev/) もモダンな選択肢として挙がっている
+- [knip](https://knip.dev/) という不要なコードの検出に特化したライブラリもあるが、基本的な部分はBiomeでカバーできる
+
+## GitHub Actionsのリンター
+
+- [actionlint](https://github.com/rhysd/actionlint) を利用している
+- NPMではなくバイナリで提供されている
+- なので `mise.toml` から使っている
+  - 利用例: https://github.com/uyupun/takada-semi/blob/039dff018b00c53fa2f197fe74873404969585be/mise.toml#L4
+- GitHub Actionsの書き方次第ではサプライチェーン攻撃のリスクがあるため導入
+
+## マークダウンのリンター
+
+- [markdownlint](https://www.npmjs.com/package/markdownlint) を利用している
+- 見出しの階層構造、インデント、リストのスタイルなどMarkdownの書き方を統一してくれる
+
+## テキストのリンター
+
+- [textlint](https://textlint.github.io/) を利用している
+- 冗長な表現や不自然な日本語表現を検出してくれる
+- 誤検知も多いため、指摘を鵜呑みにせず内容を確認することが重要
+- AIによる文書レビューが普及した現在、以前ほど力は発揮できないが、AIほどドラスティックに書き換えることなく細かい表現を改善してくれる点は利点
+
+## プレコミット
+
+- コミット前に自動でリンターやフォーマッタを実行する仕組み
+- 特にこだわりはないが、現在は [lefthook](https://lefthook.dev/) を利用している
+- 以前は husky + lint-staged を使っていた
+- 最近は [prek](https://www.npmjs.com/package/@j178/prek) という選択肢もあるらしい
+
+## Dependabot + GitHub Actions
+
+- `dependabot.yml` を設置し、デフォルト(セキュリティアップデートのみ)よりもアクティブにライブラリを更新している
+  - 設定例: https://github.com/uyupun/takada-semi/blob/039dff018b00c53fa2f197fe74873404969585be/.github/dependabot.yml
+- NPMパッケージとGitHub Actionsのアクションを更新対象にしている
+- GitHub ActionsでDependabotが作成したPRを自動マージするようにしている
+  - 設定例: https://github.com/uyupun/takada-semi/blob/039dff018b00c53fa2f197fe74873404969585be/.github/workflows/dependabot-auto-merge.yml
+- 一度に大量のPRが作られると自動マージがコンフリクトして止まることがある
+- アップデートのたびに設定ファイルの書き換えが必要なライブラリ(Biomeなど)や、同時に更新が必要なパッケージ群(AstroとStarlight、Reactとreact-domなど)は扱いが難しい
+- より柔軟な制御が必要な場合は [Renovate](https://docs.renovatebot.com/) が選択肢になる
+- Shai-HuludやTeamPCP(Trivy, LiteLLM, Axiosへの攻撃)のようにサプライチェーン攻撃が頻発しているため、自動マージの運用は見直す必要があるかもしれない
+- GitHub Actionsのアクションの更新には [actions-up](https://github.com/nicholasgasior/actions-up) という選択肢もある
+
+## AIによるPRレビュー
+
+- [PR Agent](https://github.com/qodo-ai/pr-agent) を利用している
+- 詳しくは過去に発表した [PR-Agent - AIでらくらくPRレビュー♪](https://semi.uyupun.tech/presentations/2026/02-17/kazukichi/) を参照
+- PRの内容をAIが自動でレビューしてくれる
+- PR Agent自体はOSSだが、別途APIアクセス可能なLLMの用意が必要
+- [CodeRabbit](https://www.coderabbit.ai/) など同種のプロダクトの多くはプロプライエタリなため、OSSである点がありがたい
+- 読み込めるコンテキストが限られており、使用するモデルもハイエンドではないため、現状そこまで精度の高いレビューは受け取れていない
+- ただし、基本的なセキュリティリスクやライブラリの誤った使い方は指摘してくれている
+
+## まとめ
+
+- 人間の認知リソースは有限で、思っているよりも限界は低い(はず)
+- リンター・フォーマッタ・プレコミット・AIによるPRレビューはレビュアーとレビュイー双方の負担軽減につながる
+- Dependabot + GitHub Actionsは日頃のメンテナンスコストの削減につながる
+- 機械的にできる部分はAIやシステムにどんどん任せていこう
