@@ -1,0 +1,36 @@
+name: Update biome.json schema
+on:
+  pull_request:
+    types:
+      - closed
+
+permissions:
+  contents: write
+
+jobs:
+  update-biome-schema:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.repository == 'uyupun/takada-semi'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v3
+
+      - name: Update biome.json schema version
+        if: contains(steps.metadata.outputs.dependency-names, '@biomejs/biome')
+        run: |
+          VERSION=$(node -p "require('./package.json').devDependencies['@biomejs/biome']")
+          sed -i "s|https://biomejs.dev/schemas/[^/]*/schema.json|https://biomejs.dev/schemas/${VERSION}/schema.json|" biome.json
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add biome.json
+          git diff --cached --quiet || git commit -m "chore: update biome.json schema to v${VERSION}"
+          git push
