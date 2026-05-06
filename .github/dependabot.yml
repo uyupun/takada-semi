@@ -9,6 +9,11 @@ updates:
       - dependency-type: "direct"
     versioning-strategy: "increase"
     rebase-strategy: "auto"
+    groups:
+      astro:
+        patterns:
+          - "astro"
+          - "@astrojs/*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
