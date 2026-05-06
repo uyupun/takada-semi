@@ -13,8 +13,8 @@
     "check:fix": "biome check --write --unsafe --error-on-warnings"
   },
   "dependencies": {
-    "@astrojs/starlight": "0.37.7",
-    "astro": "5.18.1"
+    "@astrojs/starlight": "0.38.5",
+    "astro": "6.2.2"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.14",
