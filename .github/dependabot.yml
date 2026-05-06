@@ -6,7 +6,7 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 20
     allow:
-      - dependency-type: "all"
+      - dependency-type: "direct"
     versioning-strategy: "increase"
     rebase-strategy: "auto"
 
