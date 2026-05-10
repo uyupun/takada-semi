@@ -7,6 +7,9 @@ on:
     types:
       - completed
 
+permissions:
+  actions: write
+
 jobs:
   retry:
     runs-on: ubuntu-latest
