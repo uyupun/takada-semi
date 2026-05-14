@@ -1,0 +1,266 @@
+---
+title: データソニフィケーションの可能性の探求
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+
+<Author frontmatter={frontmatter} />
+
+## データソニフィケーションとは
+
+- データを音で表現する手法(視覚的なグラフの代替・補完)
+- 数値の大小 → ピッチ(音程)や音量
+- 時系列の変化 → メロディー
+- 活用領域: 視覚障害者のアクセシビリティ向上、視覚では気づきにくいパターンの発見
+
+## Webアクセシビリティとの関係
+
+- 視覚障害者にとってグラフや図表はアクセス困難なコンテンツ
+- スクリーンリーダーはテキスト読み上げは得意だが、データの傾向や形状を直感的に伝えるのは困難
+- データソニフィケーションはそのギャップを埋める手段として注目
+- WCAG(Web Content Accessibility Guidelines)というWebアクセシビリティの国際標準規格の知覚可能(Perceivable)原則における手段として機能
+	- 過去にゼミでも取り上げられた: [WCAG(Web Content Accessibility Guidelines)](https://semi.uyupun.tech/presentations/2025/03-12/takashi/)
+
+## 今回の実験
+
+- データソニフィケーションがどんな技術かを理解する
+- データソニフィケーションを拡張し、表現の可能性を追求する
+- GitHubリポジトリ: https://github.com/oborodice/data-sonification-playground
+
+## 技術選定(実験1・2共通)
+
+- フレームワークはVite + Svelte + TS構成を採用
+	- 深い選定理由は無いが、シンプルに実験できる構成
+- グラフ描画はChart.jsを採用
+	- RechartsはReact専用、LayerCakeはマニュアルな部分が多く不採用
+	- [svelte-chartjs](https://saurav.tech/svelte-chartjs/) を使用し、SvelteとChart.jsを高い統合度で連携
+- データソニフィケーション専用ライブラリの [Chart2Music](https://chart2music.com/docs/) を採用
+	- データソニフィケーション専用かつOSSのライブラリは選択肢が少なくChart2Musicがデファクトのようなポジション
+
+## 実験1: 触れてみる
+
+- デモ: https://oborodice.github.io/data-sonification-playground/#data-sonification
+
+### フロー
+
+1. 外部からデータを取得する
+2. Chart.jsでグラフとして描画する
+3. Chart2Musicでそのグラフを音として再生する
+
+### 操作
+
+- 自動再生に対応
+- マニュアル操作で個別のデータ点の音を聴くことも可能
+
+### 技術選定
+
+- 実験1・2共通の技術に追加して、 `chartjs-plugin-chart2music` を利用
+- Chart.jsとChart2Musicをシームレスに統合できるライブラリ
+
+### データソース
+
+- NPMの [package download counts](https://github.com/npm/registry/blob/main/docs/download-counts.md) でChart2Musicの過去1年分の日次ダウンロード数を取得
+	- 認証不要なので、こういった用途に使いやすい
+- 日次 → 週次に集計してチャートのデータセットとして使用
+	- 日次のままだとデータ数が多すぎる
+	- 週末のダウンロード数の落ち込み等がノイズとなり、良い例にならない
+
+## 実験2: 音楽を作ってみる
+
+- デモ: https://oborodice.github.io/data-sonification-playground/#music-experiment
+- 短い音楽フレーズをグラフで表現し、Chart2Musicで再生する
+- メロディとコードを同時に鳴らすことが目標
+- サンプル音源: きらきらぼし、チューリップ、メリーさんの羊
+
+### 実験の動機
+
+- 従来のデータソニフィケーションは複数のグラフを同時に鳴らす使い方をしない/基本的にできない
+- 今回は描画された複数のグラフを同時に鳴らすことを目指す
+- これを応用するとメロディ + コードをグラフで表現できる
+
+### 実験の意義
+
+- 実際の複数グラフでこの方式が有用かどうかは議論の余地があるが、データソニフィケーションの新しい活用可能性を探る試み
+- コードが加わることでその瞬間の調和や緊張感も伝えられ、データの動きにより音楽的・感情的な文脈を乗せられる
+- アクセシビリティの観点では単音より和音の方が豊かな情報を伝えられる可能性がある一方、複雑になりすぎると聴き取りにくくなるトレードオフもある
+- このバランスを探ることがこの実験の核心
+
+### 操作
+
+- 自動再生に対応
+- 再生速度・音量の変更は不可
+
+### グラフ構成
+
+- 折れ線グラフを使用
+	- 音の上下の流れが連続的に見え、楽譜のメロディラインに近い印象になる
+	- 棒グラフだと各拍が独立して見えてしまう
+- メロディ1本 + コード3本(和音の構成音)の計4本
+- Y軸が音の高さ、X軸が拍
+
+### 技術選定
+
+- 実験1と異なり`chartjs-plugin-chart2music`は使わず、Chart2Musicを直接呼び出している
+	- 複数音の同時発音のためにより細かい制御が必要なため
+- 発音にはWeb Audio API(ブラウザ標準)を直接使用
+	- Tone.jsも候補に挙がったが、メロディと和音を鳴らすだけの用途にはオーバーテクノロジーだった
+
+### データ構造
+
+- `melody` と `chord`にはMIDIノート番号を使用
+	- Hz表記では可読性が低いため
+	- MIDIノート番号は音の高さを0〜127の整数で表したもの
+	- 60が中央のC(C4)に対応
+
+```ts
+type Note = {
+  beat: number;    // 拍番号
+  melody: number;  // メロディのMIDIノート番号
+  chord: number[]; // コード構成音のMIDIノート番号(3音)
+};
+
+type Song = Note[];
+```
+
+- 具体例: きらきらぼし
+
+```ts
+const twinkle: Song = [
+  { beat: 1, melody: 60, chord: [48, 52, 55] }, // C - C major
+  { beat: 2, melody: 60, chord: [48, 52, 55] }, // C - C major
+  { beat: 3, melody: 67, chord: [55, 59, 62] }, // G - G major
+  { beat: 4, melody: 67, chord: [55, 59, 62] }, // G - G major
+  // ...
+];
+```
+
+### 技術詳細
+
+#### Chart2Musicの内部構造
+
+- `AudioEngine` は発音を担うエンジンで `playDataPoint(frequency, panning, duration)` をカスタム実装することで差し替え可能
+- `onFocusCallback` はフォーカスが移動した際に任意の処理を差し込めるコールバックで `index` を含む情報が渡される
+- 両者は同じタイミング(フォーカス移動時)に `playDataPoint()` → `onFocusCallback()` の順でコールされる
+
+#### Chart2Musicの制約と対応
+
+- `data` にはメロディのみ渡している
+  - Chart2Musicは複数グループを1本ずつ切り替えて再生する設計のため同時発音にはならない
+- `AudioEngine` のカスタム実装も検討したが断念
+  - `playDataPoint()` の引数は音響パラメータのみで `index` がないため、コードの周波数をデータから引けず楽曲選定に制約が生じる
+- `enableSound: false` で `AudioEngine` を無効化し、`onFocusCallback` からWeb Audio APIを呼び出して複数音を同時発音
+  - `onFocusCallback` には `index` が渡されるためデータを直接参照できる
+
+```ts
+...
+c2mChart({
+  type: 'line',
+  element: canvas,
+  data: song.map(note => note.melody),
+  cc: ccEl,
+  options: {
+    enableSound: false,
+    onFocusCallback: ({ index }) => {
+      play(song[index].melody, song[index].chord);
+      const chart = ChartJS.getChart(canvas);
+      chart?.setActiveElements([{ datasetIndex: 0, index }]);
+      chart?.update();
+    },
+  },
+});
+...
+```
+
+#### Web Audio APIの基本概念
+
+- `AudioContext` はWeb Audio APIの中心となるクラスで音声処理のノードを生成・管理する
+- `OscillatorNode` (オシレーター)は `frequency` で音の高さを設定して音波を生成するノード
+- `GainNode` (ゲイン)は音量を制御するノード
+- `DynamicsCompressorNode` (コンプレッサー)は複数音同時発音で合計ゲインが1を超えた際のクリッピングを防ぐためマスターバスに挟むノード
+- エンベロープは `GainNode` のゲインにアタック/リリースをかけ急開始・停止によるクリック音を防ぐ仕組み
+
+#### MIDIノート番号 → Hz変換
+
+- Web Audio APIはHz(周波数)しか扱えないため、MIDIノート番号を発音時に変換する
+- 式は `f(n) = 440 * 2^((n - 69) / 12)`
+  - ラ ≒ A4 = 440Hz = MIDIノート番号69
+  - nはMIDIノート番号
+  - `n - 69` はA4からの半音数
+  - `/ 12` は半音数をオクターブ数に変換(1オクターブ = 12半音)
+  - `440 * 2^x` はオクターブ数を周波数に変換(1オクターブ上 = 周波数2倍)
+- e.g.
+  - A4(n=69): `440 × 2^((69-69)/12)` = `440 × 2^0` = 440Hz
+  - A5/1オクターブ上(n=81): `440 × 2^((81-69)/12)` = `440 × 2^1` = 880Hz
+  - A#4/半音上(n=70): `440 × 2^((70-69)/12)` = `440 × 2^(1/12)` ≈ 466Hz
+  - Ab4/半音下(n=68): `440 × 2^((68-69)/12)` = `440 × 2^(-1/12)` ≈ 415Hz
+
+```ts
+const midiToHz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
+```
+
+#### 発音の実装
+
+- メロディとコードで同じ `AudioContext` を使用
+- 音ごとに `OscillatorNode` を生成（`stop()` 後に再利用できないため）
+- メロディのゲインを `0.8`、コード1音あたりを `0.2` に設定してメロディを前景に立たせる
+- `DynamicsCompressorNode` をマスターバスに挟んでクリッピングを防ぐ
+- `GainNode` のゲインにエンベロープをかけてクリック音を防ぐ
+
+```ts
+let audioCtx: AudioContext;
+let compressor: DynamicsCompressorNode;
+
+function getAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new AudioContext();
+    compressor = audioCtx.createDynamicsCompressor();
+    compressor.connect(audioCtx.destination);
+  }
+  return audioCtx;
+}
+
+function scheduleEnvelope(gainNode: GainNode, peak: number, now: number, duration: number) {
+  const attack = 0.01;
+  const release = 0.1;
+  gainNode.gain.setValueAtTime(0, now);
+  gainNode.gain.linearRampToValueAtTime(peak, now + attack);
+  gainNode.gain.setValueAtTime(peak, now + duration - release);
+  gainNode.gain.linearRampToValueAtTime(0, now + duration);
+}
+
+function playNote(midi: number, gain: number) {
+  const ctx = getAudioCtx();
+  const now = ctx.currentTime;
+  const duration = 0.8;
+  const osc = ctx.createOscillator();
+  const gainNode = ctx.createGain();
+
+  osc.frequency.value = midiToHz(midi);
+  scheduleEnvelope(gainNode, gain, now, duration);
+
+  osc.connect(gainNode);
+  gainNode.connect(compressor);
+
+  osc.start(now);
+  osc.stop(now + duration);
+}
+
+export function play(melody: number, chord: number[]) {
+  playNote(melody, 0.8);
+  chord.forEach(midi => playNote(midi, 0.2));
+}
+```
+
+## 余談: チューリング完全ユーザー
+
+- チューリング完全ユーザーとは、ツール本来の用途を超えて創意工夫で使いこなすユーザーのこと
+- 今回はデータソニフィケーションというアクセシビリティのための仕組みを音楽の再生に転用しており、この概念と重なる
+- 参考
+	- [ハッキング、エレガンス、ヴァナキュラー](https://designcurrents.news/hack-vrs/)
+	- [Turing Complete User](https://baku89.com/turing-complete-user-translation)
+
+## 感想・考察
+
+- データソニフィケーションというある種のメディア装置を単音から複数の音に拡張したという意味でメディアアート的な性質があるのではないかと思った
+- 今回は複数の音を出せるようにハックし、その分かりやすい表現方法として音楽を載せた
+- 他にもリズムや音量など、音にはまだ様々な可能性があるので、そのあたりを探求してみるのも面白いかもしれない
