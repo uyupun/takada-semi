@@ -1,0 +1,354 @@
+---
+title: スマホから姿勢データを取得する
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+iOS の **CoreMotion** / Android の **SensorManager** が提供する OS フュージョン済みの姿勢データを、Flutter の **EventChannel** 経由で Dart 側にストリーミングする実装です。
+
+姿勢データとは、デバイスの「向き・傾き」を表すデータです。
+OS 内部でカルマンフィルタによって加速度・ジャイロ・磁気センサーを統合した結果が提供されるため、自前でフィルタを実装する必要はありません。
+
+| 項目 | iOS | Android |
+|---|---|---|
+| API | `CMDeviceMotion.attitude` | `TYPE_ROTATION_VECTOR` |
+| EventChannel | `imu_fusion/attitude` | `imu_fusion/attitude` |
+| 参照フレーム | `.xArbitraryZVertical`（磁北不要） | 地磁気北基準 |
+
+出力データの形式は以下のとおりです。
+
+| キー | 型 | 内容 |
+|---|---|---|
+| `qw` / `qx` / `qy` / `qz` | double | クォータニオン |
+| `roll` / `pitch` / `yaw` | double | オイラー角（ラジアン） |
+| `timestamp` | int | Unix タイムスタンプ（ミリ秒） |
+
+## オイラー角とクォータニオン
+
+姿勢データは **オイラー角** と **クォータニオン** の2種類の形式で提供されます。
+
+### オイラー角（Roll / Pitch / Yaw）
+
+デバイスの向きを3つの角度で表します。人間が最も直感的に理解しやすい形式です。
+
+```
+        Pitch（前後）
+           ↑ +
+           |
+ Roll  ────┼────  Roll（左右）
+  −        |        +
+           |
+           ↓ −
+
+Yaw は上から見た水平回転
+```
+
+| 軸 | 動き | 例 |
+|---|---|---|
+| **Roll** | デバイスを縦に倒す（左右） | スマホを右に傾ける |
+| **Pitch** | デバイスを横に倒す（前後） | スマホを手前に傾ける |
+| **Yaw** | 水平に回転する（方位） | 北 → 東 → 南 → 西 |
+
+単位はラジアンで提供されます。UI 表示時は `× 180 / π` で度数に変換します。
+
+**弱点: ジンバルロック**
+
+ジンバルロックとは、3つの回転軸のうち2つが同じ方向を向いてしまい、**1軸分の自由度が失われる現象**です。
+
+もともと「ジンバル」とはカメラや羅針盤を水平に保つための3重リング構造の機械部品です。
+各リングが1軸の回転を担っていますが、ある角度になると2つのリングの回転軸が重なり、
+1方向への回転が表現できなくなります。これをジンバルロックと呼びます。
+
+オイラー角でも同じことが起こります。Pitch が ±90° になると Roll と Yaw の軸が重なり、
+どちらを動かしても同じ回転になってしまいます。
+
+- 通常時（Pitch = 0°）:
+  - Roll 軸 ─── X方向
+  - Pitch 軸 ── Y方向   ← 3軸がそれぞれ独立している
+  - Yaw 軸 ─── Z方向
+
+- ジンバルロック発生時（Pitch = 90°）:
+  - Roll 軸 ─── Z方向
+  - Pitch 軸 ── Y方向   ← Roll と Yaw が同じ Z方向を向いてしまう
+  - Yaw 軸 ─── Z方向   ← 自由度が 3 → 2 に減少
+
+姿勢を連続して記録・補間する用途では、ジンバルロックが発生するとデータが破綻します。
+クォータニオンはこの問題が原理的に発生しないため、センサーフュージョンや 3D 描画の内部処理では標準的に使われています。
+
+### クォータニオン（w / x / y / z）
+
+「**どの軸周りに、何度回転するか**」を1つの式で表します。ジンバルロックが発生しません。
+
+```
+q = w + xi + yj + zk
+
+w        : cos(回転角 / 2)
+x, y, z  : 回転軸の方向 × sin(回転角 / 2)
+```
+
+クォータニオンは「回転角をそのまま使わず、半分にして cos・sin を取る」という特徴があります。
+
+#### 例: Z軸（画面の奥行き方向）周りに 90° 回転する場合
+
+```
+回転角の半分 = 90° / 2 = 45°
+
+w = cos(45°) = 1/√2 ≈ 0.707
+x = 0   （X軸方向には回転しない）
+y = 0   （Y軸方向には回転しない）
+z = sin(45°) = 1/√2 ≈ 0.707  （Z軸周りに回転する）
+```
+
+| 状態 | w | x | y | z |
+|---|---|---|---|---|
+| 静止（無回転） | 1.0 | 0.0 | 0.0 | 0.0 |
+| Z軸周りに 90° 回転 | 0.707 | 0.0 | 0.0 | 0.707 |
+| Z軸周りに 180° 回転 | 0.0 | 0.0 | 0.0 | 1.0 |
+
+### 比較まとめ
+
+| | オイラー角 | クォータニオン |
+|---|---|---|
+| **直感的にわかりやすい** | ◎ | △ |
+| **ジンバルロック** | 発生する | 発生しない |
+| **計算コスト** | 高い | 低い |
+| **姿勢の補間** | △（不自然になる） | ◎（SLERP で滑らか） |
+| **主な用途** | 表示・UI | 演算・3D・フュージョン |
+
+### 実装での使い分け
+
+OS は内部的にクォータニオンで計算し、表示用にオイラー角へ変換して提供しています。
+今回の実装では両方を同時に受け取っています。
+
+```
+OS フュージョン済みデータ
+        ↓
+  クォータニオン (qw, qx, qy, qz)  ← 演算・記録用
+        ↓ 変換
+  オイラー角 (roll, pitch, yaw)     ← 画面表示用
+```
+
+## 主なコード
+
+### Kotlin
+
+`TYPE_ROTATION_VECTOR` センサーから姿勢データを取得します。
+`SensorManager` の静的メソッドでクォータニオンとオイラー角を算出します。
+
+```kotlin
+class RotationVectorHandler(
+    private val sensorManager: SensorManager,
+) : EventChannel.StreamHandler {
+
+    private var listener: SensorEventListener? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+        val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+        if (sensor == null) {
+            events.error("UNAVAILABLE", "Rotation vector sensor not available", null)
+            return
+        }
+
+        listener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent) {
+                // クォータニオン: q[0]=w, q[1]=x, q[2]=y, q[3]=z
+                val q = FloatArray(4)
+                SensorManager.getQuaternionFromVector(q, event.values)
+
+                // 回転行列 → オイラー角: orientation[0]=azimuth(yaw), [1]=pitch, [2]=roll
+                val rotMatrix = FloatArray(9)
+                SensorManager.getRotationMatrixFromVector(rotMatrix, event.values)
+                val orientation = FloatArray(3)
+                SensorManager.getOrientation(rotMatrix, orientation)
+
+                val payload = mapOf(
+                    "qw"        to q[0].toDouble(),
+                    "qx"        to q[1].toDouble(),
+                    "qy"        to q[2].toDouble(),
+                    "qz"        to q[3].toDouble(),
+                    "yaw"       to orientation[0].toDouble(),
+                    "pitch"     to orientation[1].toDouble(),
+                    "roll"      to orientation[2].toDouble(),
+                    "timestamp" to System.currentTimeMillis(),
+                )
+                mainHandler.post { events.success(payload) }
+            }
+
+            override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
+        }
+
+        sensorManager.registerListener(
+            listener,
+            sensor,
+            SensorManager.SENSOR_DELAY_GAME,
+        )
+    }
+
+    override fun onCancel(arguments: Any?) {
+        sensorManager.unregisterListener(listener)
+        listener = null
+    }
+}
+```
+
+> `EventSink.success()` はメインスレッドから呼ぶ必要があるため、`Handler(Looper.getMainLooper())` 経由で呼び出しています。
+
+### Swift
+
+`startDeviceMotionUpdates(using:to:withHandler:)` で OS フュージョン済みの姿勢データを取得します。
+参照フレームに `.xArbitraryZVertical` を指定することで、磁気センサーの較正なしに動作します。
+
+```swift
+final class AttitudeHandler: NSObject, FlutterStreamHandler {
+    private let manager: CMMotionManager
+    private let queue: OperationQueue
+    private let interval: TimeInterval
+
+    func onListen(
+        withArguments arguments: Any?,
+        eventSink events: @escaping FlutterEventSink
+    ) -> FlutterError? {
+        guard manager.isDeviceMotionAvailable else {
+            return FlutterError(
+                code: "UNAVAILABLE",
+                message: "DeviceMotion not available",
+                details: nil
+            )
+        }
+
+        manager.deviceMotionUpdateInterval = interval
+        manager.startDeviceMotionUpdates(
+            using: .xArbitraryZVertical,
+            to: queue
+        ) { motion, error in
+            guard let motion = motion else { return }
+
+            let q   = motion.attitude.quaternion
+            let att = motion.attitude
+
+            DispatchQueue.main.async {
+                events([
+                    "qw":        q.w,
+                    "qx":        q.x,
+                    "qy":        q.y,
+                    "qz":        q.z,
+                    "roll":      att.roll,
+                    "pitch":     att.pitch,
+                    "yaw":       att.yaw,
+                    "timestamp": Int(Date().timeIntervalSince1970 * 1000),
+                ])
+            }
+        }
+        return nil
+    }
+
+    func onCancel(withArguments arguments: Any?) -> FlutterError? {
+        manager.stopDeviceMotionUpdates()
+        return nil
+    }
+}
+```
+
+> センサーコールバックは専用の `OperationQueue` で受け取り、`EventSink` への書き込みは `DispatchQueue.main.async` でメインスレッドに戻しています。
+
+### Dart
+
+`AttitudeData` モデルでクォータニオンとオイラー角の両方を保持します。
+UI ではオイラー角をラジアンから度数に変換して表示しています。
+
+```dart
+class AttitudeData {
+  final double qw;
+  final double qx;
+  final double qy;
+  final double qz;
+  final double roll;   // ラジアン
+  final double pitch;  // ラジアン
+  final double yaw;    // ラジアン
+  final int timestampMs;
+
+  factory AttitudeData.fromMap(Map<dynamic, dynamic> map) {
+    return AttitudeData(
+      qw:          (map['qw']        as num).toDouble(),
+      qx:          (map['qx']        as num).toDouble(),
+      qy:          (map['qy']        as num).toDouble(),
+      qz:          (map['qz']        as num).toDouble(),
+      roll:        (map['roll']      as num).toDouble(),
+      pitch:       (map['pitch']     as num).toDouble(),
+      yaw:         (map['yaw']       as num).toDouble(),
+      timestampMs: (map['timestamp'] as num).toInt(),
+    );
+  }
+}
+```
+
+`ImuService` で EventChannel を Stream として公開します。
+
+```dart
+class ImuService {
+  ImuService._();
+  static final ImuService instance = ImuService._();
+
+  static const _attitudeChannel = EventChannel('imu_fusion/attitude');
+  Stream<AttitudeData>? _attitudeStream;
+
+  Stream<AttitudeData> get attitudeStream =>
+      _attitudeStream ??= _attitudeChannel
+          .receiveBroadcastStream()
+          .map((e) => AttitudeData.fromMap(e as Map));
+}
+```
+
+UI では `StreamBuilder` でリアルタイムに更新します。
+
+```dart
+StreamBuilder<AttitudeData>(
+  stream: ImuService.instance.attitudeStream,
+  builder: (context, snapshot) {
+    if (!snapshot.hasData) return const CircularProgressIndicator();
+    final d = snapshot.data!;
+    final toDeg = 180 / pi;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Euler Angles (deg)'),
+        _ValueRow('Roll ',  d.roll  * toDeg),
+        _ValueRow('Pitch',  d.pitch * toDeg),
+        _ValueRow('Yaw  ',  d.yaw   * toDeg),
+        Text('Quaternion'),
+        _ValueRow('w', d.qw),
+        _ValueRow('x', d.qx),
+        _ValueRow('y', d.qy),
+        _ValueRow('z', d.qz),
+      ],
+    );
+  },
+)
+```
+
+## デモ画像
+
+<ContentImage path="2026/04-13/takashi/01.png" />
+
+## まとめ
+
+- 姿勢データは OS が内部でカルマンフィルタ処理した結果であり、生センサーより安定している
+- クォータニオンはジンバルロックが発生しないため、3D 演算や姿勢補間（SLERP）に適している
+- オイラー角（Roll / Pitch / Yaw）は直感的だが、特定の角度でジンバルロックが発生する
+- iOS の参照フレーム `.xArbitraryZVertical` は磁北を必要とせず、屋内でも安定して動作する
+- `EventSink` への書き込みは必ずメインスレッドから行う
+
+## 参照
+
+- [CMDeviceMotion | Apple Developer Documentation](https://developer.apple.com/documentation/coremotion/cmdevicemotion)
+- [CMAttitude | Apple Developer Documentation](https://developer.apple.com/documentation/coremotion/cmattitude)
+- [SensorManager.getQuaternionFromVector | Android Developers](https://developer.android.com/reference/android/hardware/SensorManager#getQuaternionFromVector(float[],%20float[]))
+- [TYPE_ROTATION_VECTOR | Android Developers](https://developer.android.com/reference/android/hardware/Sensor#TYPE_ROTATION_VECTOR)
+- [EventChannel | Flutter API](https://api.flutter.dev/flutter/services/EventChannel-class.html)
