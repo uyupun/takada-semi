@@ -1,8 +1,10 @@
 name: Update biome.json schema
 on:
-  pull_request:
-    types:
-      - closed
+  push:
+    branches:
+      - main
+    paths:
+      - 'package.json'
 
 permissions:
   contents: write
@@ -10,22 +12,12 @@ permissions:
 jobs:
   update-biome-schema:
     runs-on: ubuntu-latest
-    if: |
-      github.event.pull_request.merged == true &&
-      github.event.pull_request.user.login == 'dependabot[bot]' &&
-      github.repository == 'uyupun/takada-semi'
+    if: github.repository == 'uyupun/takada-semi'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          ref: main
-
-      - name: Dependabot metadata
-        id: metadata
-        uses: dependabot/fetch-metadata@v3
 
       - name: Update biome.json schema version
-        if: contains(steps.metadata.outputs.dependency-names, '@biomejs/biome')
         run: |
           VERSION=$(node -p "require('./package.json').devDependencies['@biomejs/biome']")
           sed -i "s|https://biomejs.dev/schemas/[^/]*/schema.json|https://biomejs.dev/schemas/${VERSION}/schema.json|" biome.json
