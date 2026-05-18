@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   update-biome-schema:
@@ -18,11 +19,34 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Update biome.json schema version
+        id: update
         run: |
           VERSION=$(node -p "require('./package.json').devDependencies['@biomejs/biome']")
           sed -i "s|https://biomejs.dev/schemas/[^/]*/schema.json|https://biomejs.dev/schemas/${VERSION}/schema.json|" biome.json
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Commit and push
+        id: commit
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b feat/update-biome-schema-${{ steps.update.outputs.version }}
           git add biome.json
-          git diff --cached --quiet || git commit -m "chore: update biome.json schema to v${VERSION}"
-          git push
+          if git diff --cached --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "chore: update biome.json schema to v${{ steps.update.outputs.version }}"
+            git push origin feat/update-biome-schema-${{ steps.update.outputs.version }}
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create and auto-merge PR
+        if: steps.commit.outputs.changed == 'true'
+        run: |
+          gh pr create \
+            --title "chore: update biome.json schema to v${{ steps.update.outputs.version }}" \
+            --body "" \
+            --base main
+          gh pr merge --merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
