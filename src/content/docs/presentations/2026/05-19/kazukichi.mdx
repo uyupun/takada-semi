@@ -14,16 +14,17 @@ import ContentImage from '@components/ContentImage.astro';
 - この記事の中で「AIと統合することでより柔軟なタスク管理ができないか」という今後の課題を残していた
 - そこから半年以上、運用した結果、振り返りの認知負荷が意外と高く、テンプレが用意されていても一日の終わりにやったことを思い出したり、明日に繋がるようなことを考えるのが大変という課題が出てきた
 
-<ContentImage path="2026/05-19/kazukichi/01.png" width={700} />
-
 ## 解決策
 
 - その日やったことに関しては、TODOリストのチェックボックスからすでに把握できる
 - 感情は自分の中にしかないので、感情が動くたびに短くても良いのでIssueにコメントとして残すようにした
 
-<ContentImage path="2026/05-19/kazukichi/02.png" width={700} />
+<ContentImage path="2026/05-19/kazukichi/01.png" width={700} />
 
 - 振り返りのテンプレやルールもマークダウンファイルとして用意した(コルブの経験学習モデル、ギブスのリフレクティブサイクル、ALACTモデルを参考)
+
+<ContentImage path="2026/05-19/kazukichi/02.png" width={700} />
+
 - Claude Code GitHub Actionsを活用し、テンプレとIssueコメントを集約してプロンプトとして投入し、振り返りを半自動生成するようにした
 - [Claude Code GitHub Actions](https://code.claude.com/docs/ja/github-actions) はGitHub Actions上でClaude Codeを動かす仕組みで、GitHubのデータを自律的に読み取り・操作できる
 - 現状は `/lookback` とコメントを打つと振り返りが発火する仕組みにしている
@@ -54,7 +55,7 @@ jobs:
 - APIキーは事前に発行しておく
 - `claude_args` でモデルの指定(今回はClaude Sonnet 4.6)や許可ツールの制限を行える
 - `--allowedTools` を省略した場合はエラーにならず、安全なデフォルトセット(ファイル操作、コメント投稿、基本的なGitHub操作)が許可される
-- 一部のコマンドはデフォルトで非許可のため、例えば　`gh` (GitHub CLI)などを使う場合は `--allowedTools "Bash(gh *)"` のように明示的に指定が必要
+- 一部のコマンドはデフォルトで非許可のため、例えば `gh` (GitHub CLI)などを使う場合は `--allowedTools "Bash(gh *)"` のように明示的に指定が必要
 - AnthropicのWeb APIを直接叩く場合と異なり、GitHubの各種データを自律的に読み取り・操作できるため、 `gh` コマンドをはじめとするコマンドの組み立てが不要になる
 
 ## 振り返り
