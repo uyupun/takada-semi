@@ -1,0 +1,67 @@
+---
+title: Claude Code GitHub Actions を振り返りに活用している
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## 背景と課題
+
+- 以前、 [GitHub Actionsで人生のPDCAをぶん回す](https://semi.uyupun.tech/presentations/2025/07-02/kazukichi/) で話したように、日々のTODO管理と振り返りをGitHubのIssue上で行っている
+- GitHub Actionsの定期実行で毎朝Issueが自動作成され、TODOリストと振り返りのテンプレがコメントとして記載される
+- この記事の中で「AIと統合することでより柔軟なタスク管理ができないか」という今後の課題を残していた
+- そこから半年以上、運用した結果、振り返りの認知負荷が意外と高く、テンプレが用意されていても一日の終わりにやったことを思い出したり、明日に繋がるようなことを考えるのが大変という課題が出てきた
+
+## 解決策
+
+- その日やったことに関しては、TODOリストのチェックボックスからすでに把握できる
+- 感情は自分の中にしかないので、感情が動くたびに短くても良いのでIssueにコメントとして残すようにした
+
+<ContentImage path="2026/05-19/kazukichi/01.png" width={700} />
+
+- 振り返りのテンプレやルールもマークダウンファイルとして用意した(コルブの経験学習モデル、ギブスのリフレクティブサイクル、ALACTモデルを参考)
+
+<ContentImage path="2026/05-19/kazukichi/02.png" width={700} />
+
+- Claude Code GitHub Actionsを活用し、テンプレとIssueコメントを集約してプロンプトとして投入し、振り返りを半自動生成するようにした
+- [Claude Code GitHub Actions](https://code.claude.com/docs/ja/github-actions) はGitHub Actions上でClaude Codeを動かす仕組みで、GitHubのデータを自律的に読み取り・操作できる
+- 現状は `/lookback` とコメントを打つと振り返りが発火する仕組みにしている
+
+```yaml
+on:
+  issue_comment:
+    types:
+      - created
+
+jobs:
+  claude-lookback:
+    if: contains(github.event.comment.body, '/lookback')
+```
+
+## Claude Code GitHub Actionsの使い方
+
+```yaml
+- uses: anthropics/claude-code-action@v1
+  with:
+    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    claude_args: --model claude-sonnet-4-6 --allowedTools "Bash(gh *)"
+    prompt: "以下のIssueを確認し、内容を要約してコメントしてください。"
+```
+
+- アクションは `anthropics/claude-code-action@v1` (v1が最新)
+- APIキーは事前に発行しておく
+- `claude_args` でモデルの指定(今回はClaude Sonnet 4.6)や許可ツールの制限を行える
+- `--allowedTools` を省略した場合はエラーにならず、安全なデフォルトセット(ファイル操作、コメント投稿、基本的なGitHub操作)が許可される
+- 一部のコマンドはデフォルトで非許可のため、例えば `gh` (GitHub CLI)などを使う場合は `--allowedTools "Bash(gh *)"` のように明示的に指定が必要
+- AnthropicのWeb APIを直接叩く場合と異なり、GitHubの各種データを自律的に読み取り・操作できるため、 `gh` コマンドをはじめとするコマンドの組み立てが不要になる
+
+## 振り返り
+
+- API経由だとSonnet系のモデルでもけっこうお金がかかる(1回の実行に数十円ぐらいはかかってそう)
+- GitHub Actionsのコンテキスト量が結構多いのかもしれない
+- 実行時間も2分弱程度はかかる
+- 現状はその日のIssueコメントしか見ていないので、今後は過去1週間など期間を伸ばしたり、活動時間との連携なども取り入れたい
+- 将来的には特定の時間に自動発火するようにしても良いかもしれない
