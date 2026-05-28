@@ -49,7 +49,7 @@ import Author from '@components/Author.astro';
   - e.g. `biome` (設定ファイルの `$schema` のURLにバージョンが含まれる)
   - 設定ファイルの例: https://github.com/uyupun/tmp-official/blob/ceae8eee938f1f8a6e48c98e034fe81a4f5dedea/biome.json#L2
 - Renovateを使えばこの同期を自動化しやすいが、すでにDependabotを使っており、依存サービスを安易に増やしたくない
-- 代わりにGitHub ActionsでBiomeの更新を検知し、設定ファイルのスキーマバージョンも合わせて更新するワークフローで対応
+- 代わりにGitHub Actionsで `package.json` の更新を検知し、Biome等の特定のライブラリの更新に合わせて設定ファイルのスキーマバージョンも更新するワークフローで対応
 - 設定例: https://github.com/uyupun/tmp-official/blob/main/.github/workflows/update-biome-schema.yml
 
 ## PRの自動マージのリトライ
