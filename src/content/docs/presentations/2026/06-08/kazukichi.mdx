@@ -7,8 +7,6 @@ import ContentImage from '@components/ContentImage.astro';
 
 <Author frontmatter={frontmatter} />
 
-# AI時代のロゴデザイン
-
 ## はじめに
 
 - 筆者はプロのデザイナーではないソフトウェアエンジニア
@@ -65,11 +63,10 @@ import ContentImage from '@components/ContentImage.astro';
 
 ### 描き方の手順
 
-1. 下書きを描く
-2. 別レイヤーに仮で色を置く
-3. 塗りレイヤーを非表示にし、下書きの線を薄い赤に変える
-4. その上に本番の線を描く
-5. 別レイヤーで本番の色を置く
+1. 薄い色で下書きを描く
+1. 別レイヤーに仮で色を置く
+1. 塗りレイヤーを非表示にし、その上に本番の線を置く
+1. 別レイヤーで本番の色を置く
 
 <ContentImage path="2026/06-08/kazukichi/07.png" width={400} />
 <ContentImage path="2026/06-08/kazukichi/08.png" width={400} />
@@ -86,9 +83,11 @@ import ContentImage from '@components/ContentImage.astro';
 
 ### 記号的または幾何学的なロゴの場合
 
-- 記号的または幾何学的なロゴであればそもそもクリスタを使う必要はあまりない
-  - [Illustrator(イラレ)](https://www.adobe.com/jp/products/illustrator.html) を使う手もある
-  - または後述するように、AIエージェントと一緒に図形を組み立てていく方法もある
+- 記号的または幾何学的なロゴであればそもそもクリスタのようなペイントソフトは向いていない
+- Illustrator(イラレ) のようなソフトウェアを使用するもの良い
+- 個人的にはAIエージェントでSVGをいじくる、という手法をよく取っている
+- AIは図形認識が苦手で、思ったような図形変換がなかなかできないのでもどかしさもある
+- SVGをいじるパッケージはおそらく大体の言語にはあるのではと思う
 
 ## ステップ5: スクリプトによる合成と加工
 
