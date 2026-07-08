@@ -98,6 +98,7 @@ $ sox -n -r 44100 -c 2 crackle.wav synth 5 pinknoise vol 0.5 highpass 3000 fade 
 - 先述の通り、音声や映像のトランスコードができる汎用的なCLI
 - 映像の文脈ではフィルタの適用や動画の連結、動画と音声の合成に使うことが多い
 - Node.jsから `fluent-ffmpeg` を通じてFFmpegの機能を使用することもある
+- 手ブレ補正としてFFmpegにバンドルされている `libvidstab` というライブラリが提供するフィルタを使うこともある
 
 ### Remotion
 
