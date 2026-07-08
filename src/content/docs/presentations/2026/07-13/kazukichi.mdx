@@ -119,6 +119,15 @@ $ sox -n -r 44100 -c 2 crackle.wav synth 5 pinknoise vol 0.5 highpass 3000 fade 
 - Kling AIは開始フレームとのつなぎでフレームがズレやすく、別途FFmpegなどでの調整が必要になることが多いが、最もリアルな映像を出力できる
 - 公式サイト: https://runwayml.com/
 
+### その他の選択肢
+
+- 上記以外にも以下のようなツールがあるが、いずれも未使用のため選択肢として触れるに留める
+- [HyperFrames](https://hyperframes.heygen.com/)
+  - Remotionが「動画をReactコンポーネントとして書く」設計なのに対し、HyperFramesは「動画をHTMLページとして書く」という設計
+- [Palmier Pro](https://www.palmier.io/)
+  - macOS(Apple Silicon)向けのAIネイティブな動画エディタ
+  - 内蔵のMCPサーバ経由でAIエージェントがタイムライン上のクリップを直接生成・編集できる
+
 ## 補足: どこまで中身を把握すべきか
 
 - 冒頭でどのツールもAIエージェント経由でコマンドやプロンプトを組み立てて活用すると述べた
