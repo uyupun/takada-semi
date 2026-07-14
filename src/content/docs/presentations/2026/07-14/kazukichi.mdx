@@ -14,7 +14,7 @@ import Author from '@components/Author.astro';
 ## 方針
 
 - どのツールもAIエージェント経由でコマンドやプロンプトを組み立てて活用する
-- FFmpegやSox、Node.jsによるスクリプトなどは高度な操作ができる一方で、複雑なオプション指定が必要なため、手作業は現実的ではない
+- FFmpegやSoX、Node.jsによるスクリプトなどは高度な操作ができる一方で、複雑なオプション指定が必要なため、手作業は現実的ではない
 - ElevenLabsやSuno、Runwayはプロンプトが英語を前提としているため、英語のネイティブ話者でもない限り、スクラッチでプロンプトを書くことは難しい
 
 ## 音の生成
@@ -37,7 +37,7 @@ $ ffmpeg -f lavfi -i "anoisesrc=duration=1" output.wav
 $ ffmpeg -i a.wav -i b.wav -filter_complex amix=inputs=2 output.wav
 ```
 
-### Sox
+### SoX
 
 - FFmpegより高度な音声処理に特化したCLIのDSPツール
 - DSP(Digital Signal Processing)はデジタル化された信号を数学的に加工・分析する技術領域の総称
@@ -56,7 +56,7 @@ $ sox -n -r 44100 -c 2 crackle.wav synth 5 pinknoise vol 0.5 highpass 3000 fade 
 
 ### Node.js
 
-- FFmpegやSoxでもカバーできない音声の生成に活用
+- FFmpegやSoXでもカバーできない音声の生成に活用
 - 例えばランダムタイミングで発生する「パチッ」という瞬間的なクリック音(インパルス)の生成など
 - インパルスは極めて短時間だけ大きな振幅を持ち、それ以外はゼロの波形で、連続ノイズとは性質が異なる
 - このようなケースではNode.jsでPCMデータを直接生成する
