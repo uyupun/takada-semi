@@ -1,0 +1,128 @@
+---
+title: AIネイティブな360度映像の制作
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- 前回の [AI時代の動画制作](https://semi.uyupun.tech/presentations/2026/07-14/kazukichi/) に引き続き、今回もAI x 映像の話
+- 360度映像を作る機会があったので、AIネイティブな作成方法について共有する
+- また、360度映像のレンダリング先としてA-Frameも使用したので、こちらについても共有する
+
+## 360度画像の生成
+
+- そもそも360度**映像**を手軽に生成できるようなプラットフォームは作成当時として存在しなかった
+- 研究段階やセルフホストだと一応、選択肢はあるが、環境構築やマシンリソースの準備の大変さを考えて断念
+- そのため、まず360度画像を生成し、後からフィルタやエフェクトを当て、動画として見せることにした
+- 静止画内のオブジェクトを自由に動かしたりすることはできないが、今回の要件的にはそれで問題なかった
+
+### 生成サービスの選定
+
+- [ZSky AI](https://zsky.ai/ja/) ... 360度映像を生成できるという記事があったので登録してみたが、少なくとも自分にはそのような機能は見つけられなかった
+- [Skybox AI](https://www.blockadelabs.com/) ... 360度画像の生成に対応しており、動画もそのうち対応される雰囲気がある
+- ということで成り行きでSkybox AIを選定
+
+### Skybox AIとは
+
+- 運営はアメリカのスタートアップのBlockade Labs
+- 設立は2018年で、元々、ブロックチェーンゲーム会社だったが、AIにピボットした模様
+- シード調達のみで財務基盤は決して強くはないが、生成数やユーザ数の実績は十分
+- 4,000円ほど課金して利用した(高い)
+- 生成時にはプロンプトやネガティブテキストに加え、数十種類あるスタイルから選択することで大まかな雰囲気を指定できる
+- 生成した360度画像の例
+
+<ContentImage path="2026/07-23/kazukichi/01.png" width="700" />
+
+## 補足: equirectangularとは
+
+- エクイレクタンギュラーと読む
+- Skybox AIで生成できる360度画像はこの方式
+- 横軸が水平角度(0°〜360°)、縦軸が垂直角度(-90°〜+90°)
+- 角度と画素を等間隔に対応させて全天球を長方形に展開する
+- 結果として比率は2:1になる
+- VRゴーグルはこの形式を球体の内側に貼り付けて再生し、視線方向に合わせて表示する
+- 他にもcubemapという、可搬性が低く、デファクトスタンダードではないが、GPU効率が良く、歪みが少ない形式も存在する
+
+## 360度画像の映像化
+
+- 映像化とフィルタやエフェクトの適用には基本的には [FFmpeg](https://www.ffmpeg.org/) を採用
+  - 多彩な機能かつCLIが提供されているので、AIで処理しやすいという選定理由
+- それでも足りない部分には [OpenCV](https://opencv.org/) を採用
+  - FFmpegよりも手軽さは劣るが、より細かい制御が可能で、AIからも十分使いやすいという選定理由
+  - 今回は手軽さから、OpenCVのPythonバインディングである [opencv-python](https://pypi.org/project/opencv-python/) を使用
+- 生成した360度映像の例
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/oYbznAcTy8E?si=maTJCiLmyNxMj_b0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### 適用時の制約
+
+- 空間方向の継ぎ目がない
+  - 360度映像は球面に貼られるため、左右端と上下端が繋がる
+  - よって、特定の領域だけに作用すると継ぎ目が生じる恐れがある
+  - そのため、フィルタやエフェクトは全ピクセルに均一に作用するものに限られる
+  - e.g. 輝度、コントラスト、色温度、ノイズ、ガウスぼかし(ブラー)、グロー
+- 時間方向の継ぎ目がない
+  - ループ再生前提のため、映像の末尾と先頭がシームレスにつながること
+  - フィルタやエフェクトの強度が時間で変化する場合も、ループ点で不連続にならないよう、周期的に変化させる
+  - これらの条件は音声でも概ね同様
+- 処理時間の長さ
+  - 8Kは短尺でもエンコードに相応の時間がかかる
+  - 処理前に画像を4Kに落とし、さらにマルチスレッド化などの最適化やGPU処理などの高速化も施した
+
+## メタデータの埋め込み
+
+- 通常のMP4ファイルには「これは360度映像です」という情報がどこにもない
+- ライブラリで読み込む場合は問題にならないことが多いが、YouTubeなどのプラットフォームに認識させたい場合にはメタデータの埋め込みが必要となる
+- メタデータの埋め込みにはGoogleが提供する [Spatial Media](https://github.com/google/spatial-media) を使うのが一般的
+
+### Spatial Mediaとは
+
+- Googleが公開している360度映像用のメタデータの仕様
+- MP4/MOVファイル内部に専用のメタデータボックスを追記し、プレーヤーが「これは360度映像だ」と認識できるようにする
+- 他にもMPEGが定めたOMAFという仕様もあるが、Spatial Mediaのほうが導入は容易かつ、ポジションも微妙に異なる
+
+## Webブラウザでのレンダリング
+
+- 360度映像をWebブラウザ上でレンダリングする
+- 操作はマウスドラッグやタッチドラッグでの視点変更のみでVR対応は考えないシンプルな仕様
+
+### ライブラリの選定
+
+|ライブラリ|対象|備考|
+|:--|:--|:--|
+|A-Frame|動画や静止画|シンプルで宣言的|
+|video.js + videojs-vr|動画|シークや音量など動画プレイヤーUIが複雑になる場合の選択肢になる|
+|Pannellum|静止画|静止画特化の軽量ビューア|
+|Marzipano|静止画|静止画特化でツアー機能なども持つ|
+
+- 今回はUIがシンプルなので [A-Frame](https://aframe.io/) を採用
+
+### フレームワークの選定
+
+- リアクティブな処理がなく状態管理もほぼないため、ReactやSvelteは採用しない
+- Vite + TypeScriptを採用
+
+### 実装(抜粋)
+
+- リポジトリ: https://github.com/oborodice/aframe-equirectangular-demo
+- デプロイ先: https://oborodice.github.io/aframe-equirectangular-demo/
+- `<a-videosphere>` に動画を渡すだけで360度映像として描画される
+
+```html
+<a-scene>
+  <a-assets>
+    <video id="demo" src="/demo.mp4" loop crossorigin="anonymous" playsinline webkit-playsinline muted autoplay></video>
+  </a-assets>
+  <a-videosphere src="#demo"></a-videosphere>
+</a-scene>
+```
+
+## 感想
+
+- 成果物自体はシンプルだが、作成の工程の多さや、それなりに考えないといけないポイントは多かった
+- 割とニッチな領域ではあっても、新しいサービスと既存技術の組み合わせによってAIでカバーできるという良い例
+- 今後、360度映像や3Dモデルなど、三次元的な表現にもAIが進出していくと期待している
