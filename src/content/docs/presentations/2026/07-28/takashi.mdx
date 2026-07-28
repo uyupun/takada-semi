@@ -1,0 +1,197 @@
+---
+title: Flutterで手書き風ストローク（perfect_freehand）を実装する
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+[perfect_freehand](https://pub.dev/packages/perfect_freehand) は、指やペンで描いた線を「手書きらしい太さの変化」がある滑らかな線として描画できるパッケージ。もともとは JavaScript 向けの [perfect-freehand](https://github.com/steveruizok/perfect-freehand)（作者: Steve Ruiz）というライブラリで、それを Dart / Flutter 向けに移植したもの。
+
+Flutter で単純に「指でなぞった点を線で結ぶ」だけだと、以下のような線になってしまう。
+
+- 点と点をまっすぐ結ぶだけなので、カクカクした折れ線になる
+- 太さが常に一定で、力を入れて描いても細い線のままになる
+
+perfect_freehand を使うとこの2つの問題を解決し、太さが変化する滑らかな輪郭を計算する。
+
+### 前提知識
+
+- **`CustomPainter`**: Flutterで自由に絵を描くための仕組み。`Canvas`（キャンバス）に対して線や図形を描く命令を出す。
+  - 参考: [CustomPainterとは](/presentations/2025/02-12/takashi#custompainterとは)
+- **`Path`**: 描画の軌跡をまとめたもの。最後に色を塗って線や図形として表示する。
+- **`PointVector`**: perfect_freehandが扱う1点のデータ。x座標・y座標・筆圧（0〜1）を持つ。
+
+## getStroke の仕組み
+
+perfect_freehandの中心は `getStroke()` という関数。「なぞった点の並び」と「太さなどの設定（`StrokeOptions`）」を渡すと、「線の輪郭の頂点の並び」を返す。
+
+返ってくるのが線の**中心線**ではなく**輪郭（アウトライン）**で、マジックで引いた線の外周をなぞって1つの塗りつぶし図形にしたイメージで、これにより万年筆やマーカーのような太さの変化を表現できる。
+
+```
+入力: 指でなぞった点の並び（座標＋筆圧）
+        (x0,y0,p0) → (x1,y1,p1) → (x2,y2,p2) → ...
+                ↓ getStroke()
+出力: 線の輪郭をぐるっと一周する頂点の並び
+        （線の片側を先端まで辿り、反対側を通って戻ってくるイメージ）
+```
+
+### `StrokeOptions`の主なパラメータ
+
+| パラメータ | 役割 |
+|---|---|
+| `size` | 線の基本の太さ |
+| `thinning` | 筆圧でどれだけ太さが変わるか |
+| `smoothing` | 線の角をどれだけ丸めるか |
+| `streamline` | 手ぶれ補正のような効果。なめらかになる代わりに指の動きから少し遅れる |
+| `simulatePressure` | 実際の筆圧の代わりに移動速度から擬似的な筆圧を計算するか |
+| `isComplete` | 描画中か確定済みか（先端の丸め方が変わる） |
+
+このアプリでは `simulatePressure` を画面のスイッチでON/OFFできる。OFF時は `event.pressure`（実機の値）をそのまま使い、ON時は移動速度から計算した疑似筆圧を使う。
+
+ただし `event.pressure` は、Apple Pencilや3D Touch対応機種のような圧力検知デバイスでは実際の力に応じて変化するが、圧力検知に対応しない一般的なタッチスクリーン（指でのタップ）では常に `1.0` の固定値になる。太さの計算式 `size * easing(0.5 - thinning * (0.5 - pressure))` はpressureの関数なので、pressureが一定ならOFFでも太さはほぼ一定になり、強弱は出ない。強弱を確実に見せたいなら、圧力非対応デバイスではONにする必要がある。
+
+### アウトラインの頂点をなめらかな線として描く
+
+quadraticBezierTo(controlX, controlY, endX, endY)` は、**現在位置から `end` まで、`control` の方向に膨らみながら**曲線を引く命令。ここで重要なのは、曲線が実際に通過するのは `start` と `end` だけで、`control` の点自体は通過しないということ。
+
+コードでは、頂点 `P[i]` を「膨らみの方向（control）」に、`P[i]` と `P[i+1]` の**中間点**を「曲線の終点（end）」に使っている。つまり曲線が実際に通るのは頂点そのものではなく、常に中間点だけになる。
+
+```
+頂点:         P0        P1        P2        P3
+中間点:            M01       M12       M23
+
+区間1: 現在位置 P0 → 終点 M01（P1の方向に膨らむ）
+区間2: 現在位置 M01 → 終点 M12（P2の方向に膨らむ）
+区間3: 現在位置 M12 → 終点 M23（P3の方向に膨らむ）
+```
+
+## 主なコード
+
+「指の動きを検知する → データにまとめる → 絵として描く」の3ステップで見ていく。
+
+### 1本の線（ストローク）のデータクラス
+
+指を置いてから離すまでの1本の線を「ストローク」と呼ぶ。色・太さ・通った点の並びを1つのクラスにまとめる。
+
+描画中の点は `_currentPoints` で管理し、指を離した瞬間に `_strokes` へ確定させる。
+
+```dart
+class Stroke {
+  final List<PointVector> points;
+  final Color color;
+  final double size;
+
+  const Stroke({required this.points, required this.color, required this.size});
+}
+```
+
+### 指の動きを検知する
+
+`Listener` は「指を置いた」「指を動かした」「指を離した」の3イベントを検知する。
+
+- `onPointerDown`: 新しい線の最初の点として記録を開始
+- `onPointerMove`: 通った点を1つずつ追加
+- `onPointerUp`: 点をまとめて `_strokes` に確定し、`_currentPoints` を空にする
+
+`event.pressure` は対応デバイスなら実際の筆圧、非対応なら常に `1.0`。
+
+```dart
+void _onPointerDown(PointerDownEvent event) {
+  setState(() {
+    _currentPoints = [
+      PointVector(event.localPosition.dx, event.localPosition.dy, event.pressure),
+    ];
+  });
+}
+
+void _onPointerMove(PointerMoveEvent event) {
+  setState(() {
+    _currentPoints = [
+      ..._currentPoints,
+      PointVector(event.localPosition.dx, event.localPosition.dy, event.pressure),
+    ];
+  });
+}
+
+void _onPointerUp(PointerUpEvent event) {
+  setState(() {
+    if (_currentPoints.isNotEmpty) {
+      _strokes.add(Stroke(
+        points: List.from(_currentPoints),
+        color: _selectedColor,
+        size: _strokeSize,
+      ));
+    }
+    _currentPoints = [];
+  });
+}
+```
+
+### `getStroke` で輪郭を計算して描画する
+
+1. `getStroke()` に点の並びと `StrokeOptions` を渡し、輪郭の頂点（`outlinePoints`）を得る
+2. 頂点を `quadraticBezierTo` でつないで1つの `Path` を作る
+3. `canvas.drawPath` で塗りつぶして描画する
+
+```dart
+void _drawStroke(
+  Canvas canvas,
+  List<PointVector> points,
+  Color color,
+  double size,
+) {
+  final outlinePoints = getStroke(
+    points,
+    options: StrokeOptions(
+      size: size,
+      thinning: 0.7,
+      smoothing: 0.5,
+      streamline: 0.5,
+      simulatePressure: simulatePressure,
+      isComplete: true,
+    ),
+  );
+
+  if (outlinePoints.isEmpty) return;
+
+  final path = Path();
+  path.moveTo(outlinePoints.first.dx, outlinePoints.first.dy);
+
+  for (int i = 1; i < outlinePoints.length - 1; i++) {
+    final mid = Offset(
+      (outlinePoints[i].dx + outlinePoints[i + 1].dx) / 2,
+      (outlinePoints[i].dy + outlinePoints[i + 1].dy) / 2,
+    );
+    path.quadraticBezierTo(outlinePoints[i].dx, outlinePoints[i].dy, mid.dx, mid.dy);
+  }
+
+  path.close();
+  canvas.drawPath(path, Paint()..color = color);
+}
+```
+
+## デモ画像
+
+| 筆圧なし | 筆圧あり |
+| --- | --- |
+| <ContentImage path="2026/07-28/takashi/01.png" width="300" /> | <ContentImage path="2026/07-28/takashi/02.png" width="300" /> |
+
+## まとめ
+
+- `getStroke()` は「線の中心」ではなく「輪郭」の頂点を返すため、そのまま塗りつぶすだけで太さが変化する自然な線になる
+- `thinning` / `smoothing` / `streamline` で線の質感を調整できる
+- `simulatePressure` を切り替えれば、筆圧対応ペンでも指タッチのみの端末でも太さの変化を再現できる
+- 輪郭の頂点は中間点をねらって `quadraticBezierTo` でつなぐとなめらかになる
+- 「描画中(`_currentPoints`)」と「確定済み(`_strokes`)」を分けて持つと、Undo・クリアも素直に実装できる
+
+## 参照
+
+- [perfect_freehand | pub.dev](https://pub.dev/packages/perfect_freehand)
+- [steveruizok/perfect-freehand (原作 JS/TS 版)](https://github.com/steveruizok/perfect-freehand)
+- [CustomPainter class | Flutter API](https://api.flutter.dev/flutter/rendering/CustomPainter-class.html)
+- [サンプルコード](https://github.com/takashi0602/perfect_freehand_sample)
