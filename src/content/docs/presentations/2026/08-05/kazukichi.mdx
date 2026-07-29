@@ -1,0 +1,170 @@
+---
+title: vhsify - VHS風エフェクトCLI
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- 前回の [AIネイティブな360度映像の制作]() に引き続き、また映像の話
+- [vhsify](https://github.com/oborodice/vhsify) という画像や映像を1コマンドでVHS風に変換できるRust製のCLIを開発した
+- 今回はこのツールで何ができるか、類似ツールとの比較、内部構造の解説等を行う
+- ちなみに筆者はRustが書けず、細かい記法についてはAIに任せつつ、全体の設計や流れのみ把握している
+
+## 活用例
+
+|||
+|:--|:--|
+|<ContentImage path="2026/08-05/kazukichi/01.gif" width="300" />|<ContentImage path="2026/08-05/kazukichi/02.gif" width="300" />|
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/x9rqHj3-Hfc?si=h0hx94gCH_iT-wMv" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## できること
+
+### 使い方
+
+```bash
+$ vhsify <input>.<ext>
+```
+
+- 拡張子から画像・動画を自動判別し、変換後のファイルを出力
+- オプションの詳細: https://github.com/oborodice/vhsify#usage
+
+### 対応フォーマット
+
+- 画像・動画ともに主要なフォーマットを一通りカバー
+- 画像: JPEG, PNG, WebP, AVIF
+- 動画: MP4, MOV, AVI, MKV
+
+### インストール方法
+
+- Homebrewで簡単に導入可能
+
+```bash
+$ brew tap oborodice/tap
+$ brew install vhsify
+```
+
+## モチベーション
+
+- VHS風エフェクトのソフトウェア自体は数多くあるが、以下のような問題を抱えているものがほとんど
+  - 映像に対応していない
+  - リアリティに欠ける
+  - 速度が満足でない
+- 一方でntsc-rsは、これらのツールとは一線を画す品質を持つ
+- しかし、GUIとして提供されており、スクリプトやAIエージェントからの呼び出しに向いていない
+- そこで、ntsc-rsの内部APIを中核としつつCLIから使えるように再構築しようと考えた
+- CLIで手軽に使える高品質なVHS風エフェクトツールというニッチを埋めることを目指した
+
+## 仕組み
+
+- [ntsc-rs](https://ntsc.rs/) をコアに採用
+- 単なる「それっぽい」フィルタではなく、実際のNTSC信号処理を物理的にシミュレートするエンジン
+  - ※ NTSCは日本や北米のアナログテレビ放送の信号規格
+  - ※ VHSはそのNTSC信号をさらに劣化させて磁気テープに記録するビデオテープ規格
+- 画像にはntsc-rs、映像には [FFmpeg](https://www.ffmpeg.org/) とntsc-rsを組み合わせ、音声には [Hound](https://github.com/ruuda/hound) と自前実装のDSP(Digital Signal Processing、デジタル信号処理)エフェクトを使っている
+
+### 画像の場合
+
+1. 入力画像を `image` クレートで読み込み
+2. EXIF orientationの補正(回転)
+3. 640×480(4:3)にダウンスケール
+4. 入力が4:3でない場合、左右を切り取る(Crop)か、黒帯を足して収める(レターボックス)かをオプションで選択
+5. 本来GUI向けのntsc-rsの内部API `NtscEffect::apply_effect_to_buffer()` をハック的に直接呼び出してエフェクトを適用
+6. 出力画像を保存
+
+### 映像の場合
+
+1. FFmpegでフレームをJPEGとして連番抽出し一時ディレクトリへ保存
+2. 640×480(4:3)にダウンスケール
+3. 入力が4:3でない場合、左右を切り取る(Crop)か、黒帯を足して収める(レターボックス)かをオプションで選択
+4. FFmpegで音声を抽出
+5. [Rayon](https://github.com/rayon-rs/rayon) で並列で各フレームにエフェクトを適用(画像の場合の手順5と同様)
+6. 抽出した音声に自前実装のDSPでエフェクトを適用
+  - 一次IIR(Infinite Impulse Response、無限インパルス応答)フィルタで8000Hz以上をカットし、テープの帯域幅の狭さを再現
+  - LCG(Linear Congruential Generator、線形合同法)による擬似ホワイトノイズでテープのヒスノイズを再現
+  - LFO(Low Frequency Oscillator、低周波発振器)によるピッチ揺れでテープのワウフラッターを再現(線形補間)
+  - HoundでWAVを読み書き
+7. 処理済みフレームと音声をFFmpegで結合して出力動画を生成
+
+## 技術選定
+
+### ライセンスの壁
+
+- なぜ映像の処理はntsc-rsの内部APIをそのまま使わず、自前実装するに至ったのか
+- ntsc-rsのコアライブラリはMITライセンスで、画像単位のエフェクト適用のみを公開APIとして提供しており、動画そのものを扱うパイプラインは含まれていない
+- ntsc-rsのGUI版は動画対応のため [GStreamer](https://gstreamer.freedesktop.org/) を使っているが、そちらはGPL-3.0ライセンスであり、MITライセンスのvhsifyから利用することはできない
+- vhsifyをGPL-3.0でライセンシングすることも考えられたが、GPL-3.0はコピーレフト(派生物や組み込み先にも同じライセンスを要求する)であり、他のツールに気軽に組み込みにくくなるため、採用を見送った
+- そのため、動画のフレーム分解・音声抽出・再合成は自前でFFmpegを使って実装している
+
+#### GStreamer vs FFmpeg
+
+- なぜntsc-rsでも採用されているGStreamerではなくFFmpegを採用したのか
+- GStreamerはリアルタイム処理・ストリーミング向けで、GUIアプリとの親和性が高いが起動オーバーヘッドが大きい
+- FFmpegはバッチ処理・CLIツール向けで、シンプルかつ高速
+- vhsifyの用途にはFFmpegが適切と判断し、採用
+
+### DSPの実装方法
+
+- 音声処理の実装にあたり、 `fundsp` や `biquad` といった複数のDSPライブラリの採用を検討したが、最終的には自前実装するに至った
+- `fundsp` はゼロから音声を生成・合成するユースケース向けで、既存バッファを変換する用途では `.tick()` ループ構造が変わらずコードの簡潔さに寄与しないため採用しなかった
+- `biquad` はカットオフ周波数などから標準的なIIRフィルタ係数を計算するクレートだが、導入してもコード量はトータルで同等かやや増加するため採用しなかった
+- コード量がさほど変わらないのであれば、無理に依存関係を増やさずリポジトリ内に閉じた実装にしておく方が良いと判断した
+
+## パフォーマンスチューニング
+
+### ダウンスケール
+
+- ntsc-rsによるVHS風エフェクト処理はCPU負荷が高く、入力された1080pや4Kなどの高解像度でそのまま処理すると、フレームあたりの処理時間が大幅に伸びてしまう
+- 一方、本来のVHSは640x480(4:3)を想定しているため、そこまで落としてからエフェクトを適用しても見た目の再現度は損なわれない
+- そこでフレームを480pにダウンスケールしてからVHS風エフェクトを適用する
+- 削減されるピクセル数は入力解像度に依存するが、1080p入力の場合は約1/5になり、かなり効果が大きいパフォーマンスチューニングとなる
+- 実際の計測でも、1080pでは約90秒かかっていた処理が、480pへのダウンスケールで約15秒まで短縮された
+
+### Rayonによる並列処理
+
+- フレームごとのVHS風エフェクト処理をRayonの `par_iter()` で並列化
+- CPUバウンドな処理をフレーム単位で並列化する場合はコア数に合わせるのが一般的にほぼ最適で、それ以上増やしてもコンテキストスイッチのオーバーヘッドで効果は見込みにくいため、スレッド数はデフォルトのCPUコア数のままとしている
+- デフォルトの2MBでは並列処理でスタックオーバーフローが発生するため、クラッシュ回避としてスレッドのスタックサイズを8MBに拡張している
+
+### 中間フォーマットをJPEGに変更
+
+- 中間フレームの保存には2種類のJPEG関連の判断がある
+  1. 可逆圧縮な分エンコード/デコードの計算量が大きくI/Oが遅いPNGから、劣化があっても後続のH.264への再エンコードでどのみち生じる劣化に埋もれて出力品質への影響が無視できる不可逆圧縮のJPEGにフォーマットを変更したところ効果があった
+  2. 最終的にH.264へのエンコードで劣化が均されるため下げやすいと考え、JPEG品質をデフォルトの75%から60%程度まで下げて検証したが、処理時間はほぼ変わらず(むしろ遅くなった)、効果は見られなかったと判断しデフォルト品質のまま維持
+
+### エンコード設定の高速化
+
+- 最終エンコード段階の選択肢として、デフォルト( `-preset medium` )、圧縮率を犠牲に速度を優先する設定( `-preset ultrafast` )、macOSのハードウェアエンコード機能であるVideoToolbox( `-c:v h264_videotoolbox` )の3つを比較した
+- ただし `-preset` はlibx264専用オプションで、VideoToolboxとは排他的な関係にあるため両方を同時には使えない
+- 実際の動画で計測した結果、処理時間はmediumの約70秒に対し、ultrafast・VideoToolboxともに約58秒(約17%短縮)だった
+- ファイルサイズはmediumの59MBに対し、ultrafastは104MB(約1.75倍)、VideoToolboxは80MB(約1.36倍)と中間的なバランスだった
+- VideoToolboxはultrafastと同速でファイルサイズのバランスも良いため、macOSではVideoToolboxを優先し、使えない環境ではultrafastにフォールバックする実装とした
+
+### FFmpegのRustバインディングへの切り替え(未採用)
+
+- `ffmpeg-next` や `video-rs` など、FFmpegのCライブラリ( `libavcodec` 等)をRustから直接呼ぶバインディングも選択肢として検討した
+- 別プロセスを立てない分パフォーマンス上有利に見えるが、vhsifyがFFmpegを呼び出している箇所はボトルネックではなくプロセス起動のオーバーヘッドも数十ms程度なので、切り替えの効果はほぼ見込めない
+- 加えてバインディングの導入はバイナリ配布を複雑にする一方、現状のアプローチはユーザがCLIのFFmpegを導入するだけで動き、Homebrew formulaでの依存管理も簡潔であるため、切り替えのメリットはなく採用を見送った
+
+### 結論
+
+- ここまでの施策で、ntsc-rsのCPU処理以外のフェーズでの削減余地はほぼ尽きている
+- 全体の約85%を占めるntsc-rsのCPU処理そのものを大幅に速くするには、品質を犠牲にするかntsc-rsを自前実装するしかないが、前者は差別化要因を失い、後者は開発工数が増大する
+
+## リリース手法
+
+- Rustのパッケージレジストリである [crates.io](https://crates.io/) への公開は依存クレートが全てpublishされている必要があるが、ntsc-rsがpublishされていないため、利用していない
+- 代わりにGitHub Releases + Homebrew tapを採用している
+  - ntsc-rsがdav1dなどのCライブラリに依存しクロスコンパイルが複雑なため、GitHub Actionsで各OS(macOS aarch64/Linux x86_64/Windows x86_64)のランナー上でネイティブビルドしたバイナリをGitHub Releasesに添付している
+  - リリースは `vX.X.X` のようなタグのpushをトリガーに、ビルド -> GitHub Releasesへのアップロード -> [Homebrew tapリポジトリ](https://github.com/oborodice/homebrew-tap) のformula自動更新という流れで自動化されている
+
+## おわりに
+
+- このライブラリを作るきっかけとなったのは、昨今のフェイクドキュメンタリーやファウンドフッテージ作品のVHS的な表現を自分の創作物に取り込みたいからだった
+- 画像・動画両対応で高品質なVHS風エフェクトを提供するCLIとして、vhsifyはそのニッチを埋める存在だといえる
+- 今回、大部分はntsc-rsやFFmpegといった偉大な資産に頼ってはいるものの、全体の流れの設計や細部のチューニングなどの工程で、それなりに考えることは多かった
+- AIであらゆるツールを開発しやすくなった時代だからこそ、今後も創作の隙間を埋める「創作のための創作」を行っていきたい
