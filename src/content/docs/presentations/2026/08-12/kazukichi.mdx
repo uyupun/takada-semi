@@ -1,0 +1,185 @@
+---
+title: Wave Surfer - 波を音で乗りこなす
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- [データソニフィケーションの可能性の探求](https://semi.uyupun.tech/presentations/2026/05-14/kazukichi/) に引き続き音楽シリーズ
+- 数学関数をインタラクティブにグラフ描画・音声再生できるWebアプリを作った
+- 波形の数式を可能な限りそのまま音として鳴らす、波から音への最もプリミティブな変換を目指した
+- 今回は、このアプリの機能や仕組み、実装で詰まった点などを共有する
+- リポジトリ: https://github.com/oborodice/wave-surfer
+- デプロイ先: https://oborodice.github.io/wave-surfer/
+
+## 概要
+
+### 主な機能
+
+- 三角関数(sin / cos / tan)などの周期的な関数を始めとする数学関数の波形をリアルタイムでグラフ表示する
+- 振幅/周波数/位相などのパラメータをスライダーで調整できる
+- 波形を音として再生できる
+- 波形をWAVファイルとしてダウンロードできる
+
+### 対応している関数
+
+- 三角関数: sin / cos / tan
+- 相反三角関数: sec / csc / cot
+- 周期波形: square / sawtooth / triangle / rectified sin(|sin(x)|)
+- 信号処理・時間-周波数解析: sinc / sinc² / chirp(sin(x²)) / morlet wavelet(e^(-x²/2)*sin(x))
+- 倍音・和音の合成: octave(sin(x)+sin(2x)) / major chord(sin(4x)+sin(5x)+sin(6x))
+- 位相幾何学の反例: topologist's sin(sin(1/x))
+- 級数近似: maclaurin sin
+
+### パラメータ
+
+- 振幅/周波数/位相は全波形共通で、ほぼそのまま音のパラメータにマッピングされる
+
+|パラメータ|グラフ上の意味|音としての現れ方|
+|:--|:--|:--|
+|振幅|波の高さ|音量|
+|周波数|波が単位時間あたりに繰り返す回数|音の高さ(ピッチ)|
+|位相|波の開始位置のズレ|聴感上はほぼ変化を感じないが、波形の重ね合わせでは干渉に影響する|
+
+- 項数はmaclaurin sinのみが持つパラメータで、スライダーで変えると近似の精度が変わり、グラフと音の両方に反映される
+
+### 補足: マクローリン展開とは
+
+- 関数をx=0周りの多項式(無限級数)で近似する手法
+- マクローリン展開は、任意の点a周りで展開できるテイラー展開のうち、a=0の場合を指す
+- sin(x)は次の級数で近似できる: sin(x) ≈ Σ(n=0 to ∞) (-1)ⁿ x²ⁿ⁺¹ / (2n+1)!
+- 項数を増やすほどsin(x)に近づいていく
+
+### モチベーション
+
+- sin波の音、というのはよく聴く
+- では他の波はどういう音をしているのか？というのが気になったのがはじまり
+
+### 技術スタック
+
+- Svelte + TypeScript + Vite: リアクティブな状態管理が軽量で、スライダー操作に伴う頻繁な再描画に向いている
+- [Function Plot](https://mauriciopoppe.github.io/function-plot/): 数式のグラフ描画に特化したライブラリで、汎用チャートライブラリより少ない設定で数式をそのまま描画できる
+- [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) ([AudioWorklet](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorklet)): ブラウザで任意の数式をリアルタイム・低遅延に音声合成できる標準API
+
+## グラフ描画
+
+### Function Plotの式評価器の限界
+
+- Function Plotには2種類の評価器がある
+
+|評価器|特徴|
+|:--|:--|
+|interval arithmetic(デフォルト)|不連続点や漸近線を正確に描画|
+|polyline|`Math` オブジェクト全体が使える|
+
+```ts
+functionPlot({ data: [{ fn: 'sin(x)' }] })                                        // interval arithmetic(デフォルト)
+functionPlot({ data: [{ fn: 'Math.sign(Math.sin(x))', graphType: 'polyline' }] }) // polyline
+```
+
+- interval arithmeticはあらかじめ用意された関数名(`sin` / `cos` / `tan` など)しか使えず、 `floor` / `sign` など任意の `Math` 関数は非対応
+- square波形を描くにはpolylineへの切り替えが必要だが、それだとtanの漸近線が縦線になってしまい、両立できない
+- polylineは離散的にサンプリングした点を単純に直線で結ぶ方式で、漸近線の前後で値が `+∞` → `-∞`(またはその逆)に急変することを考慮しないため、2点間がそのまま縦線として繋がれてしまう
+
+### 解決策: points渡し
+
+- Function Plotの式評価器への依存をやめ、JS関数でサンプリングした座標配列を `points` として渡す方式に変更
+- Function Plotは同じ配列内の隣り合う点を直線で結んで描画するため、漸近線をまたいで `+∞` → `-∞` に急変する2点をそのまま繋ぐと縦線になってしまう
+- 漸近線の前後でpointsを別々の配列(segment)に分割して渡すと、segment間は線で結ばれなくなり、tanの縦線問題を解決できる
+
+```ts
+const segments = sampleSegments(waveform, params) // 漸近線ごとに分割されたpointsの配列
+functionPlot({ data: segments.map(points => ({ points, fnType: 'points', graphType: 'polyline' })) })
+```
+
+- 十分なサンプリング点数(このアプリでは2000点)と、真の漸近線検出ではなく実用上のヒューリスティックによる不連続判定で、滑らかな描画を実現している
+
+## 音声再生
+
+### OscillatorNodeの限界
+
+- 最初は、波形を鳴らすだけなら最も手軽な `OscillatorNode` を使っていた
+
+```ts
+const osc = audioCtx.createOscillator()
+const gain = audioCtx.createGain()
+osc.type = 'sine'
+osc.frequency.value = 440 * ratio
+gain.gain.value = amplitude
+```
+
+- `osc.type` はブラウザが用意した `sine` / `square` / `sawtooth` / `triangle` の固定プリセットしか選べないため、 `tan` や `sec` / `sinc` のような任意の数式を音にすることがそもそもできない
+- 位相を反映する手段が `OscillatorNode` には無く、音声には未反映
+
+### 音声再生方式の選定
+
+|方式|特徴|
+|:--|:--|
+|OscillatorNode|シンプルだが任意の数式には対応不可(現状)|
+|AudioBuffer|波形を事前計算しておく方式で、短い音の再生に向く|
+|ScriptProcessorNode|JSでリアルタイム計算できるが非推奨で、AudioWorkletに置き換えられる予定|
+|AudioWorklet|専用スレッドで安定して動作し、任意数式のリアルタイム再生に最適|
+
+- 「数式の波形をそのままループ再生する」という要件を満たせるのはAudioWorkletのみで、これを採用した
+
+### AudioWorkletのアーキテクチャ
+
+- AudioWorkletは2つの部分に分かれる
+- メインスレッド側(通常のJS/TS): `AudioContext` を作成し、workletを登録し、接続する
+- プロセッサファイル側(Audio Worklet Thread): `AudioWorkletProcessor` を継承したクラスを定義し、 `process()` メソッドでサンプルを1つずつ計算して出力バッファに書き込む
+  - Audio Worklet Threadは [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API) に似た別スレッド
+  - 汎用のWeb Workerとは異なりオーディオ処理専用に最適化されており、リアルタイム性(遅延や途切れへの耐性)が保証されている
+- プロセッサファイルは `addModule(url)` でブラウザが別スレッドに読み込むため、インライン文字列では渡せず、物理的に独立したファイルである必要がある
+- Viteの `?worker&url` を使うことでTSのまま書いてコンパイル後のJSをURLとして読み込める
+
+```ts
+// メインスレッド側
+import processorUrl from './worklets/wave-processor.ts?worker&url'
+await audioCtx.audioWorklet.addModule(processorUrl)
+const node = new AudioWorkletNode(audioCtx, 'wave-processor')
+```
+
+### 周波数スライダーの指数スケール化
+
+- 周波数スライダーは0〜100を均等に動かせる
+- しかし人間の耳は音程を「足し算」ではなく「倍率」で感じる
+- そのため内部では、スライダーの移動量に応じて周波数が倍々に増える指数スケール(0.25〜4倍)に変換し、スライダー操作と体感する音程変化を対応させている
+
+```ts
+frequency = 0.25 * Math.pow(16, freqSlider / 100)
+```
+
+### a-rateとk-rate
+
+- `AudioWorkletNode.parameters` を使うと、メインスレッドから振幅・周波数・位相のような数値パラメータをプロセッサ側に渡せる
+- 各パラメータは `AudioWorkletProcessor` の `parameterDescriptors`(静的ゲッター)で宣言し、`automationRate` で更新頻度(値がどのくらいの間隔で書き換わるか)を指定できる
+
+```ts
+static get parameterDescriptors() {
+  return [
+    { name: 'amplitude', automationRate: 'k-rate' },
+    { name: 'frequency', automationRate: 'k-rate' },
+    { name: 'phase', automationRate: 'k-rate' },
+  ]
+}
+```
+
+- `automationRate` には `a-rate` と `k-rate` の2種類がある
+- ここでいう「ブロック」は「レンダークオンタム」と呼ばれる処理単位で、仕様で128サンプル固定と決まっており、`process()` が1回呼ばれるごとに1ブロック分処理される
+
+|レート|更新頻度|1ブロックあたりの値の数|
+|:--|:--|:--|
+|`a-rate` (audio-rate)|サンプルごとに更新|128|
+|`k-rate` (control-rate)|ブロックごとに1回だけ更新|1|
+
+- `a-rate` は、ビブラートやトレモロのように、ブロックの途中でも値を細かく滑らかに変化させたい場合に使う
+- UIのスライダー操作は1ブロック(約2.9ミリ秒)の間に何度も変化することはなく `a-rate` にしてもあまり恩恵がないため、このアプリでは全パラメータを `k-rate` に設定している
+
+## おわりに
+
+- 数学と音楽の境界領域で橋渡しできたのが楽しかった
+- Web Audio APIはかなり自由度が高いなと再確認
+- シンプルな波、代表的な波の音声化はできたので、波の合成や分解など、もう少し楽器的なアプローチに進んでみたい
