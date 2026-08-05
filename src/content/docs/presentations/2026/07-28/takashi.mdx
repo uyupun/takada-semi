@@ -57,7 +57,7 @@ perfect_freehandの中心は `getStroke()` という関数。「なぞった点�
 
 ### アウトラインの頂点をなめらかな線として描く
 
-quadraticBezierTo(controlX, controlY, endX, endY)` は、**現在位置から `end` まで、`control` の方向に膨らみながら**曲線を引く命令。ここで重要なのは、曲線が実際に通過するのは `start` と `end` だけで、`control` の点自体は通過しないということ。
+`quadraticBezierTo(controlX, controlY, endX, endY)` は、現在位置から `end` まで、**`control` の方向に膨らみながら**曲線を引く命令。ここで重要なのは、曲線が実際に通過するのは `start` と `end` だけで、`control` の点自体は通過しないということ。
 
 コードでは、頂点 `P[i]` を「膨らみの方向（control）」に、`P[i]` と `P[i+1]` の**中間点**を「曲線の終点（end）」に使っている。つまり曲線が実際に通るのは頂点そのものではなく、常に中間点だけになる。
 
