@@ -15,11 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       github.event.workflow_run.conclusion == 'failure' &&
-      github.event.workflow_run.run_attempt < 2
+      github.event.workflow_run.run_attempt < 4
     steps:
       - name: Random delay before retry
         run: |
-          delay=$((RANDOM % 121 + 60))
+          delay=$((RANDOM % 181 + 120))
           echo "Waiting ${delay} seconds before retry..."
           sleep $delay
 
