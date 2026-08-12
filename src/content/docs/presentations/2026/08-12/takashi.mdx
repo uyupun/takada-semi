@@ -1,0 +1,111 @@
+---
+title: Template APIで変わるCode Connect
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+Figmaの Code Connect は、デザインファイル内のコンポーネントとリポジトリ内の実装コードを紐付け、 Dev Mode や Figma MCP サーバー経由で「実際に使われているコード」を参照できるようにする機能。
+2024年の CLI 登場から、2025年の Code Connect UI 登場を経て、2025年に Template API という仕組みが導入され、現在も CLI と UI 双方の土台として進化を続けている。
+本記事では、この歴史を振り返りつつ、 Template API の登場によって従来の Code Connect CLI / Code Connect UI がどう変わるのかを整理する。
+
+## Code Connectとは
+
+- Figma のデザインシステムコンポーネントと、実際のコードベース内のコンポーネントを 1 対 1 でマッピングする機能
+- マッピングされたコンポーネントは以下の場所で活用される
+  - Dev Mode の Inspect パネル（実装コードのスニペット表示）
+  - Figma MCP サーバー（AI エージェントへ実装の手がかりを提供）
+- 「デザインシステムを作ったのに現場で使われない／誤用される」という課題を解決するために生まれた
+- 提供形態は 2 系統ある
+  - **Code Connect CLI**: リポジトリ側で動かすコマンドラインツール。精密なコード生成が可能
+  - **Code Connect UI**: Figma 上で完結するノーコードのマッピングツール
+
+## Code Connectの歴史
+
+年表にすると、大きく「CLI 時代」「UI 登場」「Template API への一本化」という 3 つの節目がある。
+
+| 時期 | できごと |
+| --- | --- |
+| 2024/04/16 | ["Introducing Code Connect"](https://www.figma.com/blog/introducing-code-connect/) でベータ版を発表。npm パッケージ（JS/TS）と Swift Package Manager（SwiftUI）として提供開始 |
+| 2024/05/22 | Framework 2024 でのベータ活用事例を紹介する ["Unlocking the Power of Code Connect"](https://www.figma.com/blog/unlocking-the-power-of-code-connect/) を公開。Bumble・GitHub・HP などのデザインシステムチームの導入事例が紹介される |
+| 2024/06 | v0.2.0 で単一の CLI ツールへ統合、v1.0.0 で Interactive setup flow・Jetpack Compose 対応を追加し GA（一般提供）に |
+| 2024/09 | v1.1.0 で HTML パーサーを追加。Web Components・Angular・Vue へ対応拡大 |
+| 2025年前半 | v1.4.x 系で、パーサー不要な `.figma.ts` / `.figma.js` の「テンプレートファイル」がフレームワーク非依存の選択肢として先行導入され、`getSlot()` などの API が拡張されていく |
+| 2025/07/29 | v1.5.0 で新しい **Template API** が正式導入。従来の「レガシーパーサー」からテンプレートファイルへの移行が推奨されるようになる |
+| 2025/10/28 | Schema 2025 にて **Code Connect UI** が発表・GA（["Schema 2025: Design Systems For A New Era"](https://www.figma.com/blog/schema-2025-design-systems-recap/)）。Organization / Enterprise プラン向けに、GitHub 連携と AI 提案によるノーコードのマッピングが可能に |
+| 2026/08/17 | レガシーパーサーの更新・サポートが終了予定。以降は Template API（テンプレートファイル）が唯一のメンテナンス対象に |
+
+つまり、時系列としては「CLI（パーサー方式）→ CLI にテンプレートファイル（Template API の前身）が先行導入 → Template API 正式版 → Code Connect UI 登場」という順番で進んでおり、 UI が生まれた時点で既に CLI 側は Template API への移行期に入っていたことになる。
+そして本記事執筆時点（2026/08/08）は、まさにレガシーパーサーの更新終了（2026/08/17）を目前に控えたタイミングにあたる。
+
+## Template APIとは
+
+- Figma コンポーネントが「どのようにコードへ出力されるか」「Code Connect パネルにどう表示されるか」を、実行可能な TypeScript/JavaScript のコードとして記述できる仕組み
+- 最大の変更点は、コードスニペットの表現方法
+  - **レガシーパーサー**: Code Connect ファイルは静的な文字列として解釈され、条件分岐などの表現に制約があった
+  - **Template API**: テンプレートは「実行される関数」で、任意の複雑な JS/TS ロジック（条件分岐・ループなど）を使って文字列を組み立てられる
+- 主なオブジェクト
+  - `figma.selectedInstance`: 選択中のレイヤー（Instance）へのアクセス
+  - `figma.code`: タグ付きテンプレートリテラルでコードスニペットを組み立てる
+  - `figma.helpers`: React・Swift・Kotlin など言語別のレンダリングヘルパー
+  - `InstanceHandle` のメソッド群: `getBoolean()` / `getString()` / `getEnum()` / `getInstanceSwap()` / `findInstance()` / `executeTemplate()` など、Instance のプロパティやネストされたコンポーネントを取得・展開する
+- 出力（`export default`）には `example`（コードスニペット）・`imports`・`id`（ファイル内で一意な Code Connect ID）に加えて、ネスト表示可否やネスト先へ渡す値を制御する `metadata.nestable` / `metadata.props` を指定する
+
+```typescript
+import figma from 'figma'
+
+export default {
+  example: figma.code`
+    ElevatedButton(
+      onPressed: ${figma.selectedInstance.getBoolean('disabled')} ? null : () {},
+      child: Text('${figma.selectedInstance.getString('label')}'),
+    )
+  `,
+  id: 'flutter-elevated-button', // ファイル内で一意な Code Connect ID
+  metadata: {
+    nestable: false,
+  },
+}
+```
+
+## Template APIの登場でCode Connect CLIはどう変わるか
+
+- 対象ファイルが「フレームワーク固有のパーサーが解釈する静的な記述」から、「フレームワークに依存しない、実行可能なテンプレートファイル（`.figma.ts` / `.figma.js`）」に変わる
+- `publish` / `preview` といった既存コマンドの使い方自体は大きく変わらないが、内部で扱うファイルの形式が置き換わる
+- 移行を支援する `figma connect migrate` コマンドが用意されており、既存のパーサーベースのファイルからテンプレートファイルを自動生成できる（生成されたファイルはあくまで出発点で、不要なヘルパーの削除や `getBoolean()` / `getEnum()` などの型付きメソッドへの置き換えといった手直しが推奨される）
+- 2026/08/17 以降、レガシーパーサーはアップデートされなくなるため、実質的に Template API（テンプレートファイル）へ一本化される
+- 結果として、開発者は「文字列テンプレートの制約」から解放され、複雑な条件分岐やネストしたコンポーネントの表現をコードとして自然に書けるようになる
+
+## Template APIの登場でCode Connect UIはどう変わるか
+
+- Code Connect UI は元々、GitHub 連携や AI 提案によって「コードを書かずに」デザインとコードをマッピングできる、セットアップの速さが売りのツールだった
+- 一方で、UI 経由でマッピングしたコンポーネントは Inspect パネルにコードスニペットを表示できず、スニペット表示が必要な場合は CLI（＝パーサーやテンプレートファイル）を使う必要があるという棲み分けがあった
+- Template API の土台が整ったことで、UI 側にも「コンポーネントマッピング提案」「実ソースファイルに基づく AI 生成コードスニペット」「MCP 向けの利用ガイドライン」といった、より精度の高いコード表現を返す仕組み（enhanced MCP codegen）が組み込まれていった
+- つまり Template API は、CLI の記述方式であると同時に、UI がコードスニペットを生成する際の「裏側のエンジン」としても機能し始めている
+- CLI と UI の役割分担は、大枠では変わらない
+  - **CLI**: テンプレートファイル（Template API）を自分で書き、Inspect パネル表示を含めた精密なコントロールを行いたいチーム向け
+  - **UI**: GitHub 連携と AI 提案で素早くマッピングし、まずは MCP 経由での AI エージェント支援を得たいチーム向け
+
+## さいごに
+
+- Code Connect は「CLI（パーサー）→ テンプレートファイルの先行導入 → Template API 正式版 → UI 登場」という順で進化してきた
+- Template API は、単に CLI の書き方が変わっただけでなく、UI 側のコードスニペット生成の精度にも波及する、両者に共通する基盤になりつつある
+- 2026/08/17 のレガシーパーサー更新終了が迫っているため、既存の Code Connect CLI 運用がパーサーベースのままの場合は `figma connect migrate` での移行を検討するタイミングと言える
+
+## 参照
+
+- [Template API Reference](https://developers.figma.com/docs/code-connect/template-api/)
+- [Writing template files](https://developers.figma.com/docs/code-connect/template-files/)
+- [Getting Started with Code Connect UI](https://developers.figma.com/docs/code-connect/code-connect-ui-setup/)
+- [Getting started with Code Connect CLI](https://developers.figma.com/docs/code-connect/quickstart-guide/)
+- [CLI reference](https://developers.figma.com/docs/code-connect/cli-reference/)
+- [Migrating from parsers to template files](https://developers.figma.com/docs/code-connect/templates-migration-guide/)
+- [Introducing Code Connect](https://www.figma.com/blog/introducing-code-connect/)
+- [Unlocking the Power of Code Connect](https://www.figma.com/blog/unlocking-the-power-of-code-connect/)
+- [Schema 2025: Design Systems For A New Era](https://www.figma.com/blog/schema-2025-design-systems-recap/)
+- [code-connect Releases (GitHub)](https://github.com/figma/code-connect/releases)
