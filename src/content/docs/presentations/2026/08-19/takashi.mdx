@@ -1,0 +1,171 @@
+---
+title: TextField のスクロールバーを制御する
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+`TextField` を `maxLines: null` + `expands: true` で使うと、textarea のような複数行入力欄として利用できるが、入力欄の高さを固定していると入力量に応じて縦方向にスクロールが発生する。
+このスクロールバーは、素朴に `Scrollbar` ウィジェットで囲んでも狙った見た目にはならない。
+本記事では、 `ScrollConfiguration` と `RawScrollbar` を組み合わせることで、 `TextField` 内部のスクロールバーの見た目を直接コントロールする方法を紹介する。
+
+## Scrollbarウィジェットで囲む場合
+
+まず比較対象として、素直に `Scrollbar` ウィジェットで `TextField` を囲む実装を見る。
+
+```dart
+class CustomTextField extends StatelessWidget {
+  const CustomTextField({
+    super.key,
+    required this.controller,
+    required this.scrollController,
+  });
+
+  final TextEditingController controller;
+  final ScrollController scrollController;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 100,
+      child: Scrollbar(
+        controller: scrollController,
+        thumbVisibility: true,
+        interactive: true,
+        thickness: 6,
+        radius: const Radius.circular(8),
+        child: TextField(
+          controller: controller,
+          scrollController: scrollController,
+          keyboardType: TextInputType.multiline,
+          maxLines: null,
+          expands: true,
+          textAlignVertical: TextAlignVertical.top,
+          decoration: const InputDecoration(
+            hintText: '入力してください',
+            contentPadding: EdgeInsets.all(10),
+            border: OutlineInputBorder(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+```
+
+<ContentImage path="2026/08-19/takashi/01.png" width="300" />
+
+- `Scrollbar`（Material 版）は `thumbVisibility` / `trackVisibility` / `thickness` / `radius` / `interactive` は公開しているが、つまみの色を直接指定するプロパティ（`thumbColor` 相当）は用意されていない
+  - 色を変えたい場合は `ScrollbarTheme` / `ThemeData.scrollbarTheme` 経由でアプリ全体・スコープ単位に指定する必要がある
+- `TextField` は複数行入力時、内部の `EditableText` が独自の `Scrollable` を持っており、その `Scrollable` は自身を囲む `ScrollConfiguration` のスクロールバー構築処理を使ってスクロールバーを自動的に用意する
+  - そのため外側から `Scrollbar` を被せても、「外側のラップ」と「内部で自動生成される分」の両方が絡み合い、狙った通りの太さ・色・余白にならないことがある
+- 結果として、「1 個の `Scrollbar` ウィジェットを被せるだけ」では、色を含めた見た目の細かい調整がしづらい
+  - また `TextField` の `contentPadding` の影響等で、スクロールバーの表示領域が狭まってしまう
+
+## ScrollConfiguration + RawScrollbarでカスタムする
+
+そこで、 `TextField` 配下のスクロール可能領域が使うスクロールバー構築処理そのものを差し替える。
+
+```dart
+class CustomTextField extends StatelessWidget {
+  const CustomTextField({
+    super.key,
+    required this.controller,
+    required this.scrollController,
+  });
+
+  final TextEditingController controller;
+  final ScrollController scrollController;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 100,
+      child: ScrollConfiguration(
+        behavior: const _TextareaScrollBehavior(),
+        child: TextField(
+          controller: controller,
+          scrollController: scrollController,
+          keyboardType: TextInputType.multiline,
+          maxLines: null,
+          expands: true,
+          textAlignVertical: TextAlignVertical.top,
+          decoration: const InputDecoration(
+            hintText: '入力してください',
+            contentPadding: EdgeInsets.only(
+              left: 10,
+              top: 10,
+              right: 0,
+              bottom: 10,
+            ),
+            border: OutlineInputBorder(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TextareaScrollBehavior extends MaterialScrollBehavior {
+  const _TextareaScrollBehavior();
+
+  @override
+  Widget buildScrollbar(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    final controller = details.controller;
+
+    if (controller == null ||
+        axisDirectionToAxis(details.direction) != Axis.vertical) {
+      return child;
+    }
+
+    return RawScrollbar(
+      controller: controller,
+      thumbVisibility: true,
+      interactive: true,
+      padding: EdgeInsets.zero,
+
+      // カスタムしたことが分かりやすいように青色にする
+      thumbColor: Colors.blueAccent,
+      thickness: 6,
+      radius: const Radius.circular(8),
+      crossAxisMargin: 4,
+
+      // スクロールバーとテキストが被らないように余白を設ける
+      child: Padding(padding: const EdgeInsets.only(right: 10), child: child),
+    );
+  }
+}
+```
+
+<ContentImage path="2026/08-19/takashi/02.png" width="300" />
+
+- `ScrollConfiguration` の `behavior` に独自の `ScrollBehavior` を渡すと、その配下にあるすべての `Scrollable`（ `TextField` 内部の `Scrollable` を含む）がスクロールバーを構築する際にこの `buildScrollbar` を経由するようになる
+- `MaterialScrollBehavior` を継承し `buildScrollbar` をオーバーライドすることで、デフォルトのスクロールバー生成処理を丸ごと差し替えられる
+  - `details.controller` が `null`、または縦方向以外のスクロールの場合はそのまま `child` を返し、余計な変更を加えない
+  - 縦方向のスクロールのときだけ `RawScrollbar` を使ってラップする
+- `RawScrollbar` は Material の `Scrollbar` と違い、 `thumbColor` を直接指定できるため、つまみの色を含めて見た目を細かく制御できる
+- `Padding` で右側に余白を持たせることで、スクロールバーとテキストが重ならないようにしている
+
+## さいごに
+
+- textarea 的な複数行 `TextField` のスクロールバーを見た目まで含めてカスタムしたい場合、単に `Scrollbar` で囲むだけでは調整が難しい
+- `ScrollConfiguration` の `buildScrollbar` をオーバーライドし、対象を縦方向のスクロールに絞った上で `RawScrollbar` を組み合わせることで、狙った通りのスタイルを適用できる
+- 逆に、アプリ全体で統一されたスクロールバーで十分な場合は、無理に `ScrollConfiguration` をカスタムせず `ScrollbarTheme` で済ませる方がシンプル
+
+## 参照
+
+- [サンプルコード](https://github.com/takashi0602/textfield_scrollbar_sample)
+- [Scrollbar class - material library - Dart API](https://api.flutter.dev/flutter/material/Scrollbar-class.html)
+- [RawScrollbar class - widgets library - Dart API](https://api.flutter.dev/flutter/widgets/RawScrollbar-class.html)
+- [ScrollConfiguration class - widgets library - Dart API](https://api.flutter.dev/flutter/widgets/ScrollConfiguration-class.html)
+- [ScrollBehavior class - widgets library - Dart API](https://api.flutter.dev/flutter/widgets/ScrollBehavior-class.html)
+- [MaterialScrollBehavior class - material library - Dart API](https://api.flutter.dev/flutter/material/MaterialScrollBehavior-class.html)
