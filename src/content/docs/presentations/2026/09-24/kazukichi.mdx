@@ -1,0 +1,75 @@
+---
+title: さくらのクラウドのコンテナレジストリ x コンテナレジストリUI
+author: kazukichi
+---
+import Author from '@components/Author.astro';
+
+<Author frontmatter={frontmatter} />
+
+## はじめに
+
+- [さくらのクラウドのコンテナレジストリ](https://cloud.sakura.ad.jp/products/container-registry/) をバックエンドとして、それをGUIで一覧確認・削除できるUIを構築した
+- この記事では、さくらのクラウドのコンテナレジストリの概要、UIの選定候補とそれぞれにできること/できないこと、採用したUIの認証の仕組みについてまとめる
+
+## さくらのクラウドのコンテナレジストリとは
+
+- さくらのクラウドが提供するマネージドサービスで、 [Docker Registry HTTP API v2](https://distribution.github.io/distribution/spec/api/) 互換のAPIを持つ
+- ホスト名は `[レジストリ名].sakuracr.jp` 形式で払い出される(独自ドメインの設定も可能)
+- コンテナレジストリ内にユーザを作成してログインする方式
+- ユーザ権限は「全操作可/Push&Pull/Pullのみ」の3段階のみ
+  - この権限はコンテナレジストリ全体に対するもので、リポジトリ単位の権限分けはできない
+- 公開/非公開の設定があり、非公開の場合は匿名アクセスができず認証が必須になる
+  - 今回UIの対象にしたコンテナレジストリは非公開設定にしている
+
+## UIの選定経緯
+
+- UIの選定では、個人ログインができることを要件としており、そのためコンテナレジストリとの認証方式の相性が重要な比較軸になった
+- さくらのクラウドのコンテナレジストリは `WWW-Authenticate: Basic` ではなく `WWW-Authenticate: Bearer` を返す、Docker Registry HTTP API v2のトークン認証方式を採用していた
+  - コンテナレジストリが公式に要求する認証方式はBearerトークンのみだが、Basic認証用の情報を送っても実際には認証が通る
+- 最初の候補だった [joxit/docker-registry-ui](https://github.com/joxit/docker-registry-ui) はブラウザ上でBearerトークン認証フローを実装していたが、トークン取得先の認証サーバがCORSヘッダを返さず、ブラウザから直接アクセスできないため機能しなかった
+- 次の候補だった [Quiq/registry-ui](https://github.com/Quiq/registry-ui) はバックエンドがサーバ間通信でコンテナレジストリとやり取りするためCORSの制約を受けないが、UIレベルの認証を持たず共有の固定認証情報が必須になり、個人ログインという要件を満たせなかった
+- 最終的に採用した [klausmeyer/docker-registry-browser](https://github.com/klausmeyer/docker-registry-browser) はバックエンドが同一オリジンでBasic認証ダイアログを表示しつつ、裏でBearerトークン交換をサーバサイドで代行する仕組みを持っており、CORS回避と個人ログインの両立ができた
+
+## 認証の仕組み
+
+- `docker-registry-browser` 自身が、コンテナレジストリからのHTTPステータス401レスポンスで `WWW-Authenticate: Bearer` によるチャレンジを検知する
+- 検知すると、ブラウザに対して同一オリジンでHTTPステータス401 + `WWW-Authenticate: Basic` を返す
+  - これによりブラウザにログインダイアログが表示される
+  - この挙動は `TOKEN_AUTH_USER` などの静的な認証情報を設定していない場合に生じる
+- 入力された認証情報はサーバサイドでBearerトークン交換に使われるため、ブラウザは常に同一オリジンとしか通信せずCORSの問題が起きない
+- コンテナレジストリが非公開設定で匿名アクセスができないため、UIを経由したアクセスも必ず個人ログインを伴うことになる
+
+## 補足: 削除・ネームスペース分けの実現方法
+
+- イメージ削除は `ENABLE_DELETE_IMAGES=true` の設定で有効になる
+- ネームスペース分けは `ENABLE_COLLAPSE_NAMESPACES=true` による表示上のグルーピング(折りたたみ表示)であり、アクセス制御ではない
+
+```yaml
+...
+containers:
+  - name: container-registry-ui
+    image: klausmeyer/docker-registry-browser:latest
+    ports:
+      - name: http
+        containerPort: 8080
+    env:
+      - name: DOCKER_REGISTRY_URL
+        value: "https://vps.sakuracr.jp"
+      - name: TZ
+        value: "Asia/Tokyo"
+      - name: ENABLE_DELETE_IMAGES
+        value: "true"
+      - name: ENABLE_COLLAPSE_NAMESPACES
+        value: "true"
+      - name: SECRET_KEY_BASE
+        valueFrom:
+          secretKeyRef:
+            name: container-registry-ui-secret
+            key: SECRET_KEY_BASE
+...
+```
+
+## おわりに
+
+- 認証方式の制約(CORS非対応・トークン認証)に合わせてUI候補を3つ検討し、個人ログインを実現できる構成にたどり着けた
+- コンテナレジストリUIの選定では、見た目以上にコンテナレジストリとの相性が重要になる
