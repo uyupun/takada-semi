@@ -1,0 +1,491 @@
+---
+title: 生成AIを活用した開発でよく使うファイルとコマンド
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+Claude Code や Codex、Cursor などのコーディングエージェントを使った開発で、よく使う設定ファイルとスラッシュコマンド（`/` から始まるコマンド）を整理する。
+具体例は主に Claude Code のもの。AGENTS.md や Skills のように、複数のツールで共通して使えるものも含む。
+
+## 全体像
+
+コーディングエージェントで使うファイルは、大きく「AIに読ませるもの」と「ツールの挙動を設定するもの」の2つに分けられる。
+
+| ファイル | 分類 | 役割 | 主な置き場所 |
+| --- | --- | --- | --- |
+| AGENTS.md / CLAUDE.md | AIに読ませる | プロジェクトの前提やルールを毎回読み込ませる | リポジトリ直下 |
+| DESIGN.md | AIに読ませる | デザインシステム（色・フォント・余白など）を伝える | リポジトリ直下 |
+| SKILL.md（Skills） | AIに読ませる | 特定の作業の手順書。必要なときだけ読み込まれる | `.claude/skills/<名前>/` |
+| サブエージェント | AIに読ませる | 特定の役割を持つ別のAIを定義する | `.claude/agents/` |
+| settings.json | ツールの設定 | 権限・hook などの設定 | `.claude/` |
+| .mcp.json | ツールの設定 | 外部サービス（MCPサーバー）との連携 | リポジトリ直下 |
+
+- 「AIに読ませるもの」は Markdown で書く。AIへの指示書なので、人間向けのドキュメントと同じ感覚で書けばよい
+- 「ツールの設定」は JSON で書く。AIへの指示ではなく、権限や連携先などの設定値を書くもの
+- いずれもリポジトリにコミットしておけば、チームメンバー全員が同じ設定でAIを使えるようになる
+
+## AGENTS.md / CLAUDE.md
+
+### 何のためのファイルか
+
+- コーディングエージェントはセッションをまたいだ記憶を持たないため、新しい会話を始めるたびにプロジェクトのことを一から調べ直す
+  - 「テストは `pnpm test` で動かす」「コミットメッセージは Conventional Commits で書く」といったことを毎回説明するのは手間
+- AGENTS.md / CLAUDE.md は、セッション開始時に自動で読み込まれる「AI向けの README」
+  - ここに書いた内容は、毎回プロンプトの先頭に付け加えられるイメージ
+
+### AGENTS.md と CLAUDE.md の違い
+
+| ファイル | 対応ツール | 特徴 |
+| --- | --- | --- |
+| AGENTS.md | Codex、Cursor、GitHub Copilot、Gemini CLI、Claude Code など | 特定のツールに依存しない共通フォーマット |
+| CLAUDE.md | Claude Code | Claude Code 専用。`@path` で他のファイルを読み込める（インポート）などの機能がある |
+
+- 複数のツールを併用するチームなら、AGENTS.md にまとめておくのが無難
+- Claude Code は AGENTS.md も読めるため、Claude Code 固有の内容だけを CLAUDE.md に書き、共通の内容は AGENTS.md に寄せる、という使い分けもできる
+
+### 何を書くか
+
+```markdown
+# プロジェクト概要
+Astro + Starlight で構築したゼミの発表資料サイト。
+
+# よく使うコマンド
+- 開発サーバー: `pnpm dev`
+- ビルド: `pnpm build`
+- Lint: `pnpm lint`（コミット前に必ず実行する）
+
+# ディレクトリ構成
+- `src/content/docs/presentations/<年>/<月-日>/<名前>.mdx` に発表資料を置く
+- 共通コンポーネントは `src/components/` にある
+
+# ルール
+- 文体は「である調」で書く
+- 新しいパッケージを追加する前に確認を取る
+- コミットメッセージは Conventional Commits（`feat:` `fix:` など）で書く
+```
+
+- 書くと効果が高いもの
+  - ビルド・テスト・Lint などのコマンド
+  - ディレクトリ構成と、どこに何を置くかのルール
+  - コーディング規約のうち、コードを読んでも分からないもの（命名の方針、使ってはいけないライブラリなど）
+  - 「やってはいけないこと」（本番DBに触らない、`main` に直接 push しない など）
+- 書かなくてよいもの
+  - Linter や Formatter で機械的に強制できるルール（ツールに任せたほうが確実）
+  - コードを読めば分かること、一般的なプログラミングの知識
+  - 長い設計ドキュメント（必要ならファイルへのリンクだけ書いておき、必要なときに読ませる）
+- 長くなるほど毎回のコンテキストを圧迫し、指示も守られにくくなる。Claude Code の公式ドキュメントでは1ファイル200行以内が目安とされている
+
+### 置き場所と読み込まれる範囲（Claude Code の場合）
+
+| 置き場所 | 適用範囲 | 用途 |
+| --- | --- | --- |
+| `~/.claude/CLAUDE.md` | 自分の全プロジェクト | 個人の好み（「日本語で回答して」など） |
+| `./CLAUDE.md` / `./AGENTS.md` | そのプロジェクト | チームで共有するルール。Git にコミットする |
+| `./CLAUDE.local.md` | そのプロジェクトの自分だけ | 個人用の設定。`.gitignore` に追加する |
+| サブディレクトリの `CLAUDE.md` | そのディレクトリ配下 | そのディレクトリのファイルを触るときだけ読み込まれる |
+
+- 最初から自分で書く必要はなく、`/init` コマンドを実行するとAIがリポジトリを調べて叩き台を作ってくれる
+
+## DESIGN.md
+
+### 何のためのファイルか
+
+- 2026年4月に Google Labs（Stitch）がオープンソースとして公開した、デザインシステムをAIに伝えるためのファイル形式
+  - 執筆時点では仕様のバージョンは `alpha`
+- AIにUIを作らせると、画面ごとに色や余白がバラバラになりがち。DESIGN.md にデザインのルールをまとめておくと、どの画面でも同じルールでUIを生成させられる
+- AGENTS.md が「コードのルール」、DESIGN.md が「見た目のルール」という位置づけ
+- AGENTS.md / CLAUDE.md に「UIを作るときは DESIGN.md に従う」と書いて参照させる
+
+### ファイルの構成
+
+DESIGN.md は「YAML の frontmatter」と「Markdown の本文」の2つで構成される。
+
+| 部分 | 書く内容 | 必須か |
+| --- | --- | --- |
+| frontmatter（YAML） | 色・フォント・角丸・余白などの具体的な値（デザイントークン） | 任意 |
+| 本文（Markdown） | 全体の雰囲気、各値を「なぜ・どう使うか」の説明 | ― |
+
+- frontmatter に書く主なトークン
+
+| キー | 内容 | 例 |
+| --- | --- | --- |
+| `name` | デザインシステムの名前 | `Takada Semi` |
+| `colors` | 色（`primary` は必須） | `primary: "#2563EB"` |
+| `typography` | フォントの種類・サイズ・太さ・行間・字間 | `fontFamily`、`fontSize`、`fontWeight`、`lineHeight`、`letterSpacing` |
+| `rounded` | 角丸の大きさ | `sm: 4px`、`full: 9999px` |
+| `spacing` | 余白の段階 | `sm: 8px`、`md: 16px` |
+| `components` | ボタンやカードなど部品ごとの値 | `backgroundColor: "{colors.primary}"` |
+
+- `"{colors.primary}"` のように `{}` で囲むと、他のトークンを参照できる
+- `button-primary-hover` のように、状態ごとのバリエーションは別のキーとして定義する
+- 本文のセクションは `##` 見出しで、以下の順に並べる。関係ないセクションは省略してよい
+
+| セクション | 書く内容 |
+| --- | --- |
+| Overview | 全体の雰囲気・ブランドの方向性・想定ユーザー |
+| Colors | 各色の役割（どこに使うか） |
+| Typography | 見出し・本文・ラベルなどのフォントの使い分け |
+| Layout | グリッド・最大幅・余白の基準 |
+| Elevation & Depth | 影の付け方、または影を使わない場合の階層の表現方法 |
+| Shapes | 角丸などの形のルール |
+| Components | ボタン・カード・フォームなどの見た目 |
+| Do's and Don'ts | やってよいこと・いけないこと |
+
+### サンプル
+
+```markdown
+---
+version: alpha
+name: Takada Semi
+description: ゼミの発表資料サイトのデザインシステム
+colors:
+  primary: "#2563EB"
+  on-primary: "#FFFFFF"
+  secondary: "#64748B"
+  neutral: "#F8FAFC"
+  on-surface: "#0F172A"
+  error: "#DC2626"
+typography:
+  headline-lg:
+    fontFamily: Noto Sans JP
+    fontSize: 32px
+    fontWeight: 700
+    lineHeight: 1.4
+  body-md:
+    fontFamily: Noto Sans JP
+    fontSize: 16px
+    fontWeight: 400
+    lineHeight: 1.8
+  label-md:
+    fontFamily: Noto Sans JP
+    fontSize: 14px
+    fontWeight: 600
+    lineHeight: 1.4
+rounded:
+  sm: 4px
+  md: 8px
+  full: 9999px
+spacing:
+  xs: 4px
+  sm: 8px
+  md: 16px
+  lg: 32px
+components:
+  page:
+    backgroundColor: "{colors.neutral}"
+    textColor: "{colors.on-surface}"
+    typography: "{typography.body-md}"
+  button-primary:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.label-md}"
+    rounded: "{rounded.md}"
+    padding: "{spacing.sm}"
+  card:
+    backgroundColor: "#FFFFFF"
+    rounded: "{rounded.md}"
+    padding: "{spacing.md}"
+---
+
+# Takada Semi Design System
+
+## Overview
+
+ゼミの発表資料を読むためのサイト。長い文章を読みやすくすることを最優先にし、
+装飾は最小限にした落ち着いたデザインにする。
+
+## Colors
+
+- **Primary (#2563EB):** リンクとメインのボタンにだけ使う
+- **Secondary (#64748B):** 日付・著者名などの補足情報、罫線
+- **Neutral (#F8FAFC):** ページ全体の背景
+- **Error (#DC2626):** エラーメッセージにだけ使う
+
+## Typography
+
+- フォントはすべて Noto Sans JP
+- 本文は 16px、行間 1.8 で長文でも読みやすくする
+- 見出しは太字（700）にし、色は本文と同じにする
+
+## Layout
+
+- 本文の最大幅は 768px で中央寄せ
+- 余白は 8px の倍数を基本とし、4px は細かい調整にだけ使う
+
+## Elevation & Depth
+
+影はほとんど使わず、背景色との差と 1px の罫線で階層を表現する。
+
+## Shapes
+
+ボタン・カード・入力欄の角丸は 8px で統一する。
+
+## Components
+
+- **Buttons:** primary は塗りつぶし、secondary は枠線のみ
+- **Cards:** 白背景・角丸 8px・内側の余白 16px
+
+## Do's and Don'ts
+
+- Do: 文字と背景のコントラスト比は WCAG AA（4.5:1）以上にする
+- Do: 1画面で使う primary のボタンは1つまでにする
+- Don't: 角丸のある要素と角丸のない要素を同じ画面で混ぜない
+- Don't: 1画面で3種類以上のフォントの太さを使わない
+```
+
+- 公式リポジトリの `examples/` に、より本格的なサンプルがある
+- 公式の CLI（`@google/design.md`）で、書式のチェックや変換ができる
+
+```bash
+# 書式のチェック（未定義の参照や、使われていないトークンなどを検出）
+npx @google/design.md lint DESIGN.md
+
+# Tailwind v4 のテーマ（CSS）に変換
+npx @google/design.md export --format css-tailwind DESIGN.md > theme.css
+```
+
+## Skills（SKILL.md）
+
+### 何のためのファイルか
+
+- 「リリース手順」「PRの作り方」「記事のテンプレート」など、特定の作業でだけ必要になる手順書をまとめたもの
+- AGENTS.md / CLAUDE.md との違いは**読み込まれるタイミング**
+  - AGENTS.md / CLAUDE.md：毎回すべて読み込まれる
+  - Skills：最初は名前と説明文だけが読み込まれ、作業内容が合致したときに本文が読み込まれる
+- 毎回は必要ない詳細な手順を AGENTS.md から切り出して Skills にすると、コンテキストを節約しつつ必要なときだけ参照させられる
+- もとは Anthropic が作った仕組みだが、現在はオープンな標準仕様（Agent Skills）として公開されており、Codex や Gemini CLI、GitHub Copilot、Cursor などでも同じ形式で使える
+
+### 書き方
+
+- `.claude/skills/<スキル名>/SKILL.md` に置く（個人用なら `~/.claude/skills/`）
+- 先頭の frontmatter に `name` と `description` を書く。`description` は「いつ使うスキルか」をAIが判断する材料になるため、具体的に書く
+
+```markdown
+---
+name: new-presentation
+description: ゼミの発表資料（mdx）を新しく作るときに使う。ファイルの置き場所とテンプレートを定める。
+---
+
+# 発表資料の作成手順
+
+1. `src/content/docs/presentations/<年>/<月-日>/<名前>.mdx` を作成する
+2. 以下のテンプレートを使う
+   （テンプレートの内容）
+3. 「概要」「本文」「さいごに」「参照」の順で章を立てる
+4. 作成後に `pnpm build` が通ることを確認する
+```
+
+- 同じフォルダにスクリプトやテンプレートファイルを置いて、SKILL.md から参照させることもできる
+- 作ったスキルは `/new-presentation` のようにスラッシュコマンドとして自分で呼び出すこともできる
+  - 以前は `.claude/commands/` に置く「カスタムスラッシュコマンド」という別の仕組みがあったが、現在は Skills に統合されている（旧形式も引き続き動く）
+- 手書きするのが面倒なら、AIに「今やった作業をスキルにして」と頼めば作ってくれる
+
+## サブエージェント
+
+- 特定の役割（コードレビュー担当、調査担当など）を持った別のAIを定義する仕組み
+- `.claude/agents/<名前>.md` に、frontmatter で名前・説明・使えるツールなどを書き、本文にそのエージェントへの指示を書く
+- メインの会話とは**別のコンテキスト**で動き、結果の要約だけを返してくれる
+  - 大量のファイルを読む調査をサブエージェントに任せると、メインの会話がそのログで埋まらずに済む
+- 作成方法は、AIに「コードレビュー用のサブエージェントを作って」のように頼むか、ファイルを直接書く
+  - プロジェクト用：`.claude/agents/`
+  - 全プロジェクト共通：`~/.claude/agents/`
+  - `/agents` コマンドは削除された
+
+## hook
+
+### 何のためのものか
+
+- 「ファイルを編集したら必ずフォーマッターを実行する」「危険なコマンドは実行させない」といった、**必ず毎回実行してほしい処理**を設定する仕組み
+- AGENTS.md に「編集後は Prettier を実行すること」と書いても、あくまでAIへの指示なので守られないことがある。hook は「ファイルを編集した後」などの決まったタイミングで、設定したコマンドが自動的に実行されるため、確実に動く
+  - 守ってほしいルール → AGENTS.md
+  - 必ず実行したい処理 → hook
+
+### よく使うイベント
+
+| イベント | タイミング | 主な用途 |
+| --- | --- | --- |
+| `PreToolUse` | AIがツール（ファイル編集・コマンド実行など）を使う直前 | 危険なコマンドや、触ってほしくないファイルの編集をブロックする |
+| `PostToolUse` | ツールを使った直後 | 編集したファイルにフォーマッターや Linter をかける |
+| `UserPromptSubmit` | ユーザーがプロンプトを送信したとき | プロンプトに情報を付け加える |
+| `Stop` | AIが応答を終えたとき | テストを実行する、完了を通知する |
+| `Notification` | AIがユーザーの許可や入力を待っているとき | デスクトップ通知や音を鳴らす |
+| `SessionStart` | セッション開始時 | 最新の状態（ブランチ名・Issueなど）を読み込ませる |
+
+### 設定例
+
+`.claude/settings.json` に書く。以下はファイルを編集・作成した後に Prettier を実行する例。
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path' | xargs npx prettier --write"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+- `matcher` で対象のツールを絞り込む。hook のコマンドには、どのファイルを編集したかなどの情報が JSON で標準入力に渡される
+- `PreToolUse` の hook が終了コード `2` で終わると、そのツールの実行がブロックされ、標準エラー出力の内容がAIに伝えられる
+- `/hooks` コマンドで現在の設定を確認できる。設定ファイルを手で書くのが難しければ、AIに「編集後に Prettier を実行する hook を設定して」と頼んでもよい
+- hook は任意のシェルコマンドを実行できるため、他人が作った設定をそのままコピーする場合は中身を確認すること
+
+## その他の設定ファイル
+
+### settings.json（権限の設定）
+
+- Claude Code は、ファイル編集やコマンド実行のたびに許可を求めてくる。毎回許可するのが面倒なコマンドは、あらかじめ許可しておける
+- 逆に、絶対に実行してほしくないものは `deny` で禁止できる
+
+```json
+{
+  "permissions": {
+    "allow": ["Bash(pnpm lint)", "Bash(pnpm test:*)", "Bash(git diff:*)"],
+    "deny": ["Read(./.env)", "Bash(git push:*)"]
+  }
+}
+```
+
+| ファイル | 用途 |
+| --- | --- |
+| `~/.claude/settings.json` | 自分の全プロジェクト共通の設定 |
+| `.claude/settings.json` | チームで共有する設定。Git にコミットする |
+| `.claude/settings.local.json` | 自分だけの設定。Git にはコミットしない |
+
+- `/permissions` コマンドからも追加・確認できる
+- `.env` など秘密情報を含むファイルは `deny` で読ませないようにできる
+
+### .mcp.json（MCPサーバーの設定）
+
+- MCP（Model Context Protocol）は、AIを外部のサービスやツールとつなぐための共通規格
+  - GitHub の Issue・PR を読む、Figma のデザインを取得する、ブラウザを操作する、などができるようになる
+- プロジェクトで使う MCP サーバーを `.mcp.json` に書いてコミットしておけば、チーム全員が同じ連携を使える
+- `/mcp` コマンドで接続状況の確認や認証ができる
+- 何でもつなげるとコンテキストを消費し、AIが使うツールを選び間違えやすくなるため、実際に使うものだけに絞る
+
+## スラッシュコマンド
+
+入力欄で `/` を打つと使えるコマンドの一覧が表示され、続けて文字を打つと絞り込める。ここでは Claude Code の組み込みコマンドのうち、日常的によく使うものを挙げる。
+
+### セッション・コンテキストの管理
+
+| コマンド | 内容 | 使いどころ |
+| --- | --- | --- |
+| `/clear` | 会話履歴を消して新しく始める（CLAUDE.md などは読み直される） | 別のタスクに移るとき |
+| `/compact` | 会話を要約してコンテキストを空ける | 長い作業の途中で、流れは引き継ぎたいとき |
+| `/context` | コンテキストを何がどれだけ使っているかを表示する | AIの応答が鈍くなってきたとき、MCP や CLAUDE.md の肥大化を確認するとき |
+| `/resume` | 過去の会話を選んで再開する | 昨日の作業の続きをするとき |
+| `/rewind` | 会話とコードを以前の時点に巻き戻す（`Esc` を2回押しても開ける） | AIの変更が的外れだったとき |
+| `/btw` | 会話履歴に残さずに、ちょっとした質問をする（`by the way` の略） | 作業の流れを汚さずに確認したいとき |
+
+- コンテキストがいっぱいになるほど、AIの精度は落ちる
+- タスクが変わったら `/clear`、同じタスクが長引いたら `/compact` が基本の使い分け
+
+### 設定・プロジェクトの準備
+
+| コマンド | 内容 |
+| --- | --- |
+| `/init` | リポジトリを調べて CLAUDE.md の叩き台を作る |
+| `/memory` | CLAUDE.md を編集する。auto memory（Claude が会話の中で覚えておくべきと判断したことを自動で記録する機能）のオン・オフの切り替えや、記録された内容の確認もできる |
+| `/model` | 使うモデルを切り替える |
+| `/permissions` | 許可・禁止するツールを設定する |
+| `/hooks` | hook の設定を確認する |
+| `/mcp` | MCP サーバーの接続状況を確認・認証する |
+| `/config` | テーマなど各種設定を変更する |
+
+### 作業中・作業後
+
+| コマンド | 内容 |
+| --- | --- |
+| `/plan` | プランモードに切り替える。AIはコードを変更せず、調査と実装計画の作成だけを行う |
+| `/diff` | AIが加えた変更を確認する |
+| `/code-review` | 現在の差分（またはPR）をレビューしてバグを探す。`/review` でも同じ |
+| `/security-review` | 差分にセキュリティ上の問題がないかを確認する |
+| `/usage` | 利用量や制限の状況を確認する |
+| `/help` | ヘルプと使えるコマンドの一覧を表示する |
+
+- 大きめの変更は、いきなり実装させずに `/plan` で計画を立てさせ、内容を確認してから実装に進むと手戻りが減る
+
+### モード（権限モード）
+
+Claude Code には、Claude がどこまで確認なしで操作してよいかを決める「権限モード」がある。ターミナル（CLI）では入力欄の下に現在のモードが表示され、`Shift + Tab` を押すたびに切り替わる。VS Code 拡張機能では、入力欄の下にあるモード表示をクリックして切り替える。
+
+| モード（設定値） | ターミナルの表示 | VS Code の表示 | 確認なしで実行されるもの | 使いどころ |
+| --- | --- | --- | --- | --- |
+| `default` | `⏸ manual mode on` | Manual | ファイルの読み取りのみ。編集やコマンド実行は毎回確認される | 操作を1つずつ確認したいとき |
+| `acceptEdits` | `⏵⏵ accept edits on` | Edit automatically | 読み取り、ファイルの編集、`mkdir`・`mv`・`cp` などのファイル操作 | 編集内容は後で差分を見て確認するとき |
+| `plan` | `⏸ plan mode on` | Plan | 読み取りと調査のみ。ファイルは編集されない | 実装前に調査と計画だけさせたいとき |
+| `auto` | `⏵⏵ auto mode on` | Auto | すべて。危険な操作は別のモデルが裏でチェックしてブロックする | 長いタスクを任せたいとき |
+
+- 表示名は使う環境によって異なるが、中身は同じモード。設定ファイルやコマンドで指定するときは「設定値」の名前を使う
+- ターミナルで `Shift + Tab` を押すと Manual → accept edits → plan → auto → Manual… の順に切り替わる
+  - auto は、使えるプランやモデルのときだけ選択肢に出てくる
+- 起動時にモードを指定する場合は `claude --permission-mode plan` のように書く
+- いつも同じモードで始めたい場合は、settings.json の `permissions.defaultMode` に設定する
+- どのモードでも、settings.json の `deny` に書いた操作はブロックされる
+
+#### プランモードの流れ
+
+1. `Shift + Tab` でプランモードにする（または、プロンプトの先頭に `/plan` を付けて送る）
+2. Claude がファイルを読んだりコマンドを実行したりして調査し、実装計画を作る
+3. 計画が提示されたら、次のどれかを選ぶ
+   - **Yes, and use auto mode**：計画を承認し、auto モードで実装に進む
+   - **Yes, manually approve edits**：計画を承認し、編集を1つずつ確認しながら実装に進む
+   - **No, keep planning**：プランモードのまま、計画の修正点を伝える
+4. 承認するとプランモードが終わり、Claude がファイルの編集を始める
+
+- 計画が提示された時点で `Ctrl + G` を押すと、計画をエディタで開いて直接書き換えられる
+- 計画を承認せずにプランモードをやめるときは、もう一度 `Shift + Tab` を押す
+
+### スラッシュコマンド以外の便利な入力
+
+| 入力 | 内容 |
+| --- | --- |
+| `@ファイル名` | ファイルを指定してAIに読ませる |
+| `!コマンド` | AIを介さずにシェルコマンドを直接実行し、結果を会話に含める |
+| `Shift + Tab` | 権限モードを切り替える（ターミナルの場合） |
+| `Esc` | AIの応答を途中で止める |
+| `Esc` を2回 | 以前の時点に巻き戻す（`/rewind` と同じ） |
+
+### 他のツールの場合
+
+- 他のコーディングエージェントにも、似た役割のスラッシュコマンドが用意されている
+  - 例：Codex CLI では `/init`（AGENTS.md の作成）、`/model`、`/compact`、`/review`、`/diff` などが使える
+- 名前や細かな挙動はツールやバージョンによって異なる。使えるコマンドは `/` の入力や `/help` で確認できる
+
+## さいごに
+
+- 毎回守ってほしいルールは AGENTS.md / CLAUDE.md、見た目のルールは DESIGN.md、特定の作業の手順は Skills、絶対に実行してほしい処理は hook、と役割で使い分ける
+- AGENTS.md や Skills は複数のツールで共通の形式になってきており、一度書いておけばツールを乗り換えても使い回しやすい
+- よく使うスラッシュコマンドは `/init`・`/clear`・`/compact`・`/context`・`/plan`
+
+## 参照
+
+- [AGENTS.md](https://agents.md/)
+- [Agent Skills](https://agentskills.io/)
+- [DESIGN.md | Stitch](https://stitch.withgoogle.com/docs/design-md/overview)
+- [google-labs-code/design.md | GitHub](https://github.com/google-labs-code/design.md)
+- [概要 | Claude Code Docs](https://code.claude.com/docs/ja/overview)
+- [Claude があなたのプロジェクトを記憶する方法 | Claude Code Docs](https://code.claude.com/docs/ja/memory)
+- [Claude をスキルで拡張する | Claude Code Docs](https://code.claude.com/docs/ja/skills)
+- [カスタムサブエージェントの作成 | Claude Code Docs](https://code.claude.com/docs/ja/sub-agents)
+- [hooks でアクションを自動化する | Claude Code Docs](https://code.claude.com/docs/ja/hooks-guide)
+- [設定ファイルと優先順位 | Claude Code Docs](https://code.claude.com/docs/ja/settings)
+- [MCP を使用して Claude Code をツールに接続する | Claude Code Docs](https://code.claude.com/docs/ja/mcp)
+- [コマンド | Claude Code Docs](https://code.claude.com/docs/ja/commands)
+- [インタラクティブモード | Claude Code Docs](https://code.claude.com/docs/ja/interactive-mode)
+- [権限モードを選択する | Claude Code Docs](https://code.claude.com/docs/ja/permission-modes)
