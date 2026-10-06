@@ -108,7 +108,7 @@ import ContentImage from '@components/ContentImage.astro';
 
 ### skills
 
-- skillは現在7つあり、決定論的な手順はスクリプト側に置いて、読解や判断が要る部分だけを書いている
+- skillは現在8つで、どういう言い回しの依頼で発火するかと、読むときの判断の基準を自然言語で書いている
 
 |skill|役割|
 |:--|:--|
@@ -116,12 +116,15 @@ import ContentImage from '@components/ContentImage.astro';
 |sync-all-sources|定期取得のソースをまとめて更新し、ソースごとの扱いと順序を振り分ける|
 |fix-markitdown-conversion|PDFやPPTX由来のマークダウンの崩れを、元ファイルの見た目と比べて直す|
 |bullet-style-article-proofreading|執筆中の箇条書き記事の構成や表記を校正する|
+|revise-proofreading-tools|執筆で得た校正の知見を、スクリプトと校正skillに振り分けて反映する|
 |extract-mtg-experiences|月次報告の自由記述から美術館 / ライブ / 映画 / 読書の体験を抽出する|
 |add-project-task|やりたいことをGitHub Projectへ追加し、重複の確認とカテゴリの判定を行う|
 |record-pomodoro-sessions|貼り付けた時刻レンジをポモドーロの記録として追記する|
 
 - `fix-markitdown-conversion` では、文字コードの誤マッピングと制御文字の除去を決定論的な処理としてスクリプトに置き、文がどこで分断されたかの判断は元ファイルを見ないと決まらないためskillに置いている
 - `extract-mtg-experiences` では、体験がツアー名や展覧会名といった固有名詞だけで書かれていて単純なキーワード一致では拾えないため、カテゴリの定義と判断に迷ったときの扱いをskillに書き下している
+- `revise-proofreading-tools` は校正の道具そのものを直すためのskillで、記事を1本書き終えるたびに、その執筆で実際に出た指摘を機械的に直せるものと読解が要るものに仕分けて、前者をスクリプトへ、後者を `bullet-style-article-proofreading` のルールへ反映している
+  - ルールが単調に増え続けないよう、追加と同じ回のうちに既存ルールの圧縮まで行う
 
 ### 日次運用
 
