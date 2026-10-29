@@ -25,7 +25,7 @@ import ContentImage from '@components/ContentImage.astro';
 - 表示側はRustで、書き出されたONNXファイルを実行ファイルに埋め込み、1フレームごとに字を作って画面に描く
 - 学習側と表示側をつなぐのは、このONNXファイル1つだけ
 
-<ContentImage path="2026/11-02/kazukichi/01.png" />
+<ContentImage path="2026/11-04/kazukichi/01.png" />
 
 ## アーキテクチャの選定
 
@@ -101,7 +101,7 @@ import ContentImage from '@components/ContentImage.astro';
 - 学習データは、線と頂点のデータである [KanjiVG](https://kanjivg.tagaini.net/) の約5,500字から、Google Fontsの27書風で書いた約22.5万枚の画像に変更した
 - 同じ字を多くの書風で書けるので、データの量が増えると同時に、多様な雰囲気の字が出てくるばらつきも得られる
 
-<ContentImage path="2026/11-02/kazukichi/02.png" />
+<ContentImage path="2026/11-04/kazukichi/02.png" />
 
 ### 解像度の決め方
 
@@ -117,7 +117,7 @@ import ContentImage from '@components/ContentImage.astro';
 - 判別器が全ての出力を本物らしいかで採点するので、学習データの間の点にも信号が届く
 - 回帰で学ぶモデルは2つの字の間で両方の平均を出すが、GANでは平均した形が偽物と見抜かれるため、間の点でもくっきりした1つの字を選ぶ
 
-<ContentImage path="2026/11-02/kazukichi/03.png" />
+<ContentImage path="2026/11-04/kazukichi/03.png" />
 
 - 生成だけを目的に学習し、再構成を同じ重みに求めないので、前述の再構成と生成の綱引きが起きない
 - 入力は実在字の混ぜ合わせではなく、モデル自身が使うノイズの空間の点になる
@@ -169,7 +169,7 @@ import ContentImage from '@components/ContentImage.astro';
 - 重みの増減を通じて字の形が決まるので、ノイズを少し動かせば字も少しずつ変わる
 - 推論に使う写像ネットワークと生成器は合わせて約624万個のパラメータで、展示に使う端末のCPUでも動かせる規模として選んだ
 
-<ContentImage path="2026/11-02/kazukichi/04.png" />
+<ContentImage path="2026/11-04/kazukichi/04.png" />
 
 ### 判別器とミニバッチの標準偏差
 
@@ -182,7 +182,7 @@ import ContentImage from '@components/ContentImage.astro';
 - 組の中の画像がみな似ていると標準偏差が小さくなるので、同じ画像ばかり出す生成器を見抜ける
 - 学習のときにだけ使うので、推論の重さには影響しない
 
-<ContentImage path="2026/11-02/kazukichi/05.png" />
+<ContentImage path="2026/11-04/kazukichi/05.png" />
 
 ## 学習
 
@@ -198,7 +198,7 @@ import ContentImage from '@components/ContentImage.astro';
 - 追いかける速さは、見せた画像1万枚ぶんで現在の重みとの差が半分に縮まる程度
 - 1歩ごとの重みは揺れるため、推論にはこの複製を使う
 
-<ContentImage path="2026/11-02/kazukichi/06.png" />
+<ContentImage path="2026/11-04/kazukichi/06.png" />
 
 ### 丸暗記を防ぐ増強
 
@@ -277,7 +277,7 @@ import ContentImage from '@components/ContentImage.astro';
 - 滑らかさの側は、隣り合うフレームで急に別の字へ切り替わる割合が0%だった
 - ただしこれらは文字認識のモデルで測った字らしさの目安で、部首や画の規則を直接確かめてはいない
 
-<ContentImage path="2026/11-02/kazukichi/07.png" />
+<ContentImage path="2026/11-04/kazukichi/07.png" />
 
 ## 推論とONNX
 
@@ -302,7 +302,7 @@ import ContentImage from '@components/ContentImage.astro';
 - 学習では標準正規分布の乱数を入れていたため、裾の短いsimplex noiseの値をそのまま渡すと、見たことのない偏った入力になる
 - そこで正規分布の分位点に写す対応表をあらかじめ作り、モデルの中で変換している
 
-<ContentImage path="2026/11-02/kazukichi/08.png" />
+<ContentImage path="2026/11-04/kazukichi/08.png" />
 
 ## 表示
 
@@ -328,7 +328,7 @@ import ContentImage from '@components/ContentImage.astro';
 - 輪郭のぼかしと発光はどちらもガウスぼかしで、縦と横に分けて拡大する前の小さな画像の上でかけるので、ほとんど時間がかからない
 - 1フレームの予算33.3msのうち、開発機のMacでは生成器が約8〜9ms、描画が約1msで、残りは次のフレームまで待つ
 
-<ContentImage path="2026/11-02/kazukichi/09.png" />
+<ContentImage path="2026/11-04/kazukichi/09.png" />
 
 ## 今後の課題
 
