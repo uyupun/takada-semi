@@ -1,41 +1,36 @@
 ---
-import members from "@data/members.json";
+import { getMember } from "@data/members";
+
+interface Props {
+  name: string;
+}
 
 const { name } = Astro.props;
-if (!name) return null;
-
-const member = members[name as keyof typeof members];
+const member = getMember(name);
 if (!member) return null;
 
 // biome-ignore lint/correctness/noUnusedVariables: used in template
-const { displayName, link = null, image = null } = member;
+const { displayName, link, image } = member;
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const firstChar = displayName.charAt(0).toUpperCase();
+// biome-ignore lint/correctness/noUnusedVariables: used in template
+const Tag = link ? "a" : "div";
+// biome-ignore lint/correctness/noUnusedVariables: used in template
+const linkAttrs = link
+  ? { href: link, target: "_blank", rel: "noopener noreferrer" }
+  : {};
 ---
 
-{link ? (
-  <a href={link} target="_blank" rel="noopener noreferrer" class="profile-icon">
-    <div class="icon-container">
-      {image ? (
-        <img src={image} alt={displayName} class="icon-image" />
-      ) : (
-        <div class="name-display">{firstChar}</div>
-      )}
-    </div>
-    <div class="icon-name">{displayName}</div>
-  </a>
-) : (
-  <div class="profile-icon">
-    <div class="icon-container">
-      {image ? (
-        <img src={image} alt={displayName} class="icon-image" />
-      ) : (
-        <div class="name-display">{firstChar}</div>
-      )}
-    </div>
-    <div class="icon-name">{displayName}</div>
+<Tag class="profile-icon" {...linkAttrs}>
+  <div class="icon-container">
+    {image ? (
+      <img src={image} alt={displayName} class="icon-image" />
+    ) : (
+      <div class="name-display">{firstChar}</div>
+    )}
   </div>
-)}
+  <div class="icon-name">{displayName}</div>
+</Tag>
 
 <style>
   .profile-icon {
