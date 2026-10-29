@@ -9,7 +9,8 @@ export type Member = {
 /**
  * 名前からゼミ生の情報を取得する
  * @param name - ゼミ生の名前(大文字小文字や前後の空白は無視する)
- * @returns ゼミ生の情報。見つからない場合はundefined
+ * @returns ゼミ生の情報。名前が空の場合はundefined
+ * @throws 名前がmembers.jsonに登録されていない場合
  */
 export function getMember(name: unknown): Member | undefined {
   const normalizedName = String(name ?? "")
@@ -20,7 +21,7 @@ export function getMember(name: unknown): Member | undefined {
   const member: Member | undefined =
     members[normalizedName as keyof typeof members];
   if (!member) {
-    console.warn(`⚠️ Unknown member: ${name}`);
+    throw new Error(`Unknown member: ${name}`);
   }
   return member;
 }
