@@ -1,14 +1,18 @@
 ---
 interface Props {
   path: string;
-  width?: number;
+  width?: number | string;
+  alt?: string;
 }
 
 // biome-ignore lint/correctness/noUnusedVariables: used in template
-const { path, width } = Astro.props as Props;
+const { path, width, alt = "" } = Astro.props;
 ---
 
 <img
   src={`/content/images/${path}`}
   width={width}
+  alt={alt}
+  loading="lazy"
+  decoding="async"
 />
