@@ -9,7 +9,6 @@ const { frontmatter } = Astro.props;
 const author = getMember(frontmatter?.author);
 if (!author) return null;
 
-// biome-ignore lint/correctness/noUnusedVariables: used in template
 const { displayName, link } = author;
 ---
 

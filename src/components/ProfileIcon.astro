@@ -9,13 +9,9 @@ const { name } = Astro.props;
 const member = getMember(name);
 if (!member) return null;
 
-// biome-ignore lint/correctness/noUnusedVariables: used in template
 const { displayName, link, image } = member;
-// biome-ignore lint/correctness/noUnusedVariables: used in template
 const firstChar = displayName.charAt(0).toUpperCase();
-// biome-ignore lint/correctness/noUnusedVariables: used in template
 const Tag = link ? "a" : "div";
-// biome-ignore lint/correctness/noUnusedVariables: used in template
 const linkAttrs = link
   ? { href: link, target: "_blank", rel: "noopener noreferrer" }
   : {};
