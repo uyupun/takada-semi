@@ -1,18 +1,16 @@
 ---
-import members from "@data/members.json";
+import { getMember } from "@data/members";
+
+interface Props {
+  frontmatter?: { author?: string };
+}
 
 const { frontmatter } = Astro.props;
-const name = frontmatter?.author;
-if (!name) return null;
-
-const normalizedName = String(name).trim().toLowerCase();
-if (!normalizedName) return null;
-
-const author = members[normalizedName as keyof typeof members];
+const author = getMember(frontmatter?.author);
 if (!author) return null;
 
 // biome-ignore lint/correctness/noUnusedVariables: used in template
-const { displayName, link = null } = author;
+const { displayName, link } = author;
 ---
 
 <div class="author-info">
@@ -30,7 +28,7 @@ const { displayName, link = null } = author;
   .author-info {
     margin: 1rem 0 2rem 0;
     padding: 0.5rem 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--sl-color-hairline);
     display: flex;
     align-items: center;
     gap: 0.75rem;
