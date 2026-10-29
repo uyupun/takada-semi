@@ -2,17 +2,17 @@
 	"takashi": {
 		"displayName": "Takashi",
 		"link": "https://takashimelon.com",
-		"image": "https://semi.uyupun.tech/members/takashi.webp"
+		"image": "/members/takashi.webp"
 	},
 	"kazukichi": {
 		"displayName": "Kazukichi",
 		"link": "https://tyokinuhata.github.io/",
-		"image": "https://semi.uyupun.tech/members/kazukichi.png"
+		"image": "/members/kazukichi.png"
 	},
 	"murata": {
 		"displayName": "Murata",
 		"link": "https://takumiokayasu.github.io/",
-		"image": "https://semi.uyupun.tech/members/murata.png"
+		"image": "/members/murata.png"
 	},
 	"daisuke": {
 		"displayName": "Daisuke",
@@ -32,6 +32,6 @@
 	"nakamu": {
 		"displayName": "Nakamu",
 		"link": "https://github.com/naka6ryo",
-		"image": "https://semi.uyupun.tech/members/nakamu.jpeg"
+		"image": "/members/nakamu.jpeg"
 	}
 }
