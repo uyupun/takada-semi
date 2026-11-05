@@ -9,6 +9,7 @@ on:
 
 permissions:
   actions: write
+  pull-requests: read
 
 jobs:
   retry:
@@ -28,6 +29,17 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            // 待機中にPRがマージ・クローズされるとブランチが削除され、再実行してもcheckoutで失敗するため、オープンなPRがある場合のみ再実行する
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: `${context.repo.owner}:${context.payload.workflow_run.head_branch}`,
+              state: 'open',
+            });
+            if (pulls.length === 0) {
+              core.info('No open PR for this branch; skipping retry.');
+              return;
+            }
             await github.rest.actions.reRunWorkflow({
               owner: context.repo.owner,
               repo: context.repo.repo,
