@@ -44,24 +44,6 @@ jobs:
         id: metadata
         uses: dependabot/fetch-metadata@v3
 
-      # GITHUB_TOKENによるpushは他のワークフローをトリガーしないため、
-      # mainへのpushで動かす別ワークフローではなく、マージ前のこのジョブ内で更新する。
-      - name: Update biome.json schema version
-        if: contains(steps.metadata.outputs.dependency-names, '@biomejs/biome')
-        run: |
-          VERSION=$(node -p "require('./package.json').devDependencies['@biomejs/biome']")
-          sed -i "s|https://biomejs.dev/schemas/[^/]*/schema.json|https://biomejs.dev/schemas/${VERSION}/schema.json|" biome.json
-
-          git diff --quiet -- biome.json && exit 0
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add biome.json
-          git commit -m "chore: update biome.json schema to v${VERSION}"
-          git push origin "HEAD:${PR_HEAD_REF}"
-        env:
-          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-
       - name: Enable auto-merge for Dependabot PRs
         if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
         run: gh pr merge --auto --merge "$PR_URL"
