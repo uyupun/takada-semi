@@ -1,0 +1,849 @@
+---
+title: Apple Developer Program の証明書・プロファイル・Keys まとめ
+author: takashi
+---
+
+import Author from "@components/Author.astro";
+import ContentImage from '@components/ContentImage.astro';
+
+<Author frontmatter={frontmatter} />
+
+## 概要
+
+iOS / macOS アプリの開発で使う Apple Developer サイトの「Certificates, Identifiers & Profiles」の各項目（Certificates・Identifiers・Devices・Profiles・Keys・Services）について、それぞれ何を管理する場所なのかを整理する。
+あわせて、App Store Connect で作るキーと、複数の項目にまたがるプッシュ通知（APNs）の設定もまとめる。
+
+普段は Xcode の自動署名に任せていても、CI の構築・証明書の期限切れ・プッシュ通知の設定などのタイミングで改めて調べることになりがち。
+「何が・どこにあって・いつ切れて・切れたらどうなるか」を、この記事を見返せば分かる状態にすることが目的。
+
+最初に用語と全体像をまとめ、その後に項目ごとの詳細と使い方を書く。
+
+## 用語
+
+### 署名・証明書
+
+| 用語 | 意味 | ファイル・場所 |
+| --- | --- | --- |
+| コード署名 | アプリを誰が作ったか、作った後に書き換えられていないかを確かめられるようにする仕組み。秘密鍵と証明書の両方が必要 | ― |
+| 秘密鍵 | 署名に使う鍵。CSR を作るときに Mac の中で作られ、Apple には送られない | キーチェーン |
+| 証明書 | 秘密鍵とペアになる公開鍵が誰のものかを、Apple が証明したもの。これだけでは署名できない | `.cer`。Certificates からダウンロードする |
+| `.p12` | 証明書と秘密鍵をセットにして、パスワードをかけたファイル。これがあれば別の Mac でも署名できる | 秘密鍵がある Mac のキーチェーンや Xcode から書き出す |
+| CSR（証明書署名要求） | 証明書を発行してもらうために Apple に送るファイル。公開鍵と名前などが入っている | `.certSigningRequest`。キーチェーンアクセスで作る |
+| キーチェーン | macOS で証明書や秘密鍵をしまっておく場所 | 「キーチェーンアクセス」アプリで中身を見られる |
+| WWDR 中間証明書 | 開発用・配布用の証明書を発行している、Apple の中間認証局（Apple Worldwide Developer Relations）の証明書 | Apple PKI |
+| 失効（Revoke） | 証明書や鍵を、期限前に無効にすること | Certificates・Keys |
+| クラウド管理証明書 | 秘密鍵を Apple が管理する配布用の証明書。手元に証明書がなくても Xcode から配布できる | Xcode の Organizer |
+| 公証（notarization） | App Store 外で配る Mac アプリを Apple に送り、マルウェアなどの問題がないかを自動で確認してもらう仕組み | `notarytool` |
+
+### ID・端末
+
+| 用語 | 意味 | ファイル・場所 |
+| --- | --- | --- |
+| Team ID | チームごとに振られる10文字の英数字。App ID の先頭（App ID Prefix）にもなる | Apple Developer サイトの「メンバーシップの詳細」 |
+| Bundle ID | アプリごとに自分で決める ID（例：`com.example.myapp`） | Xcode のターゲットの設定 |
+| App ID | Team ID と Bundle ID を組み合わせた、アプリを識別する ID | Identifiers |
+| Capabilities | アプリが使う Apple の機能（プッシュ通知、Sign in with Apple、App Groups など） | App ID、Xcode の Signing & Capabilities |
+| entitlements | アプリがどの Capabilities を使うかの宣言。署名するときにアプリに埋め込まれ、プロファイルにも含まれる | `.entitlements`。Xcode が自動で作る |
+| UDID | 端末ごとの固有の ID | Devices に登録する |
+
+### プロファイル・配布
+
+| 用語 | 意味 | ファイル・場所 |
+| --- | --- | --- |
+| プロビジョニングプロファイル | 証明書・App ID・端末・entitlements をまとめて Apple が署名した、アプリの実行許可証。配布方法ごとに種類（Development / Ad Hoc / App Store Connect など）がある | `.mobileprovision`（macOS は `.provisionprofile`）。Profiles からダウンロードする |
+| App Store Connect | アプリの登録、ビルドのアップロード、TestFlight、審査への提出、メンバーの管理などを行う Apple のサイト | [appstoreconnect.apple.com](https://appstoreconnect.apple.com/) |
+| Archive | 配布用にアプリをビルドすること。できたものは Organizer に並ぶ | Xcode の Product > Archive |
+| Organizer | Archive したビルドを管理し、配布方法を選んで書き出し・アップロードする画面 | Xcode の Window > Organizer |
+| ipa | iOS アプリを配布するためのファイル | Organizer から書き出す |
+| TestFlight | App Store Connect にアップロードしたビルドを、テスターに配る仕組み | App Store Connect |
+| 自動署名 | 証明書・プロファイルの作成や端末の登録を Xcode に任せる設定（Automatically manage signing） | Xcode の Signing & Capabilities |
+| デベロッパモード | Development で署名したアプリを動かすときだけ、端末側でオンにする必要がある設定 | 端末の「設定」>「プライバシーとセキュリティ」 |
+| PPQ | Development / Ad Hoc で署名したアプリが、初めて起動するときに問い合わせる Apple のサービス | `ppq.apple.com` |
+
+### 鍵・API
+
+| 用語 | 意味 | ファイル・場所 |
+| --- | --- | --- |
+| Keys（`.p8`） | 自分のサーバーなどから Apple のサービスを使うための秘密鍵 | `.p8`。Keys や App Store Connect からダウンロードする |
+| Key ID | 鍵ごとに振られる10文字の ID | Keys・App Store Connect の一覧 |
+| JWT | 鍵で署名した、認証用のトークン。APNs や App Store Connect API にリクエストするときに付ける | 自分のサーバーで作る |
+
+### プッシュ通知
+
+| 用語 | 意味 | ファイル・場所 |
+| --- | --- | --- |
+| APNs | Apple Push Notification service。Apple のプッシュ通知の配信サービスで、自分のサーバーからここに通知を送る | ― |
+| デバイストークン | 通知の宛先を表す、アプリ × 端末ごとの ID。アプリが APNs から受け取り、自分のサーバーに送る | アプリで取得する |
+| トークン方式・証明書方式 | APNs への認証方法。トークン方式は `.p8`、証明書方式は APNs 証明書を使う | Keys・Certificates |
+| Sandbox・Production | APNs の開発環境と本番環境 | ― |
+| `aps-environment` | アプリがどちらの環境の通知を受け取るかを示す entitlements | Xcode が自動で設定する |
+| VoIP | Voice over IP。インターネット回線を使った音声通話のこと。VoIP プッシュは、通話アプリに着信を知らせる専用のプッシュ通知 | ― |
+| PushKit | VoIP プッシュなどを受け取るためのフレームワーク | ― |
+| CallKit | 標準の着信画面を出すためのフレームワーク | ― |
+| FCM | Firebase Cloud Messaging。Google の Firebase のプッシュ通知の配信サービス | Firebase コンソール |
+
+### チーム
+
+| 用語 | 意味 | ファイル・場所 |
+| --- | --- | --- |
+| ロール | チームメンバーの権限。Account Holder（メンバーシップを登録した本人。チームに1人）、Admin、App Manager、Developer など | App Store Connect の「ユーザとアクセス」>「ユーザ」 |
+
+## 全体像
+
+### Certificates, Identifiers & Profiles の項目
+
+[Apple Developer サイト](https://developer.apple.com/account/resources/)の「Certificates, Identifiers & Profiles」を開くと、サイドバーに次の6項目が並ぶ。
+
+<ContentImage path="2026/11-20/takashi/01.png" width="240" alt="Certificates, Identifiers & Profiles のサイドバー" />
+
+| 項目 | 管理するもの | 使う場所 |
+| --- | --- | --- |
+| Certificates | アプリの署名に使う証明書と、サービス用の証明書 | アプリの署名、一部のサーバー |
+| Identifiers | App ID などの各種 ID と、アプリが使う機能（Capabilities） | ― |
+| Devices | 開発・テストに使う端末の UDID | Development / Ad Hoc のプロファイル |
+| Profiles | プロビジョニングプロファイル | アプリに埋め込む |
+| Keys | 自分のサーバーから Apple のサービスを使うための秘密鍵（`.p8`） | サーバー |
+| Services | 一部のサービスの追加設定（Sign in with Apple のメール中継、Maps のトークンなど） | サーバー・Web |
+
+### 項目どうしの関係
+
+```text
+Certificates（誰が署名したか）       ─┐
+Identifiers（どのアプリで、何を使うか） ─┼─→ Profiles（実行許可証）→ アプリに埋め込む
+Devices（どの端末で動かすか）         ─┘    ※ Devices は Development / Ad Hoc のときだけ
+
+Identifiers ─→ Keys（.p8）→ 自分のサーバーで使う（APNs、Sign in with Apple など）
+            └→ Services   → サービスごとの追加設定
+```
+
+- アプリ側（Certificates・Identifiers・Devices・Profiles）とサーバー側（Keys・Services）に分けると整理しやすい。旧方式の APNs 証明書だけは、Certificates にあるがサーバーで使う
+- プロファイルの種類による違いは、Profiles の章の「配布方法ごとの違い」で説明する
+
+### やりたいこと別の早見表
+
+| やりたいこと | 使う項目と必要なもの |
+| --- | --- |
+| 実機でデバッグ実行する | Certificates（Apple Development）+ Devices + Profiles（Development）。Xcode の自動署名なら全部自動 |
+| 登録した端末に ipa を配る | Certificates（Apple Distribution）+ Devices + Profiles（Ad Hoc） |
+| TestFlight で配る / App Store に出す | Certificates（Apple Distribution）+ Profiles（App Store Connect） |
+| 社内向けに配る（Enterprise Program） | Certificates（In-House）+ Profiles（In-House） |
+| Mac アプリを App Store 外（Web など）で配る | Certificates（Developer ID Application）+ 公証（notarization） |
+| プッシュ通知を送る | Identifiers（App ID で Push Notifications を有効化）+ Keys（APNs） |
+| Sign in with Apple をサーバーで検証する | Identifiers（App ID で Sign in with Apple を有効化。Web なら Services ID も）+ Keys（Sign in with Apple） |
+| Sign in with Apple のユーザーにメールを送る | Services（Sign in with Apple for Email Communication） |
+| CI から TestFlight にアップロードする | App Store Connect API キー（+ 証明書とプロファイル、または自動署名） |
+| サーバーで課金状態を確認する | In-App Purchase キー（App Store Server API 用） |
+
+## Certificates
+
+### .cer と .p12 の違い
+
+署名には秘密鍵と証明書の両方が必要。`.cer` と `.p12` の違いは、**秘密鍵が入っているかどうか**。
+
+|  | `.cer` | `.p12` |
+| --- | --- | --- |
+| 中身 | 証明書だけ | 証明書 + **秘密鍵** |
+| 入手方法 | Apple が発行する。Certificates から何度でもダウンロードできる | 秘密鍵がある Mac から自分で書き出す。Apple からは手に入らない |
+| パスワード | なし | 書き出すときに設定する |
+| これだけで署名できるか | **できない** | できる |
+| 漏れたら | 問題ない（公開してよい情報） | **危険**。誰でもあなたの名前で署名できてしまう |
+| 使う場面 | CSR を作った Mac（秘密鍵がある Mac）に入れる | 別の Mac・CI・他のメンバーに渡す。証明書方式の APNs サーバーに置く |
+
+### 秘密鍵・署名を確認する
+
+- キーチェーンアクセスの「自分の証明書」を開き、証明書の左に ▶ が出て、その下に秘密鍵がぶら下がっていれば揃っている
+  - ▶ が出ない、または「証明書」の一覧にしか出てこない場合は、この Mac に秘密鍵がない
+- ターミナルでは次のコマンドで確認できる
+
+```bash
+# この Mac で使える署名用の証明書（秘密鍵とペアになっているもの）の一覧
+security find-identity -v -p codesigning
+
+# ビルドしたアプリの署名情報
+codesign -dvvv MyApp.app
+
+# ビルドしたアプリの entitlements
+codesign -d --entitlements - MyApp.app
+```
+
+### 証明書を作る
+
+1. キーチェーンアクセスで CSR を作る。このとき秘密鍵がキーチェーンに作られる
+   - メニューの「キーチェーンアクセス」>「証明書アシスタント」>「認証局に証明書を要求」
+2. Certificates で「+」を押し、種類を選んで CSR をアップロードする
+3. 発行された `.cer` をダウンロードし、ダブルクリックでキーチェーンに入れる
+4. キーチェーン上で手順1の秘密鍵と証明書がペアになり、この Mac で署名できるようになる
+
+- Xcode の Settings > Accounts > Manage Certificates の「+」から作れば、1〜4 を Xcode が自動でやってくれる
+- CSR はキーチェーンアクセスを使わずに `openssl` でも作れる（Linux の CI などで使う）
+
+```bash
+# 秘密鍵と CSR を作る
+openssl genrsa -out distribution.key 2048
+openssl req -new -key distribution.key -out distribution.csr \
+  -subj "/emailAddress=dev@example.com/CN=Example Inc/C=JP"
+
+# ダウンロードした .cer（DER 形式）と秘密鍵から .p12 を作る
+openssl x509 -in distribution.cer -inform DER -out distribution.pem
+openssl pkcs12 -export -inkey distribution.key -in distribution.pem -out distribution.p12
+```
+
+- OpenSSL 3（Homebrew や Linux の openssl）で作った `.p12` は、環境によって macOS のキーチェーンに読み込めない（パスワードが違うと言われる）ことがある。その場合は `openssl pkcs12 -export -legacy ...` のように `-legacy` を付けて作り直す
+  - macOS 標準の `openssl`（中身は LibreSSL）には `-legacy` オプションがなく、付けなくても古い形式で作られる
+
+### 他の Mac・メンバーに渡す
+
+- 秘密鍵ごと `.p12` に書き出して渡す
+  - キーチェーンアクセスの「自分の証明書」で証明書を右クリック >「書き出す」で、ファイル形式に「個人情報交換（.p12）」を選ぶ
+    - 「自分の証明書」以外（「証明書」など）から書き出そうとすると、秘密鍵が含まれないため `.p12` を選べない
+  - Xcode の Settings > Accounts > Manage Certificates で証明書を右クリック >「Export」でもよい
+- 受け取った側は、`.p12` をダブルクリックしてパスワードを入力すれば、キーチェーンに秘密鍵と証明書が入る
+- `.p12` のパスワードは別の経路で伝える。パスワード付きでも署名し放題になる鍵なので、チーム外には渡さず、Git にもコミットしない
+
+### アプリの署名に使う証明書
+
+| 種類 | 用途 | 持ち主 |
+| --- | --- | --- |
+| Apple Development | 実機でのデバッグ実行（全プラットフォーム共通） | 個人（Mac ごとに作られる） |
+| Apple Distribution | Ad Hoc 配布・TestFlight・App Store への提出（全プラットフォーム共通） | チーム |
+| Mac Installer Distribution | Mac App Store に出すインストーラー（.pkg）の署名 | チーム |
+| Developer ID Application | App Store 外で配る Mac アプリの署名 | チーム（最大5つ） |
+| Developer ID Installer | App Store 外で配る .pkg の署名 | チーム（最大5つ） |
+| In-House（Enterprise） | 社内配布アプリの署名（Enterprise Program のみ） | チーム |
+
+- Xcode 11 以降は Apple Development / Apple Distribution の2つに統一された
+  - 以前の iOS Development / iOS Distribution / Mac Development / Mac App Distribution は、古い Xcode 用として残っている
+- 開発用の証明書は、Certificates の一覧では「名前（Mac の名前）」のように表示される
+- 配布用の証明書は、公式ドキュメントでは「Developer ID を除き、種類ごとにチームで1つ」とされている
+  - 新しく作る前に、すでにチームの誰かが持っていないかを確認し、あれば `.p12` で共有してもらう
+
+### サービスで使う証明書
+
+アプリの署名ではなく、サーバーと Apple のサービスとの通信などに使う証明書。多くは Identifiers で作った ID（Merchant ID、Pass Type ID など）に紐づけて作る。
+
+| 種類 | 用途 | 紐づける Identifier |
+| --- | --- | --- |
+| Apple Push Notification service SSL（Sandbox / Sandbox & Production） | 証明書方式で APNs に接続する（今は Keys を使うトークン方式が推奨） | App ID |
+| VoIP Services | 証明書方式で VoIP プッシュ（PushKit）を送る | App ID |
+| Pass Type ID | Wallet のパスの署名・更新 | Pass Type ID |
+| Order Type ID | Wallet の注文情報（Order）の署名・更新 | Order Type ID |
+| Apple Pay Payment Processing | Apple Pay の決済データの暗号化・復号 | Merchant ID |
+| Apple Pay Merchant Identity | Apple Pay on the Web でのサーバー認証 | Merchant ID |
+| Website Push ID | Safari の旧方式のプッシュ通知 | Website Push ID |
+| Swift signing | Swift パッケージの署名 | ― |
+
+### クラウド管理証明書
+
+- Xcode 13 以降で、Organizer から配布（Distribute App）するときに、手元に配布用の証明書がなければ使われる
+  - メンバー間で `.p12` を受け渡す必要がない
+- Admin や Developer でも、App Store Connect の「ユーザとアクセス」で権限を付与されれば使える
+- 期限の90日前に、署名のリクエストがあれば新しい証明書が自動で作られる
+
+### Developer ID の旧認証局の期限（2027年2月1日）
+
+- 旧 Developer ID 認証局（Sub-CA）の期限が **2027年2月1日** に切れ、そこから発行された Developer ID 証明書はその日に使えなくなる
+- 対応
+  - Certificates の一覧で、2027年2月1日以前に期限が切れる Developer ID 証明書がないかを確認する
+  - あれば、新しい認証局（G2）から証明書を作り直す。作成時に「G2 Sub-CA」を選ぶ
+  - .pkg は、2027年2月1日以降は旧証明書の署名のままだとインストールできなくなるので、新しい証明書で署名し直す
+  - 公証済みでタイムスタンプ付きの Mac アプリは、そのまま動く
+
+### 中間証明書（WWDR）
+
+- [Apple PKI](https://www.apple.com/certificateauthority/) から、証明書に合った WWDR の中間証明書をダウンロードできる
+- 現在の WWDR 中間証明書の有効期限は 2030年2月20日
+
+## Identifiers
+
+アプリや Web サイト、各種サービスを識別する ID を管理する。Keys・Services・Profiles の多くは、ここで作った ID に紐づけて作る。
+
+### Identifier の種類
+
+「+」を押すと、作る ID の種類を選べる。
+
+| 種類 | 形式の例 | 用途 |
+| --- | --- | --- |
+| App IDs | `com.example.myapp` | アプリを識別する。使う機能（Capabilities）もここで設定する |
+| Services IDs | `com.example.myapp.web` | Web サイトを識別する。Sign in with Apple を Web・Android で使う、WeatherKit を Web から使う、など |
+| App Groups | `group.com.example.myapp` | アプリと Extension（ウィジェットなど）でデータを共有する |
+| iCloud Containers | `iCloud.com.example.myapp` | CloudKit・iCloud Drive の保存領域 |
+| Merchant IDs | `merchant.com.example` | Apple Pay の加盟店 ID。期限はなく、複数のアプリで共有できる |
+| Pass Type IDs | `pass.com.example.ticket` | Wallet のパス |
+| Order Type IDs | ― | Wallet の注文情報（Order） |
+| Website Push IDs | `web.com.example` | Safari の旧方式のプッシュ通知 |
+| Media IDs | `media.com.example.music` | MusicKit・ShazamKit・Apple Music Feed |
+| Maps IDs | `maps.com.example` | MapKit JS |
+
+### App ID
+
+- 例：`ABCDE12345.com.example.myapp`（Team ID + Bundle ID）
+- Bundle ID は、App Store Connect にアプリを登録した後は変更できない
+
+| 種類 | 例 | 用途 |
+| --- | --- | --- |
+| Explicit App ID | `com.example.myapp` | 1つのアプリ専用。通常はこちら |
+| Wildcard App ID | `com.example.*` | 複数のアプリで共用。プッシュ通知など多くの機能が使えない |
+
+- App ID の編集画面には2つのタブがある
+
+| タブ | 内容 | 例 |
+| --- | --- | --- |
+| Capabilities | アプリが使う機能。entitlements としてプロファイルに含まれる | Push Notifications、Sign in with Apple、App Groups、Associated Domains、iCloud、Apple Pay |
+| App Services | サーバー経由で使うサービス。entitlements は不要なことが多いが、Keys などの追加設定が必要 | MusicKit、ShazamKit、WeatherKit |
+
+- Sign in with Apple を有効にするときは、App ID を「Primary」にする。iOS 版と Mac 版のように関連するアプリは、Primary の App ID にグループ化すると、ユーザーの同意が1回で済む
+
+### Services ID
+
+- Sign in with Apple を Web で使うときは、Services ID を作ってドメインとリダイレクト先（Return URL）を登録し、Primary の App ID に紐づける
+  - 登録できる Web サイトの URL は、個人で10個、組織で100個まで
+- 似た名前のものが多いので注意
+
+| 名前 | 場所 | 内容 |
+| --- | --- | --- |
+| Services IDs | Identifiers | Web サイトを識別する ID |
+| App Services | App ID の編集画面のタブ | MusicKit・WeatherKit などのサービスの有効化 |
+| Services | サイドバーの項目 | 一部のサービスの追加設定（後述） |
+
+## Devices
+
+- 「+」を押して、プラットフォーム・端末名・UDID を入力して登録する
+  - UDID は Xcode の Device Hub（Xcode > Open Developer Tool > Device Hub。古い Xcode では Window > Devices and Simulators）で確認できる
+  - Apple シリコンの Mac を登録するときは、「プロビジョニング UDID」を使う
+  - 複数台をまとめて登録するときは、端末の一覧ファイルをアップロードする
+
+### 登録できる台数
+
+- **製品ファミリー（iPhone、iPad、Mac、Apple Watch、Apple TV、Apple Vision Pro など）ごとに、メンバーシップ1年あたり100台まで**
+- 端末を無効化（Disable）しても枠は戻らない
+- メンバーシップを更新した後、最初に Certificates, Identifiers & Profiles にサインインしたときに、端末を削除して枠をリセットするか選べる
+  - Account Holder / Admin / App Manager にだけ表示される
+  - 使っていない端末はこのタイミングで整理する
+- メンバーシップが切れると、180日後に登録した端末はすべて削除される
+
+## Profiles
+
+### 仕組み
+
+- ビルド時にアプリの中に `embedded.mobileprovision` として埋め込まれ、端末はこれを見て起動してよいかを判断する
+- 中身の証明書・App ID・端末・Capabilities のどれかを変えたら、作り直してダウンロードし直す必要がある
+  - 作り直すには、Profiles で対象のプロファイルを選んで「Edit」から保存し直す
+
+### 種類
+
+| Profiles 上の種類 | Xcode の配布方法の名前 | 含む証明書 | 端末の登録 | 用途 |
+| --- | --- | --- | --- | --- |
+| Development | Debugging | Apple Development（複数可） | 必要 | 実機でのデバッグ |
+| Ad Hoc | Release Testing | Apple Distribution | 必要 | 登録した端末への配布 |
+| App Store Connect | App Store Connect / TestFlight Internal Only | Apple Distribution | 不要 | TestFlight・App Store |
+| In-House | Enterprise | In-House | 不要 | 社内配布（Enterprise Program） |
+| Developer ID | Direct Distribution | Developer ID Application | 不要 | App Store 外で配る Mac アプリで、プッシュ通知や iCloud などを使うとき |
+
+- Xcode 15 以降、Organizer の配布方法の名前が上の表のように変わった。従来の名前（Ad Hoc、Development など）は「Custom」を選ぶと出てくる
+- Ad Hoc と App Store Connect のプロファイルには、配布用の証明書を1つだけ含められる
+
+### 配布方法ごとの違い
+
+#### Development と Ad Hoc の違い
+
+どちらも Devices に登録した端末でしか動かないが、目的が違う。
+
+|  | Development | Ad Hoc |
+| --- | --- | --- |
+| 目的 | 開発中のデバッグ | 本番に近い状態での動作確認、QA チームなどへの配布 |
+| 署名する証明書 | Apple Development（個人のもの） | Apple Distribution（チームのもの） |
+| 入れ方 | Xcode から実機に直接インストール | ipa を書き出して配る |
+| Xcode のデバッガをつなげるか | つなげる（`get-task-allow` が `true`） | つなげない |
+| プッシュ通知の環境 | Sandbox（開発環境） | **Production（本番環境）** |
+
+- Ad Hoc の ipa を配る方法
+  - Mac の Finder や Apple Configurator で、端末に直接インストールする
+  - Firebase App Distribution や DeployGate などの配信サービスを使う
+  - 自前の HTTPS サーバーに ipa と `manifest.plist` を置き、`itms-services://` のリンクからインストールさせる
+- 「開発中は問題ないのに、本番だけおかしい」を事前に確かめたいとき（本番のプッシュ通知など）は、Development ではなく Ad Hoc か TestFlight で確認する
+
+#### Ad Hoc・TestFlight・App Store の違い
+
+App Store Connect 用のプロファイルで署名したビルドは、App Store Connect にアップロードした後で、TestFlight で配るか、審査に出して App Store で公開するかを選ぶ。
+
+|  | Ad Hoc | TestFlight（内部テスト） | TestFlight（外部テスト） | App Store |
+| --- | --- | --- | --- | --- |
+| 配る相手 | Devices に登録した端末だけ（台数の枠は開発用の端末と共有） | App Store Connect のチームメンバー（最大100人） | メールアドレスや公開リンクで招待した人（最大10,000人） | 誰でも |
+| 審査 | なし | なし | あり（ベータ版 App Review。最初のビルドは必須） | あり |
+| 使える期間 | プロファイルの期限まで（最長1年） | アップロードから90日 | アップロードから90日 | 期限なし |
+| 配り方 | ipa を自分で配る | テスターが TestFlight アプリからインストールする | テスターが TestFlight アプリからインストールする | App Store からインストールする |
+
+- Xcode の配布方法で「TestFlight Internal Only」を選んで出したビルドは、内部テスト専用になり、App Store には出せない。App Store にも出す可能性があるなら「App Store Connect」を選ぶ
+- テスターに配るなら、基本は TestFlight のほうが楽（UDID を集めなくてよい）
+- Ad Hoc が向いているのは、審査を待たずに社外の人に配りたいとき、App Store Connect にアプリをまだ登録したくないとき、など
+
+#### In-House（Enterprise）
+
+- Apple Developer Enterprise Program でだけ使える、**自社の従業員向け**の配布方法
+  - 一般の人や社外に配ることは規約で認められていない
+- 端末の登録も審査も不要で、ipa を社内の Web サーバーや MDM で配る
+- 初めて起動するときに、端末の「設定」>「一般」>「VPN とデバイス管理」で開発元を信頼する必要がある
+
+#### Debug / Release ビルドとの関係
+
+- Xcode のビルド構成（Debug / Release）と、プロファイルの種類（Development / Ad Hoc など）は別物
+- 自動署名の場合、通常は次のように動く
+  - Xcode の Run で実機に入れる：Debug ビルド + Development
+  - Archive する：Release ビルド + Development で一度署名し、Organizer で配布方法を選んで書き出すときに、Ad Hoc や App Store Connect のプロファイルで署名し直す
+
+### 初回起動時のオンライン確認（PPQ）
+
+PPQ への問い合わせに失敗すると、アプリが起動しないことがある。「端末に入れたのに起動しない」ときに疑う。
+
+- 対象になるのは、次の両方に当てはまるとき
+  - 2021年6月6日以降にメンバーシップを作ったチーム（それより前からあるチームは対象外）
+  - iOS / iPadOS / tvOS アプリを Development / Ad Hoc で署名した
+- TestFlight や App Store から入れたアプリは関係ない
+- 失敗する主な原因
+  - 初回起動時に端末がオフラインだった
+  - 社内ネットワークなどのファイアウォールで `ppq.apple.com` が塞がれている
+- 対処
+  - 端末をネットワークにつないで起動し直す
+  - ファイアウォールで `https://ppq.apple.com` への通信を許可する
+  - オフラインで使うしかない場合は、プロファイルを作るときに「7日間有効なオフライン用プロファイル」を選ぶ（対象のチームにだけ出る選択肢）
+
+### 中身を確認する
+
+```bash
+# プロファイルの中身（plist）を表示する
+security cms -D -i embedded.mobileprovision
+
+# 有効期限だけ見る
+security cms -D -i embedded.mobileprovision > profile.plist
+/usr/libexec/PlistBuddy -c 'Print :ExpirationDate' profile.plist
+```
+
+- ipa の場合は、unzip して `Payload/MyApp.app/embedded.mobileprovision` を見る
+- 主なキー：`Name`、`TeamIdentifier`、`ExpirationDate`、`Entitlements`、`ProvisionedDevices`（Development / Ad Hoc のみ）、`DeveloperCertificates`
+- ダウンロードしたプロファイルの保存場所
+
+| Xcode のバージョン | 保存場所 |
+| --- | --- |
+| Xcode 16 以降 | `~/Library/Developer/Xcode/UserData/Provisioning Profiles` |
+| Xcode 15 以前 | `~/Library/MobileDevice/Provisioning Profiles` |
+
+- 署名まわりがおかしいときは、このフォルダのプロファイルを消して Xcode を再起動すると、最新のものがダウンロードし直される
+
+### 自動署名と手動署名
+
+| | 自動署名（Automatically manage signing） | 手動署名 |
+| --- | --- | --- |
+| 証明書・プロファイルの作成 | Xcode が自動で作る | 自分で Certificates・Profiles で作ってダウンロードする |
+| 端末の登録 | Mac に繋いだ端末を自動で登録 | 自分で Devices に UDID を登録する |
+| Capabilities の反映 | Xcode で追加すると App ID・プロファイルにも反映される | Identifiers で App ID を編集し、プロファイルを作り直す |
+| 向いている場面 | 個人・少人数の開発 | CI、プロファイルを厳密に管理したいとき |
+
+- 基本は自動署名でよい。CI でも App Store Connect API キーを使えば自動署名のまま動かせる（後述）
+
+## Keys
+
+### 共通のルール
+
+- **ダウンロードは1回だけ**。Apple 側には保存されないので、なくしたら作り直すしかない
+  - ダウンロードボタンが押せない状態なら、すでに誰かがダウンロード済み
+- 多くのサービスでは「Key ID + Team ID + 秘密鍵」で JWT を作って認証する。JWT の署名方式はどれも `ES256`
+- **有効期限はない**。Revoke（失効）すると、その鍵を使っているサービスがすべて使えなくなる
+- 漏えいが疑われたら、新しい鍵を作って切り替えてから古い鍵を Revoke する
+  - 多くのサービスで1つの ID に2つまで鍵を紐づけられるのは、この切り替え（ローテーション）のため
+- Git にはコミットせず、パスワードマネージャーや CI のシークレットで管理する
+
+### 作り方
+
+1. Keys で「+」を押し、鍵の名前を入力する
+2. 使うサービスにチェックを入れ、必要なら「Configure」で紐づける ID や設定を選ぶ
+3. 内容を確認して登録し、`.p8` をダウンロードする（`AuthKey_<Key ID>.p8` という名前で保存される）
+
+### Keys で使えるサービス
+
+| サービス | 用途 | 紐づけるもの・上限など |
+| --- | --- | --- |
+| Apple Push Notifications service (APNs) | サーバーからプッシュ通知を送る | チーム全体、または指定した Bundle ID（後述） |
+| Sign in with Apple | サーバーで認可コードを検証するときの `client_secret`（JWT）を作る | Primary の App ID。1つにつき2つまで |
+| DeviceCheck | DeviceCheck API（端末ごとの状態の管理）をサーバーから呼ぶ | ― |
+| Media Services | MusicKit・ShazamKit・Apple Music Feed の API を使う | Media ID。1つにつき2つまで |
+| WeatherKit | WeatherKit REST API を使う | メンバーシップごとに月50万回まで無料 |
+| MapKit JS | MapKit JS のトークンを作る | Maps ID。1つにつき2つまで |
+| ClassKit Catalog | ClassKit Catalog API を使う | ― |
+
+- MapKit JS は、Services の「Maps」でトークンを直接発行することもできる（後述）
+
+### APNs の鍵の種類
+
+APNs にチェックを入れて「Configure」を押すと、環境と鍵の種類を選べる（2025年から）。
+
+| 鍵の種類 | 使える範囲 | 上限 |
+| --- | --- | --- |
+| Team Scoped | チームの全アプリ（Bundle ID）。Sandbox か Production のどちらかに限定できる | 環境ごとに2つまで |
+| Topic Specific | 指定した Bundle ID のみ。1つの環境のみ | 環境ごとに200個まで。1つの鍵に最大400個の Bundle ID |
+
+- 以前に作った鍵（両方の環境・全アプリで使える）は、引き続きそのまま使える
+- Apple は環境ごとに鍵を分けることを推奨している。もう一方の環境用の鍵は、鍵の編集画面の「Create Related Key」から作れる
+
+## Services
+
+ID や鍵とは別に、一部のサービスで必要な追加設定を行う。表示される項目は、メンバーシップの種類や使っている機能によって変わる。
+
+| 項目 | 内容 |
+| --- | --- |
+| Sign in with Apple for Email Communication | Sign in with Apple でメールアドレスを非公開にしたユーザー（`@privaterelay.appleid.com` のアドレス）にメールを送るための、送信元のドメインとメールアドレスの登録 |
+| Maps | MapKit JS や Embed API で使う Maps のトークンの発行・失効 |
+| Account & Organizational Data Sharing | Apple のサービス（Roster API など）にあるユーザーや組織の情報へのアクセスを許可してもらうための設定 |
+
+### Sign in with Apple for Email Communication
+
+- Sign in with Apple では、ユーザーが「メールを非公開」を選ぶと、アプリには `xxxx@privaterelay.appleid.com` のような中継用のアドレスが渡される
+- このアドレス宛てに送ったメールは Apple の中継サービス（Private Email Relay）を通ってユーザーに届くが、**ここに登録した送信元からのメールしか届かない**
+  - 「Configure」から、送信に使うドメインとメールアドレスを登録する
+  - 登録できる送信元は、個人で32個、組織で100個まで
+- 送信元のドメインには SPF（または DKIM）の設定が必要。登録後の一覧で、SPF のチェックに通ったかを確認できる
+- メールが届かなかったときは、Account Holder と Admin に通知が届く（開発中は「Settings」から止められる）
+
+### Maps
+
+- 「Configure Tokens」から、MapKit JS や Embed API で使うトークンを発行・失効できる
+- 発行時に、有効期間・説明・使う Web サイトのドメインを指定する
+
+### Account & Organizational Data Sharing
+
+- Apple のサービスにある、ユーザーや組織の情報（例：学校向けの Roster API の名簿）へのアクセスを、OAuth でユーザーに許可してもらう仕組み
+- 「Configure」から、アクセスする範囲（スコープ）、リダイレクト先の URL、許可が取り消されたときのサーバー間通知の送り先を設定する
+
+## App Store Connect で作るキー
+
+Certificates, Identifiers & Profiles の Keys とは別に、App Store Connect の「ユーザとアクセス」>「統合」でもキー（`.p8`）を作る。それぞれの API 専用で、APNs などには使えない。ダウンロードが1回だけなど、扱いは Keys の「共通のルール」と同じ。
+
+| 種類 | 作る場所 | 用途 |
+| --- | --- | --- |
+| App Store Connect API キー（チーム） | ユーザとアクセス > 統合 > App Store Connect API | CI からのアップロード、TestFlight の管理、証明書・プロファイルの作成、`notarytool` での公証など |
+| App Store Connect API キー（個人） | 自分のユーザプロファイル | 本人の権限の範囲で API を使う。証明書・プロファイルの操作、売上データ、`notarytool` には使えない |
+| In-App Purchase キー | ユーザとアクセス > 統合 > In-App Purchase | App Store Server API（購入履歴・サブスクリプションの状態・返金の確認など）をサーバーから呼ぶ |
+
+- チームキーは作成時にロール（Admin、App Manager、Developer など）を選び、そのロールの権限で API を使える
+- チームキーの JWT には **Issuer ID**（同じ画面の上部に表示）、Key ID、秘密鍵が必要
+  - `aud` は `appstoreconnect-v1`、有効期限（`exp`）は原則20分以内
+
+## プッシュ通知（APNs）の設定
+
+プッシュ通知は複数の項目にまたがるので、まとめて整理する。
+
+| 手順 | 使う項目 |
+| --- | --- |
+| App ID で Push Notifications を有効にする | Identifiers（Xcode の Signing & Capabilities で Push Notifications を追加すれば自動） |
+| APNs 用の鍵を作る | Keys（証明書方式なら Certificates） |
+| プロファイルを作り直す | Profiles（自動署名なら自動） |
+
+### 全体の流れ
+
+1. アプリが起動時に `registerForRemoteNotifications()` を呼び、APNs からデバイストークンを受け取る
+2. アプリがデバイストークンを自分のサーバーに送って保存する
+3. サーバーが Keys の鍵（.p8）で JWT を作り、HTTP/2 で APNs に通知を送る
+4. APNs が端末に通知を届ける
+
+- デバイストークンは、再インストール・バックアップからの復元・新しい端末へのインストールで変わる。アプリ側でキャッシュせず、起動のたびに取得してサーバーに送る
+
+### 認証方式：トークン方式と証明書方式
+
+|  | トークン方式（.p8） | 証明書方式（.p12） |
+| --- | --- | --- |
+| 作る場所 | Keys | Certificates（Apple Push Notification service SSL） |
+| 有効期限 | なし | 1年（毎年更新が必要） |
+| 対象アプリ | チームの全アプリ（Topic Specific なら指定した Bundle ID のみ） | 1つのアプリのみ |
+| 使える通知の種類 | すべて | 一部のみ（ライブアクティビティや位置情報のプッシュなどは不可） |
+| 複数のサーバーでの共有 | 同じ鍵を使い回せる | サーバーごとに証明書を配置 |
+
+- **新しく作るならトークン方式一択**。証明書方式は毎年の更新忘れでプッシュが止まる事故が起きやすい
+- 鍵の種類（Team Scoped / Topic Specific）は「Keys」の章を参照
+- 1つの HTTP/2 接続では、最初に使った鍵と同じ種類・同じ環境の鍵しか使えない。鍵を切り替えるときは接続を張り直す
+
+### 開発環境（Sandbox）と本番環境（Production）
+
+| ビルドの種類 | `aps-environment` | 送り先 |
+| --- | --- | --- |
+| Xcode から実機に直接インストール（Development プロファイル） | `development` | `api.sandbox.push.apple.com` |
+| Ad Hoc / **TestFlight** / App Store | `production` | `api.push.apple.com` |
+
+- 環境は Debug / Release ではなく、**署名に使ったプロファイル**で決まる。Xcode がプロファイルに合わせて `aps-environment` を設定するので、Release ビルドでも Development で署名すれば Sandbox になる
+- **デバイストークンは環境ごとに別物**。トークンを取ったビルドと同じ環境に送る
+- ポートは 443（ファイアウォールの都合で 2197 も使える）
+
+### JWT の作り方
+
+```jsonc
+// ヘッダー
+{ "alg": "ES256", "kid": "<Key ID>" }
+// ペイロード
+{ "iss": "<Team ID>", "iat": 1763600000 }
+```
+
+- `iat` は作成時刻（UNIX 秒）
+- **20分〜60分の間隔で作り直す**。1時間より古くても、20分より短い間隔で作り直しても、エラーになる（下の「よくあるエラー」を参照）
+- 作った JWT は `authorization: bearer <JWT>` ヘッダーに入れる
+
+### curl で送ってみる
+
+Apple の公式ドキュメントにある、macOS の標準コマンドだけで送る方法。
+
+```bash
+TEAM_ID=ABCDE12345
+AUTH_KEY_ID=XYZ9876543
+TOKEN_KEY_FILE_NAME=./AuthKey_XYZ9876543.p8
+TOPIC=com.example.myapp
+DEVICE_TOKEN=アプリで取得したデバイストークン
+APNS_HOST_NAME=api.sandbox.push.apple.com   # 本番は api.push.apple.com
+
+JWT_ISSUE_TIME=$(date +%s)
+JWT_HEADER=$(printf '{ "alg": "ES256", "kid": "%s" }' "${AUTH_KEY_ID}" | openssl base64 -e -A | tr -- '+/' '-_' | tr -d =)
+JWT_CLAIMS=$(printf '{ "iss": "%s", "iat": %d }' "${TEAM_ID}" "${JWT_ISSUE_TIME}" | openssl base64 -e -A | tr -- '+/' '-_' | tr -d =)
+JWT_HEADER_CLAIMS="${JWT_HEADER}.${JWT_CLAIMS}"
+JWT_SIGNED_HEADER_CLAIMS=$(printf "${JWT_HEADER_CLAIMS}" | openssl dgst -binary -sha256 -sign "${TOKEN_KEY_FILE_NAME}" | openssl base64 -e -A | tr -- '+/' '-_' | tr -d =)
+AUTHENTICATION_TOKEN="${JWT_HEADER}.${JWT_CLAIMS}.${JWT_SIGNED_HEADER_CLAIMS}"
+
+curl -v \
+  --header "apns-topic: ${TOPIC}" \
+  --header "apns-push-type: alert" \
+  --header "authorization: bearer ${AUTHENTICATION_TOKEN}" \
+  --data '{"aps":{"alert":"test"}}' \
+  --http2 "https://${APNS_HOST_NAME}/3/device/${DEVICE_TOKEN}"
+```
+
+- ステータス 200 が返り、端末に「test」と通知が出れば成功
+
+### Push Notifications Console
+
+- [Push Notifications Console](https://icloud.developer.apple.com/dashboard) で、ブラウザからテスト通知を送れる
+  - 通知の種類や優先度を選んで送信でき、同じ内容の curl コマンドも生成できる
+  - JWT やデバイストークンが正しいかを検証するツールがある
+  - 開発環境に送った通知は、配信ログ（APNs が受け取ったか、端末に届いたか）を7日間確認できる
+  - 本番環境への送信は Admin ロールのみ
+- サーバーを作る前に「アプリ側の設定が正しいか」を切り分けるのに便利
+
+### 通知の種類（apns-push-type）と topic
+
+`apns-topic` には基本的に Bundle ID を入れるが、通知の種類によって末尾に文字列を付ける。
+
+| `apns-push-type` | 内容 | `apns-topic` |
+| --- | --- | --- |
+| `alert` | 通常の通知（バナー・バッジ・サウンド） | Bundle ID |
+| `background` | 画面に出さずにアプリを裏で起こす（優先度は必ず `5`） | Bundle ID |
+| `voip` | 通話アプリの着信（PushKit。下の「VoIP プッシュ」を参照） | Bundle ID + `.voip` |
+| `liveactivity` | ライブアクティビティの更新 | Bundle ID + `.push-type.liveactivity` |
+| `widgets` | ウィジェットの更新 | Bundle ID + `.push-type.widgets` |
+| `location` | 位置情報の問い合わせ | Bundle ID + `.location-query` |
+| `complication` | watchOS のコンプリケーションの更新 | Bundle ID + `.complication` |
+
+- ペイロードは最大 4KB（VoIP は 5KB）
+- ライブアクティビティ・位置情報のプッシュはトークン方式でしか送れない
+
+### VoIP プッシュ
+
+アプリが起動していなくても、端末がアプリを起こして着信画面を出させる。通話機能のないアプリには関係ない。
+
+- 通常の通知（`alert`）とは仕組みが別
+  - アプリ側は User Notifications ではなく PushKit で受け取る
+  - デバイストークンも PushKit から別に発行される。通常の通知のトークンとは違うので、サーバー側では分けて保存する
+- iOS 13 以降、VoIP プッシュを受け取ったら必ず CallKit で着信として報告し、標準の着信画面を出す
+  - 報告しないとアプリは終了させられ、繰り返すと VoIP プッシュが届かなくなることがある
+  - そのため、通話の着信以外の用途（データの同期など）には使えない。CallKit を使えない場合は、通常の通知で送る
+- サーバーから送るとき
+  - `apns-push-type: voip` にし、`apns-topic` は Bundle ID の末尾に `.voip` を付ける
+  - `apns-expiration` は `0` か数秒にする（遅れて届いても、もう着信が終わっているため）
+  - ペイロードには、通話の ID や発信者の情報を入れる（着信画面に表示するため）
+  - 認証はトークン方式（`.p8`）でも、証明書方式（VoIP Services 証明書）でもよい
+
+### Firebase Cloud Messaging（FCM）を使う場合
+
+- FCM も iOS 向けには裏で APNs を使っているため、Identifiers・Keys の設定は必要
+- Firebase コンソールの「プロジェクトの設定」>「Cloud Messaging」>「Apple アプリの構成」で、APNs の鍵（.p8）・Key ID・Team ID を登録する
+- アプリ側のデバイストークンの代わりに FCM の登録トークンをサーバーに送り、FCM の API で送信する
+
+### Web プッシュ（Safari）
+
+- Safari（macOS 13 以降、ホーム画面に追加した iOS / iPadOS 16.4 以降の Web アプリ）は標準の Web Push に対応しており、Apple Developer Program への登録や証明書は不要
+- Identifiers の Website Push IDs と Certificates の Website Push ID 証明書は、それより前の Safari 独自のプッシュ通知の仕組み用
+
+### よくあるエラー
+
+| ステータス | エラー | 主な原因 |
+| --- | --- | --- |
+| 400 | `BadDeviceToken` | デバイストークンが不正、または環境違い（開発用トークンを本番に送ったなど） |
+| 400 | `DeviceTokenNotForTopic` | デバイストークンと `apns-topic` の Bundle ID が合っていない |
+| 400 | `TopicDisallowed` | その topic には送れない（Topic Specific の鍵に含まれていないなど） |
+| 403 | `InvalidProviderToken` | JWT が不正。Key ID・Team ID・秘密鍵の組み合わせの間違い、Revoke した鍵など |
+| 403 | `ExpiredProviderToken` | JWT の `iat` が1時間より古い |
+| 403 | `BadEnvironmentKeyIdInToken` | 環境を限定した鍵を、もう一方の環境で使った |
+| 410 | `Unregistered` | アプリが削除されたなどでトークンが無効になった。以後そのトークンには送らない |
+| 413 | `PayloadTooLarge` | ペイロードが大きすぎる |
+| 429 | `TooManyProviderTokenUpdates` | 同じ接続で、JWT を20分より短い間隔で作り直している |
+
+## CI/CD での扱い
+
+| 方法 | 内容 | 向いている場面 |
+| --- | --- | --- |
+| App Store Connect API キー + 自動署名 | `xcodebuild` に API キーを渡し、証明書・プロファイルの作成を Xcode に任せる | 手軽に始めたいとき |
+| fastlane match | 証明書（秘密鍵込み）とプロファイルを暗号化して Git リポジトリなどに置き、チームと CI で共有する | チームで同じ証明書を使い回したいとき |
+| `.p12` とプロファイルをシークレットに入れる | base64 にして CI のシークレットに入れ、ビルド時に一時キーチェーンへ読み込む | 仕組みを最小限にしたいとき |
+| Xcode Cloud | 署名はクラウド管理証明書で自動 | Xcode Cloud を使う場合 |
+
+- fastlane match の使い方は『[続・ハッカソンの技術選定 [Flutter編]](/presentations/2025/10-08/takashi#証明書管理)』で紹介している
+- App Store Connect API キーを使った自動署名
+
+```bash
+xcodebuild -exportArchive \
+  -archivePath build/MyApp.xcarchive \
+  -exportOptionsPlist ExportOptions.plist \
+  -exportPath build \
+  -allowProvisioningUpdates \
+  -authenticationKeyPath "$PWD/AuthKey_XXXXXXXXXX.p8" \
+  -authenticationKeyID XXXXXXXXXX \
+  -authenticationKeyIssuerID 00000000-0000-0000-0000-000000000000
+```
+
+- `.p12` を一時キーチェーンに読み込む例（GitHub Actions の macOS ランナーなど）
+
+```bash
+KEYCHAIN=build.keychain-db
+security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+security set-keychain-settings -lut 21600 "$KEYCHAIN"
+security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+echo "$P12_BASE64" | base64 --decode > cert.p12
+security import cert.p12 -k "$KEYCHAIN" -P "$P12_PASSWORD" -T /usr/bin/codesign
+security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+
+# プロファイルを配置する
+mkdir -p ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles
+echo "$PROFILE_BASE64" | base64 --decode > ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/app.mobileprovision
+```
+
+## メンバーシップとロール
+
+### メンバーシップ
+
+| 種類 | 年会費 | 備考 |
+| --- | --- | --- |
+| Apple Developer Program（個人） | 99 USD | 個人名で App Store に表示される |
+| Apple Developer Program（組織） | 99 USD | D-U-N-S 番号が必要。チームメンバーを追加できる |
+| Apple Developer Enterprise Program | 299 USD | 社内配布専用。App Store には出せない |
+
+- 規約が更新されたときは Account Holder が同意しないと、Certificates, Identifiers & Profiles や App Store Connect の一部が使えなくなる
+
+### 項目ごとに必要なロール
+
+| 項目 | 操作 | 必要なロール |
+| --- | --- | --- |
+| Certificates | 開発用の証明書の作成 | 各メンバー（Developer は Xcode の自動署名経由） |
+| Certificates | 配布用の証明書の作成 | Account Holder / Admin |
+| Certificates | Developer ID 証明書の作成 | Account Holder（クラウド管理なら権限を付与された Admin も可） |
+| Identifiers | App ID などの登録・編集 | Account Holder / Admin |
+| Devices | 端末の登録 | Account Holder / Admin（Developer は Xcode の自動署名経由） |
+| Profiles | 配布用のプロファイルの作成 | Account Holder / Admin |
+| Keys | 鍵の作成・Revoke・ダウンロード | Account Holder / Admin |
+| Services | 各種設定 | Account Holder / Admin |
+| （App Store Connect） | App Store Connect API キー（チーム）の作成 | Admin |
+
+- App Manager や Developer でも、App Store Connect の「ユーザとアクセス」で「Certificates, Identifiers & Profiles へのアクセス」を付与されると、操作できる範囲が広がる
+- 個人で登録している場合は、自分が Account Holder
+
+## 期限切れ・失効
+
+毎年どこかのタイミングで何かが切れる。何が切れるとどうなるかを一覧にしておく。
+
+- 証明書の期限は、Certificates の一覧の「Expiration」列で確認できる。期限が切れたプロファイルは、Profiles の一覧で「Expired」と表示される
+- カレンダーに期限を登録しておくか、定期的に一覧を確認する
+
+### 証明書
+
+| 証明書 | 期限 | 期限切れ・失効したとき | 対応 |
+| --- | --- | --- | --- |
+| Apple Development | 1年 | 実機向けにビルドできなくなる | Xcode が自動で作り直す |
+| Apple Distribution | 1年 | App Store で配信中のアプリには影響しない（メンバーシップが有効な限り）。新しいビルドをアップロードできなくなる。Ad Hoc で配ったアプリは起動しなくなる | 作り直して、プロファイルも作り直す。Ad Hoc は署名し直して再配布する |
+| In-House（Enterprise） | 一覧で確認 | **配布済みのアプリが起動しなくなる** | 期限前に新しい証明書で署名し直して再配布する |
+| Developer ID Application | 1年（G2） | 期限切れ：配布済みのアプリはそのまま動くが、新しく署名できなくなる。失効：配布済みのアプリもインストールできなくなる | 毎年作り直す |
+| Developer ID Installer | 1年（G2） | 期限切れ：タイムスタンプ付きで署名した .pkg はインストールできる。失効：インストールできなくなる | 毎年作り直す |
+| APNs 証明書 | 1年 | **プッシュ通知を送れなくなる** | トークン方式（.p8）に移行する |
+| Pass Type ID | 一覧で確認 | 期限切れ：配布済みのパスは使えるが、新しいパスの発行・更新ができない。失効：配布済みのパスも正しく動かなくなる | 期限前に作り直す |
+| Apple Pay 系 | Payment Processing は25か月 | Apple Pay の決済が失敗する | 期限前に作り直す |
+
+- 審査に提出する前のビルドが、失効した証明書で署名されていると、Invalid Binary になることがある
+- App Store 用の配布証明書は、上限に達したり秘密鍵をなくしたりしたら、Revoke して作り直してよい（配信中のアプリは無事）
+- In-House 証明書の Revoke は社内アプリが全部止まるので、絶対に気軽にやらない
+
+### プロファイル
+
+| プロファイル | 期限 | 切れたとき |
+| --- | --- | --- |
+| Development / Ad Hoc | 最長1年。含まれる証明書が期限切れ・失効すると使えなくなる | 配ったアプリが起動しなくなる。作り直して再配布する |
+| App Store Connect | あり | 配信中のアプリには影響しない（App Store から配るときは Apple が署名し直すため）。次にアップロードするときに作り直す |
+| In-House | 1年 | 社内アプリが起動しなくなる。期限前に作り直して再配布する |
+| Developer ID | 2017年2月22日以降に作ったものは18年 | このプロファイルを使っている Mac アプリは起動しなくなる |
+
+### その他
+
+| もの | 期限 | 切れたとき・対応 |
+| --- | --- | --- |
+| Keys の `.p8`（App Store Connect のキーも同様） | なし | 漏えいしたときだけ作り直す |
+| Sign in with Apple の `client_secret` | 最長6か月 | サーバーでの検証に失敗する。サーバーで定期的に作り直す |
+| メンバーシップ | 1年 | App Store で配信されなくなり、新しいビルドも提出できなくなる。自動更新にしておく |
+
+## よくあるトラブル
+
+| 症状 | 原因 | 対処 |
+| --- | --- | --- |
+| 証明書はキーチェーンにあるのに署名できない（`No signing certificate found` など） | 秘密鍵がない | 持っている人から `.p12` をもらう。誰も持っていなければ作り直す |
+| `Provisioning profile doesn't include signing certificate` | プロファイルを作った後に証明書を作り直した | プロファイルを作り直す |
+| `Provisioning profile doesn't include the currently selected device` | 端末が未登録、または登録後にプロファイルを作り直していない | Devices に登録してプロファイルを作り直す |
+| `Provisioning profile doesn't support the Push Notifications capability` など | App ID で機能が無効、またはプロファイルが古い | Identifiers で機能を有効にしてプロファイルを作り直す |
+| キーチェーンで「この証明書は信頼されていません」 | WWDR 中間証明書がない | Apple PKI から中間証明書を入れる |
+| 開発中は届いたプッシュが TestFlight で届かない | TestFlight は本番環境 | 本番環境（`api.push.apple.com`）と、TestFlight のビルドで取ったデバイストークンを使う |
+| Ad Hoc で配ったアプリが起動しない | プロファイルの期限切れ、または初回起動時のオンライン確認（PPQ）に失敗した | プロファイルを作り直す / ネットワークにつなぐ / オフライン用プロファイルを使う |
+| Sign in with Apple のユーザーにメールが届かない | 送信元が Services に登録されていない、または SPF の設定がない | Services で送信元を登録し、SPF を設定する |
+
+## さいごに
+
+- 用語が分からなくなったら「用語」、何を使えばよいか迷ったら「やりたいこと別の早見表」に戻る
+- 期限が近いものがないかは、「期限切れ・失効」の表でまとめて確認する
+
+## 参照
+
+- [Certificates overview | Apple Developer](https://developer.apple.com/help/account/certificates/certificates-overview)
+- [Cloud-managed certificates | Apple Developer](https://developer.apple.com/help/account/certificates/cloud-managed-certificates/)
+- [Developer ID certificates | Apple Developer](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/)
+- [Upcoming expiration of Developer ID Certification Authority (Sub-CA) | Apple Developer](https://developer.apple.com/news/?id=w4atic4c)
+- [Register an App ID | Apple Developer](https://developer.apple.com/help/account/identifiers/register-an-app-id/)
+- [Enable app services | Apple Developer](https://developer.apple.com/help/account/identifiers/enable-app-services/)
+- [Register a Services ID | Apple Developer](https://developer.apple.com/help/account/identifiers/register-a-services-id/)
+- [Configure Apple Pay | Apple Developer](https://developer.apple.com/help/account/capabilities/configure-apple-pay/)
+- [Devices overview | Apple Developer](https://developer.apple.com/help/account/devices/devices-overview/)
+- [Register a single device | Apple Developer](https://developer.apple.com/help/account/devices/register-a-single-device/)
+- [Provisioning profile updates | Apple Developer](https://developer.apple.com/help/account/provisioning-profiles/provisioning-profile-updates/)
+- [Enabling Developer Mode on a device | Apple Developer Documentation](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device)
+- [TestFlight | Apple Developer](https://developer.apple.com/testflight/)
+- [Create a private key to access a service | Apple Developer](https://developer.apple.com/help/account/keys/create-a-private-key/)
+- [Revoke, edit, and download keys | Apple Developer](https://developer.apple.com/help/account/keys/revoke-edit-and-download-keys/)
+- [Create a Sign in with Apple private key | Apple Developer](https://developer.apple.com/help/account/capabilities/create-a-sign-in-with-apple-private-key/)
+- [Configure Sign in with Apple for the web | Apple Developer](https://developer.apple.com/help/account/capabilities/configure-sign-in-with-apple-for-the-web/)
+- [Configure private email relay service | Apple Developer](https://developer.apple.com/help/account/capabilities/configure-private-email-relay-service/)
+- [Maps tokens | Apple Developer](https://developer.apple.com/help/account/service-configurations/maps-tokens/)
+- [Account & Organizational Data Sharing | Apple Developer](https://developer.apple.com/help/account/service-configurations/share-account-and-organizational-data/)
+- [Roles and access | Apple Developer](https://developer.apple.com/help/account/access/roles/)
+- [New features for APNs token authentication are now available | Apple Developer](https://developer.apple.com/news/?id=wy4tb0uo)
+- [Establishing a token-based connection to APNs | Apple Developer Documentation](https://developer.apple.com/documentation/usernotifications/establishing-a-token-based-connection-to-apns)
+- [Establishing a certificate-based connection to APNs | Apple Developer Documentation](https://developer.apple.com/documentation/usernotifications/establishing-a-certificate-based-connection-to-apns)
+- [Sending notification requests to APNs | Apple Developer Documentation](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns)
+- [Handling notification responses from APNs | Apple Developer Documentation](https://developer.apple.com/documentation/usernotifications/handling-notification-responses-from-apns)
+- [Sending push notifications using command-line tools | Apple Developer Documentation](https://developer.apple.com/documentation/usernotifications/sending-push-notifications-using-command-line-tools)
+- [Testing notifications using the Push Notification Console | Apple Developer Documentation](https://developer.apple.com/documentation/usernotifications/testing-notifications-using-the-push-notification-console)
+- [Responding to VoIP Notifications from PushKit | Apple Developer Documentation](https://developer.apple.com/documentation/pushkit/responding-to-voip-notifications-from-pushkit)
+- [Supporting PushKit Notifications in Your App | Apple Developer Documentation](https://developer.apple.com/documentation/pushkit/supporting-pushkit-notifications-in-your-app)
+- [APS Environment Entitlement | Apple Developer Documentation](https://developer.apple.com/documentation/bundleresources/entitlements/aps-environment)
+- [Creating API Keys for App Store Connect API | Apple Developer Documentation](https://developer.apple.com/documentation/appstoreconnectapi/creating-api-keys-for-app-store-connect-api)
+- [Generating Tokens for API Requests | Apple Developer Documentation](https://developer.apple.com/documentation/appstoreconnectapi/generating-tokens-for-api-requests)
+- [Creating API keys to authorize API requests (App Store Server API) | Apple Developer Documentation](https://developer.apple.com/documentation/appstoreserverapi/creating-api-keys-to-authorize-api-requests)
+- [Apple PKI](https://www.apple.com/certificateauthority/)
+- [fastlane match](https://docs.fastlane.tools/actions/match/)
